@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OnlyShots</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #120d0b; color: #f4ede8; font-family: system-ui, sans-serif; }
+      main { padding: 32px 20px; }
+      a { color: inherit; }
+    </style>
+    <script>
+      // onlyshots.vercel.app/open opens the app where it is installed (App Links, Universal Links). Reaching this page
+      // means it is not: send a phone to its store, anything else to the web editor.
+      // The App Store id: also set in app/webApp/.../AppStores.kt and index.html's apple-itunes-app tag.
+      var APP_STORE_ID = null;
+      var ua = navigator.userAgent;
+      var iphone = /iPhone|iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+      var target = "/";
+      if (/Android/.test(ua)) target = "https://play.google.com/store/apps/details?id=dev.parez.onlyshots";
+      else if (iphone && APP_STORE_ID) target = "https://apps.apple.com/app/id" + APP_STORE_ID;
+      location.replace(target);
+    </script>
+  </head>
+  <body>
+    <main><a href="/">Open the OnlyShots web editor</a></main>
+  </body>
+</html>

@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The graph style picker and editor. -->
+<resources>
+    <!-- New styles: the name is saved into the user's style. -->
+    <string name="style_my_style">my style</string>
+    <string name="style_copy_name">%1$s copy</string>
+
+    <!-- Picker -->
+    <string name="style_your_styles">your styles</string>
+    <string name="style_built_in">built in</string>
+    <string name="style_edit">edit</string>
+    <string name="style_edit_a_copy">edit a copy</string>
+    <string name="style_rename">rename</string>
+    <string name="style_delete">delete</string>
+    <string name="style_cancel">cancel</string>
+    <string name="style_long_press_hint">long-press: edit a copy · rename · delete</string>
+    <string name="style_rename_style">rename style</string>
+    <string name="style_name">style name</string>
+    <string name="style_delete_title">delete %1$s?</string>
+    <string name="style_delete_text">Videos made with it keep their look.</string>
+    <string name="style_tile_description">%1$s style</string>
+    <string name="style_new_style">new style</string>
+
+    <!-- Editor screen -->
+    <string name="style_tab_panel">panel</string>
+    <string name="style_tab_lines">lines</string>
+    <string name="style_tab_grid">grid</string>
+    <string name="style_tab_text">text</string>
+    <string name="style_tab_readings">readings</string>
+    <string name="style_live_camera">live camera</string>
+    <string name="style_your_video">your video</string>
+    <string name="style_save_this_style">save this style?</string>
+    <string name="style_unsaved_changes">Your changes to %1$s are not saved yet.</string>
+    <string name="style_save_ellipsis">save…</string>
+    <string name="style_discard">discard</string>
+    <string name="style_save">save</string>
+    <string name="style_preview_drag">preview on your video · drag to try other frames</string>
+    <string name="style_preview_record">preview · record a video to try it on yours</string>
+    <string name="style_readability_title">%1$s values are hard to read here</string>
+    <string name="style_readability_text_panel">%1$s over this frame: contrast %2$s : 1. Turn on "adapt to video" or pick a darker panel.</string>
+    <string name="style_readability_text_tint">%1$s over this frame: contrast %2$s : 1. Turn on "adapt to video" or pick a darker tint.</string>
+    <string name="style_fix_it">fix it for me</string>
+    <string name="style_hex_colour">hex colour</string>
+    <string name="style_save_style">save style</string>
+    <string name="style_use_by_default_for">use by default for</string>
+    <string name="style_scale_only">scale only</string>
+
+    <!-- Glass (the Liquid demo's sliders) -->
+    <string name="style_glass_frost">frost</string>
+    <string name="style_glass_refraction">refraction</string>
+    <string name="style_glass_curve">curve</string>
+    <string name="style_glass_edge">edge</string>
+    <string name="style_glass_saturation">saturation</string>
+    <string name="style_glass_corner">corner</string>
+    <string name="style_glass_dispersion">dispersion</string>
+    <string name="style_glass_contrast">contrast</string>
+
+    <!-- Panel -->
+    <string name="style_material">material</string>
+    <string name="style_solid">solid</string>
+    <string name="style_blur">blur</string>
+    <string name="style_none">none</string>
+    <string name="style_note_no_panel">No panel: lines and numbers straight on the video. Turn on adapt to video in readings, or keep a shadow under the text, so they read over bright frames.</string>
+    <string name="style_colour">colour</string>
+    <string name="style_tint">tint</string>
+    <string name="style_panel_colour">panel colour</string>
+    <string name="style_opacity">opacity</string>
+    <string name="style_tint_strength">tint strength</string>
+    <string name="style_tiles">tiles</string>
+    <string name="style_note_tiles">Acrylic tiles, as Metro: the header and chart one tile, each reading its own (in readings).</string>
+    <string name="style_tile_gap">tile gap</string>
+    <string name="style_tile_base">tile base</string>
+    <string name="style_tile_edge">tile edge</string>
+    <string name="style_note_blur">Blur uses the same background blur on all platforms, so Android and iOS look identical.</string>
+    <string name="style_note_glass">The controls of the Liquid demo app, drawn by Haze. The export draws the same glass, frame by frame, with the same shader.</string>
+    <string name="style_padding">padding</string>
+    <string name="style_adapt_to_video">adapt to video</string>
+    <string name="style_more_for_panel">more for the panel</string>
+    <string name="style_shadow">shadow</string>
+    <string name="style_panel_shadow">panel shadow</string>
+    <string name="style_outer_border">outer border</string>
+    <string name="style_inner_border">inner border</string>
+    <string name="style_glow">glow</string>
+    <string name="style_glow_colour">glow colour</string>
+    <string name="style_glow_size">glow size</string>
+    <string name="style_gloss">gloss</string>
+    <string name="style_corners">corners</string>
+
+    <!-- Lines -->
+    <string name="style_x_colour">%1$s colour</string>
+    <string name="style_line_weight">line weight</string>
+    <string name="style_other_curves">other curves</string>
+    <string name="style_shape">shape</string>
+    <string name="style_smooth">smooth</string>
+    <string name="style_stepped">stepped</string>
+    <string name="style_area_fill">area fill</string>
+    <string name="style_off">off</string>
+    <string name="style_targets">targets</string>
+    <string name="style_dashed">dashed</string>
+    <string name="style_dotted">dotted</string>
+    <string name="style_faint">faint</string>
+    <string name="style_target_opacity">target opacity</string>
+    <string name="style_target_weight">target weight</string>
+    <string name="style_line_shadow">line shadow</string>
+
+    <!-- Grid -->
+    <string name="style_grid">grid</string>
+    <string name="style_rows">rows</string>
+    <string name="style_rows_and_columns">rows + columns</string>
+    <string name="style_grid_colour">grid colour</string>
+
+    <!-- Text -->
+    <string name="style_title">title</string>
+    <string name="style_title_colour">title colour</string>
+    <string name="style_labels">labels</string>
+    <string name="style_label_colour">label colour</string>
+    <string name="style_target_values">target values</string>
+    <string name="style_target_value_colour">target value colour</string>
+    <string name="style_under_the_text">under the text</string>
+    <string name="style_text_shadow">text shadow</string>
+    <string name="style_phase_lines">phase lines</string>
+    <string name="style_phase_line_colour">phase line colour</string>
+    <string name="style_phase_names">phase names</string>
+    <string name="style_phase_name_colour">phase name colour</string>
+
+    <!-- Readings -->
+    <string name="style_cells">cells</string>
+    <string name="style_cell_filled">filled</string>
+    <string name="style_cell_outlined">outlined</string>
+    <string name="style_cell_plain">plain</string>
+    <string name="style_cell_glossy">glossy</string>
+    <string name="style_cell_tiles">tiles</string>
+    <string name="style_cell_colour">cell colour</string>
+    <string name="style_x_tile">%1$s tile</string>
+    <string name="style_values">values</string>
+    <string name="style_series_colours">series colours</string>
+    <string name="style_white">white</string>
+    <string name="style_custom">custom</string>
+    <string name="style_x_value">%1$s value</string>
+    <string name="style_value_weight">value weight</string>
+    <string name="style_light">light</string>
+    <string name="style_regular">regular</string>
+    <string name="style_semibold">semibold</string>
+    <string name="style_over_bright_video">over bright video</string>
+    <string name="style_cell_border">cell border</string>
+    <string name="style_border">border</string>
+    <string name="style_text">text</string>
+    <string name="style_text_over_bright_video">text over bright video</string>
+    <string name="style_x_over_bright_video">%1$s over bright video</string>
+    <string name="style_text_halo_over_bright_video">text halo over bright video</string>
+    <string name="style_scrim">scrim behind readings</string>
+
+    <!-- Shadows and gloss -->
+    <string name="style_halo">halo</string>
+    <string name="style_on">on</string>
+    <string name="style_softness">softness</string>
+    <string name="style_drop">drop</string>
+    <string name="style_gloss_top">top</string>
+    <string name="style_gloss_above">above the step</string>
+    <string name="style_gloss_below">below the step</string>
+    <string name="style_gloss_bottom">bottom</string>
+    <string name="style_step_at">step at</string>
+    <string name="style_gloss_part">%1$s %2$s</string>
+
+    <!-- Colour presets -->
+    <string name="style_swatch_ice_blue">ice blue</string>
+    <string name="style_swatch_blue">blue</string>
+    <string name="style_swatch_mint">mint</string>
+    <string name="style_swatch_honey">honey</string>
+    <string name="style_swatch_apricot">apricot</string>
+    <string name="style_swatch_ember">ember</string>
+    <string name="style_swatch_rose">rose</string>
+    <string name="style_swatch_lilac">lilac</string>
+    <string name="style_swatch_milk">milk</string>
+    <string name="style_swatch_white">white</string>
+    <string name="style_swatch_teal">teal</string>
+    <string name="style_swatch_sky">sky</string>
+    <string name="style_swatch_espresso">espresso</string>
+    <string name="style_swatch_oxblood">oxblood</string>
+    <string name="style_swatch_graphite">graphite</string>
+    <string name="style_swatch_cobalt">cobalt</string>
+    <string name="style_swatch_forest">forest</string>
+    <string name="style_swatch_clear">clear</string>
+</resources>

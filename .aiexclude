@@ -1,0 +1,4 @@
+# Files that hold or decrypt secrets. Keep assistants and their indexes out of them.
+local.properties
+**/*.keystore
+**/*.jks

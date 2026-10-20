@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- B · c-curve: a c whose lower stroke runs out into the shot curve, ending in the live dot. -->
+  <path fill="none" stroke="#000" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"
+        d="M172 70 A72 72 0 1 0 116 198 C150 198 156 140 182 140 C200 140 206 156 214 162"/>
+  <circle cx="226" cy="166" r="0" fill="#000"/>
+</svg>

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Start, Home (where the shot comes from, the next take), the ? sheet and the machine shot picker. -->
+<resources>
+    <!-- Start -->
+    <string name="home_start_question">What do you want to do?</string>
+    <string name="home_start_record_title">Record a shot</string>
+    <string name="home_start_record_detail">Film it with the graph drawn live from your machine or scale.</string>
+    <string name="home_start_edit_title">Edit a video</string>
+    <string name="home_start_edit_detail">Pick a video you filmed and its shot file, line them up and export.</string>
+
+    <!-- Header and the ? sheet -->
+    <string name="home_title">record a shot</string>
+    <string name="home_about">about OnlyShots</string>
+    <string name="home_about_text">OnlyShots films your espresso shot with its graph drawn over it: pressure, flow and weight, live from your machine or scale. When the shot ends, trim the video, style the graph and save a video ready to share. No machine? Film anyway and add the shot later.</string>
+    <string name="home_help_machines">machines</string>
+    <string name="home_help_machines_note">Found on the same Wi‑Fi. Not there? Add it by address.</string>
+    <string name="home_help_scales_note">Turn Bluetooth on and touch the scale to wake it.</string>
+    <string name="home_privacy">privacy</string>
+    <string name="home_support">support</string>
+
+    <!-- Machines -->
+    <string name="home_machines_title">machines on this Wi-Fi</string>
+    <string name="home_searching">searching…</string>
+    <string name="home_found">%1$s found</string>
+    <string name="home_add_by_address">add by address</string>
+    <string name="home_add_by_address_subtitle">IP or name, for machines the search can’t see</string>
+    <string name="home_address_note">The machine's IP or name, for machines the search can’t see.</string>
+    <string name="home_address_label">machine address</string>
+    <string name="home_connect">connect</string>
+
+    <!-- Row status -->
+    <string name="home_row_ready">ready</string>
+    <string name="home_row_connected">connected</string>
+    <string name="home_row_connecting">connecting…</string>
+    <string name="home_row_busy">busy</string>
+    <string name="home_row_offline">offline</string>
+
+    <!-- Scales -->
+    <string name="home_scales_title">Bluetooth scales</string>
+    <string name="home_bluetooth_off">Bluetooth off</string>
+    <string name="home_bluetooth_scale">Bluetooth scale</string>
+    <string name="home_scale_detail">weight · flow</string>
+    <string name="home_connect_scale_title">connect a scale</string>
+    <string name="home_connect_scale_subtitle">Allow Bluetooth to find scales nearby. Adds weight and flow; works with any machine, or alone</string>
+    <string name="home_turn_on_bluetooth">Turn on Bluetooth to find scales nearby.</string>
+
+    <!-- How each source is reached -->
+    <string name="home_hint_scale">over Bluetooth: Acaia, Bookoo, DiFluid, Felicita, Timemore, Varia and more</string>
+    <string name="home_hint_machine">over Wi-Fi, found on your network</string>
+
+    <!-- The record action -->
+    <string name="home_action_open_camera">open camera · %1$s</string>
+    <string name="home_action_sample">open camera · sample shot</string>
+    <string name="home_action_sample_caption">Tap simulate shot on the record screen to replay it</string>
+    <string name="home_action_without_data">record without data</string>
+    <string name="home_action_pick_source">Pick a machine or a scale above for the live graph</string>
+    <string name="home_action_offline">%1$s is offline · or pick another source</string>
+    <string name="home_action_scale_caption">Recording starts at the first drops</string>
+    <string name="home_auto_start_brew_switch">Shot starts recording when the brew switch flips on</string>
+    <string name="home_try_sample">no machine? try a sample shot</string>
+    <string name="home_record">record</string>
+    <string name="home_record_armed_auto">The camera opens armed. The shot starts the take.</string>
+    <string name="home_record_armed_manual">The camera opens armed. You start the take.</string>
+
+    <!-- Next take -->
+    <string name="home_next_take">Next take</string>
+    <string name="home_take_sample">Sample shot</string>
+    <string name="home_take_camera_only">Camera only</string>
+        <string name="home_take_machine">machine</string>
+    <string name="home_status_sample">sample · a recorded shot, replayed when you tap simulate shot</string>
+    <string name="home_status_no_source">no source · the camera only, the shot can be added in the editor</string>
+    <string name="home_status_waiting">connected · waiting for the first reading</string>
+    <string name="home_status_scale_loaded">live · something on the scale</string>
+    <string name="home_status_scale_settled">live · scale settled</string>
+    <string name="home_status_brewing">live · brewing</string>
+    <string name="home_status_idle">live · machine idle</string>
+    <string name="home_status_offline">%1$s is offline</string>
+    <string name="home_status_busy">the machine is busy: close another web interface</string>
+    <string name="home_status_connecting">connecting…</string>
+    <string name="home_format">Format</string>
+    <string name="home_format_landscape_wrong_way">16:9 records with the phone on its side. Held like this, pick 9:16.</string>
+    <string name="home_format_portrait_wrong_way">%1$s records with the phone closed or upright. Open like this, pick 16:9.</string>
+    <string name="home_format_hint">Hold the phone closed and upright for 9:16. 16:9 records on its side.</string>
+    <string name="home_rule_start">Start with the shot</string>
+    <string name="home_rule_start_now">starts the moment the pump starts</string>
+    <string name="home_rule_start_pre_roll">keep the %1$s s before the pump starts</string>
+    <string name="home_rule_stop">Stop after the shot</string>
+    <string name="home_rule_stop_tail">%1$s s after the pump stops</string>
+    <string name="home_rule_stop_settles">when the weight settles for %1$s s</string>
+    <string name="home_rule_stop_fixed">after %1$s s</string>
+    <string name="home_rule_stop_manual">you stop it by hand</string>
+
+    <!-- Shot from the machine -->
+    <string name="home_shots_title">shot from the machine</string>
+    <string name="home_shots_same_wifi">The machine and this phone need to be on the same Wi‑Fi.</string>
+    <string name="home_shots_recent">recent shots · %1$s</string>
+    <string name="home_shots_loading">loading…</string>
+    <string name="home_shots_none">No shots found. Older firmware cannot share its shots: download the shot file from the machine's web page and pick it from a file.</string>
+    <string name="home_shots_loading_shot">loading the shot…</string>
+    <string name="home_shots_no_answer">%1$s did not answer</string>
+    <string name="home_shots_load_failed">could not load that shot</string>
+</resources>

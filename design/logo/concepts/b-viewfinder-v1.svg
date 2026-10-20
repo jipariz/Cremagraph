@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- B · Viewfinder: a camera's four corners frame the shot curve; the dot is now. -->
+  <g fill="none" stroke="#000" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 88 V60 Q40 40 60 40 H88"/>
+    <path d="M168 40 H196 Q216 40 216 60 V88"/>
+    <path d="M216 168 V196 Q216 216 196 216 H168"/>
+    <path d="M88 216 H60 Q40 216 40 196 V168"/>
+    <path d="M78 168 C98 168 104 104 128 104 C150 104 160 136 172 142"/>
+  </g>
+  <circle cx="186" cy="148" r="13" fill="#000"/>
+</svg>

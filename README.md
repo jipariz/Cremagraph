@@ -1,1 +1,331 @@
-Hi
+# OnlyShots
+
+Film espresso shot. Graph on top: pressure, flow, weight, temp. Live, or synced after. Export MP4, share.
+
+- **Phones:** Android and iOS. Phone, tablet, foldable. Record and edit.
+- **Desktop and web:** editor only. Pick video, pick shot, export.
+- **Rule book:** Figma. Spec card acceptance criteria = test cases.
+
+Live web editor: **https://onlyshots.vercel.app**
+
+## Quick start
+
+No setup. No secrets. Clone, build.
+
+```
+./gradlew :app:androidApp:assembleDebug                      # Android app
+./gradlew :app:desktopApp:run                                # desktop editor
+./gradlew :app:webApp:wasmJsBrowserDevelopmentRun            # web editor, http://localhost:8080
+cd app/iosApp && xcodegen generate                           # iOS: then build scheme iosApp in Xcode
+```
+
+Debug build with no machine runs `FakeShotSource`. It replays the Zer0 sample shot. Tap **simulate shot** while
+armed. Release build starts disconnected. Home's "no machine? try a sample shot" link plays the sample in any build.
+
+## Layout
+
+Kotlin's [recommended structure](https://kotlinlang.org/docs/multiplatform/multiplatform-project-recommended-structure.html),
+client-server style. Apps live in `app/`. Shared libraries live at root.
+
+| Module | What |
+| --- | --- |
+| `:app:shared` | Phones' app (Start → Home → Record → Edit), Koin (`initKoin`), platform modules, iOS entry (`MainViewController`, framework `OnlyShotsApp`) |
+| `:app:androidApp` | Android app: `MainActivity`, manifest, icons, release build |
+| `app/iosApp` | Xcode project. SwiftUI host. Links `:app:shared` |
+| `:app:desktopApp` | Desktop editor: `main()`, packaging |
+| `:app:webApp` | Web editor: `ComposeViewport`, web Koin, `media.js` (files, play, decode, encode) |
+| `:editor` | `EditorApp` (Open → Edit → style editor) + `editorModule`. What desktop and web run |
+| `:feature:home` | Start, Home (find machine and scale), machine log, machine shot picker |
+| `:feature:record` | Record screen, `RecordSession` state machine |
+| `:feature:edit` | Editor: timeline, sheets, graph toolbar, reframe, undo/redo, export manager |
+| `:feature:open` | Editor start: pick video + shot (file, or from machine) |
+| `:feature:style` | Style picker, style library, style editor |
+| `:core:ui` | Shared screen stuff: adaptive layout, routes, Navigation 3 helpers, platform `expect` composables |
+| `:core:designsystem` | Figma tokens, Open Sans, buttons, chips, controls |
+| `:core:resources` | All fonts, icons, illustrations, strings. `UiText` |
+| `:core:model` | Shot, sample, overlay settings, video, sidecar schema, stop rules, Zer0 sample |
+| `:overlay` | Graph styles + pure scene builder. No Compose |
+| `:overlay:compose` | Scene drawn with Compose: `drawOverlay`, `ShotOverlay`, `OverlayFrameRenderer` |
+| `:sources` | `ShotSource`. Network machines (WebSocket), Bluetooth scales (Kable), scan, fake replay |
+| `:video` | Exporters (Media3, AVFoundation, FFmpeg, browser), probes, players, pump-start finder |
+| `:storage` | Sidecars, SQLDelight index, settings, share temp files |
+| `:camera` | `CameraController`, pre-roll buffer |
+
+Convention plugins in `build-logic/`: `onlyshots.kmp.library`, `onlyshots.kmp.wasm` (wasm + js),
+`onlyshots.compose`, `onlyshots.feature`, `onlyshots.versioning`.
+
+## How it works
+
+**One scene, many painters.** `buildOverlayScene(...)` is pure. Shot + time + settings + style in. Flat list of
+rects, lines, areas, text out. Sized from 390-wide frame. So export = exact scaled copy of preview. `drawOverlay`
+draws it everywhere: record, editor, screenshots, export. New visual thing? Put it in scene builder.
+
+- **Curves:** smoothed with monotone cubic (`scene/Smoothing.kt`). No overshoot. Flat stays flat. Idea from reading
+  HDCharts (MIT). No code copied.
+- **Words in video:** come as `OverlayLabels`. Screens and exporters resolve same strings. Preview = export.
+
+**Styles are data.** Token set in `core/model/.../style/GraphStyle.kt`. Built-ins: Gaggiuino, Metro, Aero, Minimal,
+Liquid Glass. Old ids (`gweb`, `tiles`, …) map to closest. User makes own in style editor. User styles live in
+`settings.json`. Video keeps copy in its sidecar.
+
+- **Blur and glass:** scene marks blur area with `BackdropPrim`. Preview: Haze draws it. Export: each exporter blurs
+  same rects. Glass uses Haze's vendored shader (Apache-2.0), SkSL for Skia, GLSL for Android and WebGL.
+  `GlassMapping.kt` maps once for both sides.
+- **Adapt to video:** style can flip to dark set over bright frames. `LumaTrack` measures. `Readability.kt` checks
+  4.5 : 1 and editor offers "fix it for me".
+- **Rebuild test:** `BuiltInsAreReplicableTest` rebuilds every built-in with editor's own edits (`StyleEdits.kt`).
+  New style field needs edit + control, or test fail.
+
+**Formats.** 9:16 (default), 4:5, 1:1, 16:9. Export 1080 (or 2160) on short side. Graph sized to short side.
+Phones film portrait for 9:16, 4:5, 1:1 (crop, rest dimmed). Film landscape for 16:9. Editor's **⤢ frame** swaps
+format and moves crop.
+
+**Live data.** Every machine or scale = `ShotSource`. Network machine = `NetworkMachine` in
+`NetworkMachines.all`. Scale = pure `BleProtocol` over Kable. `SourceHolder` swaps live source under every screen.
+
+**Recording.** Runs from arm. Pre-roll is in file. `trimInUs` cuts idle head. While armed, file restarts every 15 s.
+Late shot gets old tail joined in front (`Mp4Join` on Android; on iOS old writer keeps going).
+
+**Storage.** Sidecar JSON per video = truth. SQLDelight index = cache, rebuilt at start (`Library.reconcile()`).
+Disagree? Sidecar wins. Web has no database.
+
+**Layout.** `windowLayout(...)` picks `Phone`, `Wide`, `Stacked`, `Tiny`. Every adaptive branch goes through it.
+Foldables follow "OnlyShots Foldables" canvas: nothing on fold; picture one pane, controls other.
+
+## Tests
+
+```
+./gradlew testAndroidHostTest                    # shared tests, JVM (CI runs this)
+./gradlew :screenshots:verifyMugshot             # screenshots, JVM, no device
+./gradlew :screenshots:recordMugshot             # re-record after wanted visual change
+./gradlew iosSimulatorArm64Test                  # shared tests + AVFoundation export, simulator
+./gradlew :video:connectedAndroidDeviceTest      # Media3 export alignment, needs device
+./gradlew :video:desktopTest                     # FFmpeg export alignment, JVM
+./gradlew ktfmtCheck                             # format gate. Fix with ktfmtFormat
+```
+
+- **Screenshots:** `@Preview` + `@Mugshot` in `screenshots/`. Layoutlib renders on JVM. Goldens are WebP in
+  `screenshots/src/androidHostTest/snapshots/images/`. Fail = HTML diff report in
+  `screenshots/build/reports/tests/mugshotTestAndroidMain/`.
+- **Can't capture:** infinite animation (`RecordButton(Armed)`), `ModalBottomSheet`, screen wrappers with
+  `koinViewModel()`. Preview stateless body instead (`HomeBody`, `RecordBody`, `EditBody`, …). Haze blur not drawn by
+  layoutlib; device test checks it.
+- **Export alignment:** test clip carries frame number as barcode. `Media3ExportTest`, `AvFoundationExportTest`,
+  `FfmpegExportTest` decode export, check overlay within one frame.
+
+## Build notes
+
+- **Android release:** `./gradlew :app:androidApp:assembleRelease`. R8 on. APK unsigned. Sign ad hoc to try:
+  ```
+  apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android \
+    --ks-key-alias androiddebugkey --out /tmp/onlyshots.apk \
+    app/androidApp/build/outputs/apk/release/androidApp-release-unsigned.apk
+  ```
+  R8 breaks reflection quietly. Walk six paths by hand: record and save, export and share, connect over HTTP, BLE
+  scan, settings change that lives past force-stop.
+- **AGP 9:** library test sets are `androidHostTest` / `androidDeviceTest`. `:app:androidApp` is plain
+  `com.android.application` on built-in Kotlin.
+- **Resources gap:** plugin no package library's Compose resources. `app/androidApp/build.gradle.kts` copies
+  `:core:resources` into APK assets. Screenshots get same files on classpath.
+- **iOS:** `app/iosApp/project.yml` makes Xcode project (`xcodegen`). Links static `OnlyShotsApp` from `:app:shared`.
+- **Secrets:** none in repo. Only CI secret: `VERCEL_TOKEN` (org secret, web deploy).
+
+## Version and release
+
+One version: `onlyshots.version` in `gradle.properties`. Checked as semver by
+[kotlin-semver](https://github.com/z4kn4fein/kotlin-semver). Android, iOS, desktop and in-app "OnlyShots x.y.z" all
+read it. Build number = `major × 10000 + minor × 100 + patch` (1.2.3 → 10203).
+
+```
+./gradlew bumpVersion -Ppart=minor     # 1.0.0 → 1.1.0, iOS files too
+./gradlew bumpVersion -Pto=2.0.0       # exact; must be later
+./gradlew checkAppVersion              # CI: iOS files match?
+```
+
+macOS no take 0.x version. So start 1.0.0.
+
+Release = tag:
+
+```
+./gradlew bumpVersion -Ppart=minor && git commit -am "OnlyShots 1.1.0"
+git tag v1.1.0 && git push origin main v1.1.0
+```
+
+`.github/workflows/release.yml` checks tag = version. Builds desktop DMG, MSI, DEB on each OS. Publishes GitHub
+Release with notes.
+
+- **Web:** CI deploys from `main`. Live before tag.
+- **Desktop:** unsigned. macOS: right-click › Open first time. Windows SmartScreen warns.
+- **Android, iOS:** manual for now. Signed bundle to Play. Xcode archive to TestFlight.
+
+## Desktop editor
+
+`./gradlew :app:desktopApp:run`. Pick video (or drop it), pick shot (file, or straight from Gaggiuino). Place graph.
+Export. Library in `~/.onlyshots-desktop`. Exports in `~/Movies/OnlyShots`.
+
+- **FFmpeg** via JavaCV (FFmpeg 8.1, GPL build for libx264). Play, probe, export.
+- **One OS per build:** only host's FFmpeg natives (`desktopNatives` in `video/build.gradle.kts`).
+  `packageDistributionForCurrentOS` packages for that OS.
+- **Same frames as phones:** `SkiaFrameDrawer`, same Skia code as iOS.
+- **Trimmed runtime:** packaged app has only listed JDK modules (`modules(...)`). New JDK API? Run
+  `suggestRuntimeModules`, launch packaged app.
+
+## Web editor
+
+Same Compose editor, compiled to wasm. Kotlin/JS too, for browsers without WasmGC. No recording.
+
+```
+./gradlew :app:webApp:composeCompatibilityBrowserDistribution   # wasm + JS, app/webApp/build/dist/composeWebCompatibility
+./gradlew :app:webApp:wasmJsBrowserDevelopmentRun               # wasm, http://localhost:8080
+./gradlew :app:webApp:jsBrowserDevelopmentRun                   # JS, same port
+tools/deploy-web.sh                                             # build here, publish onlyshots.vercel.app
+```
+
+- **Deploy:** Vercel builds nothing (Ignored Build Step `exit 0`). CI or `deploy-web.sh` uploads static files.
+- **Session only:** in-memory files (`WebFiles`). Reload = empty. Picked video stays browser `File`.
+- **`media.js`:** browser half. File dialog, drop, play, thumbnails, sound, luma, export decode/encode. Uses
+  [Mediabunny](https://mediabunny.dev) (MPL-2.0) and WebCodecs.
+- **Export:** 1080 × 1920, silent, on GPU through own WebGL. Needs `VideoEncoder`: Chrome, Edge, Safari 16.4+.
+  Frames go straight into Skia memory. Nothing uploaded.
+- **`js("…")` code:** must be expression both targets take. No `??`, no `?.`.
+
+**App links.** `onlyshots.vercel.app/open` opens app: Android App Links (`autoVerify` on `MainActivity`), iOS
+Universal Links (`app/iosApp/iosApp/iosApp.entitlements`). No app? Phone goes to store, rest to editor. Phone browser
+shows store badge (`app/webApp/.../AppStores.kt`). Apps not published yet, so placeholders:
+
+- **App Store id:** `AppStores.APP_STORE_ID`, `APP_STORE_ID` in `open/index.html`, `apple-itunes-app` tag in
+  `index.html`.
+- **Apple Team ID:** `appIDs` in `.well-known/apple-app-site-association`.
+- **Release signing SHA-256:** `.well-known/assetlinks.json`.
+
+Check after deploy: `adb shell pm get-app-links dev.parez.onlyshots`, Apple's AASA validator.
+
+**Shot files.** "from a file" reads Gaggiuino `.shot` JSON: what `GET /api/shots/{id}` gives, and what SproFiler,
+visualizer.coffee, baristagiuino give. `GaggiuinoShotFile` parses it. Arrays under `datapoints`. Time in deciseconds.
+Values ×10. Missing series left out, not guessed.
+
+## Machines and scales
+
+Each format from public source. Pinned to commit read (see decoder doc comment).
+
+| Source | Live data | Shot start / end | History |
+| --- | --- | --- | --- |
+| Gaggiuino (`release/stm32-blackpill`) | `ws://host/ws` JSON, ~10 Hz brewing | `receivedAt − timeInShot`; last `timeInShot` | none |
+| Gaggiuino, newer (core `6ea560e`) | `ws://host/ws` binary protobuf, `d_sensor_snap` ~3 Hz | first/last snapshot with `brewActive` | HTTP: `GET /api/shots/latest`, then `/api/shots/{id}` down (`GaggiuinoHistory`) |
+| Scale only | Bluetooth | first drops (> 0.3 g after tare); stop rule ends | recordings made in app |
+
+- **Finding:** `NetworkScan` = mDNS (`_http._tcp`, Android), sweep of own /24, fixed `.local` names last. Each
+  candidate confirmed with `identify`. Probe closes fast: ESP32 takes ~3 clients. **add by address** for networks
+  scan can't see.
+- **Old kinds:** `SourceKind.GAGGIMATE`, `DECENT` stay. Old sidecars name them. Saved ones start disconnected.
+- **Scales:** ported from MIT `Zer0-bit/esp-arduino-ble-scales` (ee17c40) and Bookoo's protocols. Acaia, Bookoo,
+  Decent Scale, EspressiScale, DiFluid, Eclair, Felicita, iKape, Insmart, MyScale, Precisa, Tencent, Timemore, Varia,
+  WeighMyBru, Wilfa. Zer0-bit ones tested only against upstream byte layouts. One connection at a time: scale's own
+  app can't connect while OnlyShots holds it.
+- **Why network for machines:** pressure, flow, temp only from machine API. App reads beside machine's own app.
+  Bluetooth only for scales.
+
+## Add a new machine
+
+Gaggiuino is template. New machine = one `NetworkMachine`, a decoder, a `SourceKind`, tests. PR welcome.
+
+**1. Read machine's API.** WebSocket or HTTP on local network. Use public source. Pin it: decoder's doc comment
+names upstream repo, file, branch, commit (see `GaggiuinoDecoder`). Reference only. No copied code from
+incompatible licenses.
+
+**2. Add kind.** New value in `SourceKind` (`core/model/.../Source.kt`). Never rename or remove values: sidecars
+store them by name. Compiler then flags every `when` to fill:
+
+- `Capabilities.of` (`Source.kt`): series, phases, history, trigger.
+- `machineName` (`core/model/.../Names.kt`): the machine's name.
+- `machineColor` (`core/ui/.../edit/MachineColor.kt`) + new `CgColors.Machine.*` colour.
+- `RecordSession.triggerText` (`feature/record/`) + new `record_trigger_*` string.
+
+**3. Write source** in `sources/src/commonMain/kotlin/app/onlyshots/sources/machine/`:
+
+- **Decoder:** `MachineDecoder`. `decodeText` / `decodeBinary` turn frames into `MachineMessage.Reading` (a sample)
+  or `MachineMessage.Brew` (start/end). `reset` clears state.
+- **Machine:** object implementing `NetworkMachine`:
+  - `kind`, `name`, `defaultPort`, `hostnames` (fixed `.local` names).
+  - `autoStart`: what starts recording. Only `AutoStart.BREW_SWITCH` now. New way? New value + wording in
+    `autoStartHint` (`feature/home/.../HomeState.kt`).
+  - `matchesService`: cheap mDNS filter. `identify` decides.
+  - `identify`: fast probe. Close connection right away.
+  - `source(...)`: return unstarted `WebSocketShotSource` with your decoder.
+  - `history(...)` (optional): `MachineHistory` with `list` / `load` for recent shots. Powers "from the machine"
+    picker. Default `MachineHistory.None`.
+- **Register:** append to `NetworkMachines.all`. Scan, Home, saved source, machine log pick it up. Append, not
+  prepend: `all.first()` is default machine.
+
+**4. Optional:**
+
+- **Shot files:** parser beside `GaggiuinoShotFile` (`core/model`). Wire into import in `OpenViewModel` and
+  `EditViewModel`.
+- **Own look:** built-in style in `GraphStyles.matching(source)`. Else Metro.
+- **Style editor:** add machine to source list in `StyleEditorScreen.kt`.
+- **Words:** user text goes in `core/resources/.../values/strings_<area>.xml`. Machine name stays code.
+
+**5. Tests.** Mirror Gaggiuino's:
+
+- `GaggiuinoDecoderTest`, `GaggiuinoBinaryTest`: real frame shapes in, samples out.
+- `NetworkScanTest`: its `FakeMachine` shows contract.
+- `GaggiuinoIdentifyTest`, `GaggiuinoWebSocketTest`, `GaggiuinoHistoryTest` (androidHostTest): fake machine on
+  Ktor `embeddedServer(CIO, port = 0)`. Start server outside `runBlocking`, or test hangs.
+- `GaggiuinoShotFileTest` if you add file parser.
+- UI changed? `./gradlew :screenshots:recordMugshot`, look at diff, commit goldens.
+
+**6. Docs.** Add row to machines table above.
+
+**7. Open PR.**
+
+```
+# fork github.com/parez-dev/OnlyShots, then:
+git checkout -b machine/your-machine
+./gradlew ktfmtFormat
+./gradlew ktfmtCheck testAndroidHostTest :screenshots:verifyMugshot
+git push -u origin machine/your-machine     # open PR on GitHub
+```
+
+Say in PR:
+
+- Machine, firmware version, upstream commit pinned.
+- How tested: real machine on phone, or captured frames.
+- Sample frames or a `.shot` file if you can. Helps review.
+
+PR checks (`.github/workflows/pr.yml`): format, version check, unit tests, screenshots. Branch PRs run on our
+self-hosted Mac. Fork PRs run on GitHub's runner, so stranger code never touch our machine. After merge, `ci.yml`
+on `main` runs full build: every platform, export tests, web deploy.
+
+## Status
+
+All seven milestones done: spike, foundations, record, editor, share, more sources, adaptive + a11y + store builds.
+
+- **Not checked on real hardware:** wide layouts on tablet, phone landscape, desktop window. Flip cover screen
+  (`Tiny`): only by resizing. iPhone Duo tabletop and camera.
+- **Gaggiuino:** binary firmware seen on real machine (Oct 18, 2026). Scan and identify tested on fakes, not real
+  machine on phone.
+- **Home spec not built yet:** machine + scale together, remembered machines offline, rename/forget, live reading
+  line on card, pressure sensors.
+- **Android 14 and older:** export service runs as `dataSync` (`mediaProcessing` from Android 15 only).
+
+**App Store:**
+
+- `PrivacyInfo.xcprivacy` lists API reasons (`C617.1`, `E174.1`, `CA92.1`). Check with `nm -u` after new deps.
+- Privacy and support: https://onlyshots.vercel.app/privacy.html.
+- `ITSAppUsesNonExemptEncryption` = false.
+- Reviewers have no machine: tell them about "try a sample shot" and **simulate shot**.
+- **iPhone Duo:** screenshots needed from April 2027. Scene manifest in `Info.plist` must stay (else unfold kicks
+  app out). Fold comes from Swift `FoldWatchingController`.
+
+## Open questions
+
+- **Gaggiuino history:** `/api/shots/latest` shape not seen from machine. `GaggiuinoHistory` takes
+  `[{"lastShotId": "121"}]`, `{"lastShotId": 121}`, or bare number. Check on machine.
+- **Gaggiuino mDNS:** does firmware advertise service, or only `gaggiuino.local`? Filter (`name` has "gaggiuino") is
+  guess. Scan works either way.
+- **Gaggiuino brewing frames:** what binary firmware sends only while brewing. Can history come over socket.
+- **Gaggiuino icon:** maintainers' OK.
+- **Min iOS:** suggest 16. minSdk 26.
+- **Toolchain:** AGP 9.3.2, Gradle 9.6.1, Kotlin 2.4.21, Compose 1.12.1.
+
+Open Sans: SIL Open Font License 1.1 (`core/resources/OPEN_SANS_LICENSE.txt`).

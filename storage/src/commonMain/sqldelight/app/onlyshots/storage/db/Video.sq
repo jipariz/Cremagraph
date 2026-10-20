@@ -1,0 +1,27 @@
+-- Mirror of the sidecar files for fast listing. The sidecar wins on conflict.
+CREATE TABLE video (
+    id TEXT NOT NULL PRIMARY KEY,
+    file_name TEXT NOT NULL,
+    created_at_ms INTEGER NOT NULL,
+    duration_us INTEGER NOT NULL,
+    origin TEXT NOT NULL,
+    linked INTEGER NOT NULL,
+    profile_name TEXT,
+    source TEXT,
+    sidecar_modified_ms INTEGER NOT NULL
+);
+
+CREATE INDEX video_created_at ON video(created_at_ms DESC);
+
+newestFirst:
+SELECT * FROM video ORDER BY created_at_ms DESC, id;
+
+upsert:
+INSERT OR REPLACE INTO video(id, file_name, created_at_ms, duration_us, origin, linked, profile_name, source, sidecar_modified_ms)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM video WHERE id = ?;
+
+modifiedTimes:
+SELECT id, sidecar_modified_ms FROM video;

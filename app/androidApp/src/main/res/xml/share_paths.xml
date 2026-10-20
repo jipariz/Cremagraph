@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rendered exports wait in the cache until shared; videos never go to Photos. -->
+<paths>
+    <cache-path name="cache" path="." />
+</paths>

@@ -1,0 +1,19 @@
+.gradle/
+build/
+.kotlin/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+xcuserdata/
+*.xcworkspace/xcuserdata/
+app/iosApp/Pods/
+
+# Copied from the app's resources by the device-test setup; not a second source of truth.
+video/src/androidDeviceTest/assets/spike_alignment.mp4
+
+# Linked by tools/deploy-web.sh; it holds this machine's project ids, not the project.
+.vercel/

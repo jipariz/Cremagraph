@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 256">
+  <!-- Exploration lockup: the word is live Open Sans text, not outlined yet. -->
+  <style>@font-face{font-family:CgOpen;src:url('file:///Users/jiriparizek/orca/Cremagraph/core/designsystem/src/commonMain/composeResources/font/open_sans_semibold.ttf')}</style>
+  <g fill="#000"><path d="M48 76 H192 V116 C162 112 130 96 100 96 C80 96 70 132 48 132 Z"/><path d="M48 148 C70 148 80 112 100 112 C130 112 162 128 192 132 V140 Q192 188 144 188 H96 Q48 188 48 140 Z"/><path d="M192 92 A36 36 0 0 1 192 164 L192 146 A18 18 0 0 0 192 110 Z"/><path d="M30 204 H214 Q222 204 222 212 Q222 220 214 220 H30 Q22 220 22 212 Q22 204 30 204 Z"/></g>
+  <text x="276" y="164" font-family="CgOpen, 'Open Sans', sans-serif" font-size="100" letter-spacing="-2" fill="#000">cremagraph</text>
+</svg>

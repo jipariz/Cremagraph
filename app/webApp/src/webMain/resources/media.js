@@ -1,0 +1,514 @@
+// The browser's half of the web editor. The editor itself is the shared Compose editor compiled to wasm; this file
+// does only what Kotlin cannot reach from there: the files the user picked, playing a video with its sound, decoding
+// frames, thumbnails and audio, and encoding the MP4. Frames go straight into and out of Skia's memory (see
+// WebMedia.kt), and the compositing (blur, glass, the graph) stays in Kotlin with the same Skia code as iOS.
+//
+// Mediabunny (MPL-2.0, unmodified) demuxes and decodes the picked file and muxes the MP4. WebCodecs does the encoding,
+// which is why an export needs Chrome, Edge or Safari 16.4+.
+import {
+  ALL_FORMATS,
+  BlobSource,
+  BufferTarget,
+  CanvasSource,
+  Input,
+  Mp4OutputFormat,
+  Output,
+  QUALITY_HIGH,
+  VideoSampleSink,
+} from 'https://cdn.jsdelivr.net/npm/mediabunny@1.61.4/+esm';
+
+// Files ---------------------------------------------------------------------------------------------------------------
+
+/** The session's files by the path Kotlin knows them by: picked videos and shots, finished exports. */
+const files = new Map();
+let picked = 0;
+
+function register(path, blob) {
+  files.set(path, blob);
+}
+
+function alias(from, to) {
+  const blob = files.get(from);
+  if (blob) files.set(to, blob);
+  return !!blob;
+}
+
+function forget(path) {
+  files.delete(path);
+  frameSinks.delete(path);
+  lumaWalks.get(path)?.current?.close();
+  lumaWalks.delete(path);
+}
+
+function fileOf(path) {
+  const blob = files.get(path);
+  if (!blob) throw new Error(`no file at ${path}`);
+  return blob;
+}
+
+/** Asks for one file; resolves with the path it is registered under, or null when the dialog is closed. */
+function pickFile(accept) {
+  return new Promise(resolve => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.style.display = 'none';
+    let settled = false;
+    const done = path => {
+      if (settled) return;
+      settled = true;
+      input.remove();
+      resolve(path);
+    };
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      done(file ? registerPicked(file) : null);
+    });
+    input.addEventListener('cancel', () => done(null));
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
+function registerPicked(file) {
+  const path = `/picked/${++picked}/${file.name.replace(/[\\/]/g, '_')}`;
+  files.set(path, file);
+  return path;
+}
+
+/**
+ * Files dropped on the page go to [onFile] by path, videos only; [onHover] hears whether a file is being dragged over
+ * the page. Enter and leave fire for every element crossed, so a depth count tells the real leave.
+ */
+function onDrop(onFile, onHover) {
+  let depth = 0;
+  const carriesFiles = e => [...(e.dataTransfer?.types ?? [])].includes('Files');
+  window.addEventListener('dragenter', e => {
+    if (!carriesFiles(e)) return;
+    e.preventDefault();
+    if (depth++ === 0) onHover(true);
+  });
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('dragleave', e => {
+    if (!carriesFiles(e)) return;
+    if (--depth <= 0) {
+      depth = 0;
+      onHover(false);
+    }
+  });
+  window.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    depth = 0;
+    onHover(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) onFile(registerPicked(file));
+  });
+}
+
+function readText(path) {
+  return fileOf(path).text();
+}
+
+function download(path, name) {
+  const url = URL.createObjectURL(fileOf(path));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  // Revoked late: Safari needs the object URL alive while the download starts.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+// Probing -------------------------------------------------------------------------------------------------------------
+
+function inputOf(path) {
+  return new Input({ formats: ALL_FORMATS, source: new BlobSource(fileOf(path)) });
+}
+
+async function probe(path) {
+  const input = inputOf(path);
+  const track = await input.getPrimaryVideoTrack();
+  if (!track) throw new Error('no video track in that file');
+  if (!(await track.canDecode())) throw new Error('this browser cannot decode that video');
+  let created = 0;
+  try {
+    const tags = await input.getMetadataTags();
+    const raw = tags?.date ?? tags?.creationTime;
+    const parsed = raw instanceof Date ? raw.getTime() : raw ? Date.parse(raw) : NaN;
+    if (!Number.isNaN(parsed)) created = parsed;
+  } catch {
+    created = 0; // containers without tags are the common case, not an error
+  }
+  return {
+    duration: await input.computeDuration(),
+    hasAudio: !!(await input.getPrimaryAudioTrack()),
+    width: track.displayWidth,
+    height: track.displayHeight,
+    // Epoch milliseconds from the file's own metadata, 0 when it carries none.
+    created,
+  };
+}
+
+/** Cover, not stretch: the sample scaled to fill w × h, centred, then zoomed and moved by the reframe. */
+function drawCover(sample, ctx, w, h, zoom = 1, offsetX = 0, offsetY = 0) {
+  const scale = Math.max(w / sample.displayWidth, h / sample.displayHeight) * zoom;
+  const dw = sample.displayWidth * scale;
+  const dh = sample.displayHeight * scale;
+  ctx.clearRect(0, 0, w, h);
+  sample.draw(ctx, (w - dw) / 2 + offsetX * dw, (h - dh) / 2 + offsetY * dh, dw, dh);
+}
+
+/**
+ * One decoder per file for single frames (thumbnails, brightness), kept for the session: opening a file is the slow
+ * part, and the brightness track asks for a frame every few hundred milliseconds of the clip.
+ */
+const frameSinks = new Map();
+
+async function sinkOf(path) {
+  let sink = frameSinks.get(path);
+  if (!sink) {
+    sink = inputOf(path)
+      .getPrimaryVideoTrack()
+      .then(track => new VideoSampleSink(track));
+    frameSinks.set(path, sink);
+  }
+  return sink;
+}
+
+/** A JPEG of the frame at [time] seconds, at most [maxWidth] wide, as bytes. */
+async function thumbnail(path, time, maxWidth) {
+  const sample = await (await sinkOf(path)).getSample(time);
+  if (!sample) throw new Error('no frame there');
+  const scale = Math.min(1, maxWidth / sample.displayWidth);
+  const canvas = new OffscreenCanvas(
+    Math.max(1, Math.round(sample.displayWidth * scale)),
+    Math.max(1, Math.round(sample.displayHeight * scale)),
+  );
+  sample.draw(canvas.getContext('2d'), 0, 0, canvas.width, canvas.height);
+  sample.close();
+  const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+/** The first [maxSeconds] of sound, mixed to mono, or null without sound. */
+async function decodeAudio(path, maxSeconds) {
+  const Ctx = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+  if (!Ctx) return null;
+  const context = new Ctx();
+  try {
+    const buffer = await context.decodeAudioData(await fileOf(path).arrayBuffer());
+    const length = Math.min(buffer.length, Math.floor(buffer.sampleRate * maxSeconds));
+    const mono = new Float32Array(length);
+    for (let c = 0; c < buffer.numberOfChannels; c++) {
+      const data = buffer.getChannelData(c);
+      for (let i = 0; i < length; i++) mono[i] += data[i] / buffer.numberOfChannels;
+    }
+    return { rate: buffer.sampleRate, samples: mono };
+  } catch {
+    return null; // a clip recorded without sound, or a codec this browser will not decode
+  } finally {
+    await context.close();
+  }
+}
+
+/**
+ * Brightness is asked for frame after frame, forwards through the clip (the brightness track), so each file keeps a
+ * walk through its decoded frames and moves it on; a jump back starts a new walk. Seeking for every sample would
+ * decode from the previous keyframe each time.
+ */
+const lumaWalks = new Map();
+
+async function frameAtWalking(path, time) {
+  let walk = lumaWalks.get(path);
+  if (!walk || time < walk.time) {
+    walk?.current?.close();
+    const sink = await sinkOf(path);
+    walk = { samples: sink.samples(time)[Symbol.asyncIterator](), current: null, next: null, time };
+    lumaWalks.set(path, walk);
+  }
+  walk.time = time;
+  // Move on while the next frame starts at or before [time].
+  for (;;) {
+    walk.next ??= (await walk.samples.next()).value ?? null;
+    if (!walk.next) break;
+    if (walk.current && walk.next.timestamp > time) break;
+    walk.current?.close();
+    walk.current = walk.next;
+    walk.next = null;
+  }
+  return walk.current;
+}
+
+/** Luma (0..1) at each point (x, y pairs, fractions of the frame) of the frame at [time], or null. */
+async function lumaAt(path, time, points) {
+  const sample = await frameAtWalking(path, time);
+  if (!sample) return null;
+  const w = 160;
+  const h = Math.max(1, Math.round((w * sample.displayHeight) / sample.displayWidth));
+  const ctx = new OffscreenCanvas(w, h).getContext('2d', { willReadFrequently: true });
+  sample.draw(ctx, 0, 0, w, h);
+  const pixels = ctx.getImageData(0, 0, w, h).data;
+  const out = new Float32Array(points.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    const x = Math.min(w - 1, Math.max(0, Math.floor(points[2 * i] * w)));
+    const y = Math.min(h - 1, Math.max(0, Math.floor(points[2 * i + 1] * h)));
+    const o = (y * w + x) * 4;
+    out[i] = (0.2126 * pixels[o] + 0.7152 * pixels[o + 1] + 0.0722 * pixels[o + 2]) / 255;
+  }
+  return out;
+}
+
+// Playback ------------------------------------------------------------------------------------------------------------
+
+/**
+ * A hidden <video> keeps the clock and plays the sound; its picture is copied into a canvas of at most [maxSide] for
+ * Compose to draw, so Haze can blur it like the phones' picture.
+ */
+const players = new Map();
+let nextPlayer = 0;
+
+function playerOpen(path, maxSide) {
+  const video = document.createElement('video');
+  video.src = URL.createObjectURL(fileOf(path));
+  video.preload = 'auto';
+  video.playsInline = true;
+  video.muted = false;
+  // Kept in the document and barely visible: a detached or hidden video stops handing out frames in some browsers.
+  Object.assign(video.style, {
+    position: 'fixed',
+    left: '0',
+    top: '0',
+    width: '2px',
+    height: '2px',
+    opacity: '0.01',
+    pointerEvents: 'none',
+  });
+  document.body.appendChild(video);
+  const player = { video, maxSide, canvas: null, ctx: null, fresh: false };
+  const watch = () => {
+    player.fresh = true;
+    video.requestVideoFrameCallback?.(watch);
+  };
+  if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(watch);
+  else video.addEventListener('timeupdate', () => (player.fresh = true));
+  video.addEventListener('seeked', () => (player.fresh = true));
+  video.addEventListener('loadeddata', () => (player.fresh = true));
+  // A paused, all but invisible video may never start loading by itself.
+  video.load();
+  players.set(++nextPlayer, player);
+  return nextPlayer;
+}
+
+function playerClose(id) {
+  const p = players.get(id);
+  if (!p) return;
+  p.video.pause();
+  URL.revokeObjectURL(p.video.src);
+  p.video.remove();
+  players.delete(id);
+}
+
+function playerSeek(id, time) {
+  const p = players.get(id);
+  if (!p) return Promise.resolve(false);
+  return new Promise(resolve => {
+    const v = p.video;
+    const go = () => {
+      v.addEventListener('seeked', () => resolve(true), { once: true });
+      v.currentTime = time;
+    };
+    if (v.readyState >= 1) go();
+    else v.addEventListener('loadedmetadata', go, { once: true });
+  });
+}
+
+async function playerPlay(id) {
+  const p = players.get(id);
+  if (!p) return false;
+  try {
+    await p.video.play();
+    return true;
+  } catch {
+    // Autoplay rules: a muted start is always allowed, and the next tap brings the sound.
+    p.video.muted = true;
+    await p.video.play().catch(() => {});
+    return false;
+  }
+}
+
+function playerPause(id) {
+  players.get(id)?.video.pause();
+}
+
+function playerTime(id) {
+  return players.get(id)?.video.currentTime ?? 0;
+}
+
+function playerMute(id, muted) {
+  const p = players.get(id);
+  if (p) p.video.muted = muted;
+}
+
+/**
+ * Draws a new frame into the player's canvas and returns true, or false when there is none since the last call. Its
+ * size is then in playerWidth/playerHeight, and playerPixelsInto copies it out.
+ */
+function playerFrame(id) {
+  const p = players.get(id);
+  if (!p || !p.fresh || p.video.readyState < 2 || !p.video.videoWidth) return false;
+  p.fresh = false;
+  const vw = p.video.videoWidth;
+  const vh = p.video.videoHeight;
+  const scale = Math.min(1, p.maxSide / Math.max(vw, vh));
+  const w = Math.max(1, Math.round(vw * scale));
+  const h = Math.max(1, Math.round(vh * scale));
+  if (!p.canvas || p.canvas.width !== w || p.canvas.height !== h) {
+    p.canvas = new OffscreenCanvas(w, h);
+    p.ctx = p.canvas.getContext('2d', { willReadFrequently: true });
+  }
+  p.ctx.drawImage(p.video, 0, 0, w, h);
+  p.width = w;
+  p.height = h;
+  return true;
+}
+
+/** Writes the player's last frame, RGBA, into [memory] at [address]. */
+function playerPixelsInto(id, memory, address) {
+  const p = players.get(id);
+  const data = p.ctx.getImageData(0, 0, p.width, p.height).data;
+  new Uint8Array(memory, address, data.length).set(data);
+}
+
+function playerWidth(id) {
+  return players.get(id)?.width ?? 0;
+}
+
+function playerHeight(id) {
+  return players.get(id)?.height ?? 0;
+}
+
+// Export --------------------------------------------------------------------------------------------------------------
+
+const exp = {
+  input: null,
+  samples: null,
+  sample: null,
+  frame: null, // the decoded frame, reframed and cover-filled at the output size, for Kotlin to composite on
+  frameCtx: null,
+  canvas: null, // the composited frame Kotlin hands back, which the encoder reads
+  ctx: null,
+  output: null,
+  source: null,
+  zoom: 1,
+  offsetX: 0,
+  offsetY: 0,
+  cancelled: false,
+};
+
+/**
+ * Starts walking the decoded frames of [start, end] seconds and an MP4 of w × h. The picture is drawn cover-filled and
+ * reframed here, at the output size, so Kotlin never handles a 4K source frame. Resolves with the frame rate.
+ */
+async function exportStart(path, w, h, start, end, zoom, offsetX, offsetY) {
+  exportReset();
+  if (typeof VideoEncoder === 'undefined') throw new Error('this browser cannot encode video: use Chrome, Edge or Safari');
+  exp.input = inputOf(path);
+  const track = await exp.input.getPrimaryVideoTrack();
+  const stats = await track.computePacketStats(100);
+  const fps = stats.averagePacketRate || 30;
+  exp.samples = new VideoSampleSink(track).samples(start, end)[Symbol.asyncIterator]();
+  exp.frame = new OffscreenCanvas(w, h);
+  exp.frameCtx = exp.frame.getContext('2d', { willReadFrequently: true });
+  exp.canvas = new OffscreenCanvas(w, h);
+  exp.ctx = exp.canvas.getContext('2d');
+  Object.assign(exp, { zoom, offsetX, offsetY, cancelled: false });
+  exp.output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target: new BufferTarget() });
+  exp.source = new CanvasSource(exp.canvas, { codec: 'avc', bitrate: QUALITY_HIGH });
+  exp.output.addVideoTrack(exp.source, { frameRate: fps });
+  await exp.output.start();
+  return fps;
+}
+
+/** Decodes the next frame; resolves with its time in seconds, or -1 at the end. */
+async function exportNext() {
+  if (!exp.samples || exp.cancelled) return -1;
+  exp.sample?.close();
+  exp.sample = null;
+  const next = await exp.samples.next();
+  if (next.done) return -1;
+  exp.sample = next.value;
+  drawCover(exp.sample, exp.frameCtx, exp.frame.width, exp.frame.height, exp.zoom, exp.offsetX, exp.offsetY);
+  return exp.sample.timestamp;
+}
+
+/** Writes the decoded frame's RGBA pixels into [memory] (an ArrayBuffer) at [address]: a Skia bitmap's pixels. */
+function exportFrameInto(memory, address) {
+  const data = exp.frameCtx.getImageData(0, 0, exp.frame.width, exp.frame.height).data;
+  new Uint8Array(memory, address, data.length).set(data);
+}
+
+/** Encodes the composited frame, RGBA in [memory] at [address], at [timestamp] seconds into the export. */
+async function exportAddFrom(memory, address, timestamp, duration) {
+  const w = exp.canvas.width;
+  const h = exp.canvas.height;
+  const pixels = new Uint8ClampedArray(memory.slice(address, address + w * h * 4));
+  exp.ctx.putImageData(new ImageData(pixels, w, h), 0, 0);
+  await exp.source.add(timestamp, duration);
+  return true;
+}
+
+/** Finishes the MP4 and registers it under [outPath]. */
+async function exportFinish(outPath) {
+  await exp.output.finalize();
+  files.set(outPath, new Blob([exp.output.target.buffer], { type: 'video/mp4' }));
+  exportReset();
+  return true;
+}
+
+async function exportCancel() {
+  exp.cancelled = true;
+  try {
+    await exp.output?.cancel();
+  } catch {
+    // Already finalised, or never started: either way there is nothing left to drop.
+  }
+  exportReset();
+  return true;
+}
+
+function exportReset() {
+  exp.sample?.close();
+  Object.assign(exp, { input: null, samples: null, sample: null, output: null, source: null });
+}
+
+globalThis.cg = {
+  register,
+  alias,
+  forget,
+  pickFile,
+  onDrop,
+  readText,
+  download,
+  probe,
+  thumbnail,
+  decodeAudio,
+  lumaAt,
+  playerOpen,
+  playerClose,
+  playerSeek,
+  playerPlay,
+  playerPause,
+  playerTime,
+  playerMute,
+  playerFrame,
+  playerPixelsInto,
+  playerWidth,
+  playerHeight,
+  exportStart,
+  exportNext,
+  exportFrameInto,
+  exportAddFrom,
+  exportFinish,
+  exportCancel,
+};

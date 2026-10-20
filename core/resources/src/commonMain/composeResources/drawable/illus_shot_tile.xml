@@ -1,0 +1,9 @@
+<!-- The picked-shot tile's two curves, pressure and flow. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="28dp"
+    android:viewportWidth="40"
+    android:viewportHeight="28">
+    <path android:strokeColor="#FF6FA8FF" android:strokeWidth="2" android:pathData="M1 26C5 26 6 6 11 6L27 6C31 6 33 12 39 14" />
+    <path android:strokeColor="#FFFFC94D" android:strokeWidth="2" android:pathData="M1 27C7 27 9 18 14 17C19 16 24 15 39 14" />
+</vector>

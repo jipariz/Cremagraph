@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The open screen (feature/open): picking a video and its shot, on the phones, the desktop and the web. -->
+<resources>
+    <!-- Status and errors -->
+    <string name="open_status_opening">opening…</string>
+    <string name="open_error_not_a_shot">%1$s is not a Gaggiuino shot</string>
+    <string name="open_error_video">%1$s could not be opened: %2$s</string>
+    <string name="open_error_unreadable">not a video this can read</string>
+
+    <!-- Shared -->
+    <string name="open_editor">open editor</string>
+    <string name="open_choose">choose</string>
+    <string name="open_change">change</string>
+    <string name="open_video">video</string>
+    <string name="open_privacy">privacy</string>
+    <string name="open_drop_to_use">drop it to use it</string>
+    <string name="open_shot_from">%1$s · from %2$s</string>
+    <string name="open_shot_weight_in">%1$s in %2$s</string>
+    <string name="open_recorded">recorded %1$s</string>
+
+    <!-- Phone column -->
+    <string name="open_phone_intro">Pick a video of an espresso shot and the shot itself, then place the graph and export.</string>
+    <string name="open_phone_video_title">Video</string>
+    <string name="open_phone_video_drop">drop a video here, or choose one</string>
+    <string name="open_phone_video_gallery">a video of the shot, from your gallery</string>
+    <string name="open_phone_shot_title">Shot</string>
+    <string name="open_phone_shot_machine">a .shot file, or straight from your machine</string>
+    <string name="open_shot_file_detail">.shot or .json, from SproFiler or a download</string>
+    <string name="open_header_edit">edit a video</string>
+    <string name="open_sheet_title">the shot</string>
+    <string name="open_from_file">From a file</string>
+    <string name="open_from_machine">From the machine</string>
+    <string name="open_from_machine_detail">A recent shot from your Gaggiuino on this Wi‑Fi</string>
+
+    <!-- Desktop and web -->
+    <string name="open_wide_intro">Pick a video of an espresso shot and the shot itself. The editor lines the graph up where the pump starts — you place it, style it and export.</string>
+    <string name="open_wide_video_title">Video of the shot</string>
+    <string name="open_wide_video_drop">drop an .mp4 or .mov here</string>
+    <string name="open_wide_choose_video">choose video</string>
+    <string name="open_wide_shot_title">The shot</string>
+    <string name="open_wide_shot_detail">a .shot or .json from SproFiler, visualizer.coffee or the machine</string>
+    <string name="open_wide_shot_detail_machine">a .shot or .json from SproFiler, visualizer.coffee or the machine, or pick it from the machine</string>
+    <string name="open_wide_choose_shot">choose shot</string>
+    <string name="open_preview_caption">what you'll export — 9:16, 4:5, 1:1 or 16:9</string>
+    <string name="open_details_does_title">What it does</string>
+    <string name="open_details_does">Puts the shot's pressure, flow, weight and temperature over the video, lined up where the pump starts, in a style you choose.</string>
+    <string name="open_details_shots_title">Shots it reads</string>
+    <string name="open_details_shots">Gaggiuino .shot or .json — from SproFiler, visualizer.coffee, baristagiuino or the machine's own page, old and new firmware.</string>
+    <string name="open_details_shots_machine">Gaggiuino .shot or .json — from SproFiler, visualizer.coffee, baristagiuino or the machine's own page, old and new firmware, or straight from a Gaggiuino on this network.</string>
+    <string name="open_details_videos_title">Videos</string>
+    <string name="open_details_videos">.mp4 or .mov from a phone or camera.</string>
+
+    <!-- What "open editor" waits for -->
+    <string name="open_hint_ready">the graph is lined up for you — adjust it in the editor</string>
+    <string name="open_hint_add_shot">add the shot to continue</string>
+    <string name="open_hint_add_video">add the video to continue</string>
+    <string name="open_hint_both">needs both a video and a shot</string>
+
+    <!-- Mobile web -->
+    <string name="open_mobile_title_banner">Or edit one you filmed</string>
+    <string name="open_mobile_intro">Pick the video and the shot. Nothing leaves your phone.</string>
+    <string name="open_mobile_video_detail">.mp4 or .mov</string>
+    <string name="open_mobile_shot_detail">.shot or .json file</string>
+    <string name="open_mobile_reads_title">Shots and videos it reads</string>
+    <string name="open_mobile_reads">Gaggiuino .shot or .json — from SproFiler, visualizer.coffee, baristagiuino or the machine's own page, old and new firmware. Videos: .mp4 or .mov from a phone or camera.</string>
+    <string name="open_banner_title">Film it live with the app</string>
+    <string name="open_banner_detail">Connects to the machine and scale, draws the graph as you pull.</string>
+    <string name="open_dismiss">Dismiss</string>
+    <string name="open_get_app">get the app</string>
+    <string name="open_get_app_play">Get the app on Google Play</string>
+    <string name="open_get_app_app_store">Get the app on the App Store</string>
+
+    <!-- Store buttons (the stores' own badge wording) -->
+    <string name="open_store_play">Get it on Google Play</string>
+    <string name="open_store_play_top">GET IT ON</string>
+    <string name="open_store_play_name">Google Play</string>
+    <string name="open_store_app_store">Download on the App Store</string>
+    <string name="open_store_app_store_top">Download on the</string>
+    <string name="open_store_app_store_name">App Store</string>
+    <string name="open_band_detail">On your phone, OnlyShots connects to the machine and scale and draws the graph while you pull the shot.</string>
+</resources>

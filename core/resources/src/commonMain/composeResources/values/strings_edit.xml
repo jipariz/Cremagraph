@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The editor (feature/edit): timeline, graph placement, its sheets and panel, export. -->
+<resources>
+    <!-- Export wording per host (ExportWording) -->
+    <string name="edit_phone_save">save to gallery</string>
+    <string name="edit_phone_save_where">into the OnlyShots album</string>
+    <string name="edit_phone_share">share…</string>
+    <string name="edit_phone_share_where">Instagram, Messages, anywhere</string>
+    <string name="edit_phone_saved">In your gallery, in the OnlyShots album</string>
+    <string name="edit_phone_shared">Handed to the share sheet</string>
+    <string name="edit_phone_next">record the next shot</string>
+    <string name="edit_phone_footer">Made on this phone.</string>
+    <string name="edit_desktop_save">save to Movies</string>
+    <string name="edit_desktop_save_where">into Movies/OnlyShots</string>
+    <string name="edit_desktop_share">save and show</string>
+    <string name="edit_desktop_share_where">into Movies/OnlyShots, then shown in its folder</string>
+    <string name="edit_desktop_saved">In Movies/OnlyShots</string>
+    <string name="edit_desktop_shared">In Movies/OnlyShots, shown in its folder</string>
+    <string name="edit_desktop_footer">Made on this computer.</string>
+    <string name="edit_open_another">open another video</string>
+    <string name="edit_web_save">download</string>
+    <string name="edit_web_save_where">an MP4 into your downloads</string>
+    <string name="edit_web_saved">In your downloads</string>
+    <string name="edit_web_footer">Made in this browser. Keep the tab open while it runs.</string>
+
+    <!-- Export in the background (ExportManager) -->
+    <plurals name="edit_creating_videos">
+        <item quantity="one">creating your video</item>
+        <item quantity="other">creating your videos</item>
+    </plurals>
+    <string name="edit_export_failed">could not create the video: %1$s</string>
+    <string name="edit_gallery_failed">could not save to the gallery: %1$s</string>
+
+    <!-- Messages and busy chips (EditViewModel) -->
+    <string name="edit_video_gone">that video is gone</string>
+    <string name="edit_start_unlocked">start unlocked: drag the flag, or use start here</string>
+    <string name="edit_clocks_disagree">the clocks don't agree: place the flag by hand</string>
+    <string name="edit_lining_up">lining the shot up…</string>
+    <string name="edit_no_pump_at_zero">no pump sound found: the shot starts at 0:00, move the flag to line it up</string>
+    <string name="edit_loading_shot">loading the shot…</string>
+    <string name="edit_shot_load_failed">could not load that shot</string>
+    <string name="edit_reading_file">reading the file…</string>
+    <string name="edit_not_a_shot_file">that file is not a Gaggiuino shot</string>
+    <string name="edit_finding_start">finding the start…</string>
+    <string name="edit_no_pump_by_hand">no pump sound found: place the flag by hand</string>
+    <string name="edit_gallery_access">OnlyShots needs access to your gallery to save the video there</string>
+
+    <!-- Timeline -->
+    <string name="edit_timeline_description">timeline: drag the ends to trim, drag the flag to place the shot</string>
+    <string name="edit_timeline_trim">trim %1$s – %2$s</string>
+    <string name="edit_timeline_zoom">zoom</string>
+    <string name="edit_timeline_seconds">%1$s s</string>
+    <string name="edit_snapped_to">snapped to %1$s</string>
+    <string name="edit_snap_playhead">playhead</string>
+    <string name="edit_snap_shot_start">shot start</string>
+    <string name="edit_snap_shot_end">shot end</string>
+    <string name="edit_snap_pump_start">pump start</string>
+    <string name="edit_cut_both">graph cut at both ends</string>
+    <string name="edit_cut_head">graph starts mid-shot</string>
+    <string name="edit_cut_tail">graph ends mid-shot</string>
+
+    <!-- The graph on the picture -->
+    <string name="edit_graph_description">graph: tap for its style, drag to move, drag a corner to resize</string>
+    <string name="edit_graph_style_action">graph style</string>
+    <string name="edit_toolbar_style">style ▾</string>
+    <string name="edit_toolbar_data">data ▾</string>
+    <string name="edit_toolbar_text">text ▾</string>
+
+    <!-- Editor screen -->
+    <string name="edit_leave_title">leave this video?</string>
+    <string name="edit_leave_text">It is not in your gallery yet. Once you leave, you cannot come back to it here: export it first to keep it.</string>
+    <string name="edit_keep_editing">keep editing</string>
+    <string name="edit_leave">leave</string>
+    <string name="edit_open_the_phone">Open the phone to edit</string>
+    <string name="edit_ok">ok</string>
+    <string name="edit_loading">loading…</string>
+    <string name="edit_add_shot">add a shot</string>
+    <string name="edit_export">export</string>
+    <string name="edit_reframe_hint">drag to move · pinch to zoom</string>
+    <string name="edit_done">done</string>
+    <string name="edit_frame_switch">⤢ frame</string>
+    <string name="edit_graph_start">graph start</string>
+    <string name="edit_start_here">⚑ start here</string>
+    <string name="edit_find_start">find start</string>
+    <string name="edit_muted">muted</string>
+    <string name="edit_sound">sound</string>
+    <string name="edit_fit">fit</string>
+    <string name="edit_graph">graph</string>
+    <string name="edit_shot">shot</string>
+    <string name="edit_frame">frame</string>
+    <string name="edit_style">style</string>
+    <string name="edit_data">data</string>
+    <string name="edit_text">text</string>
+    <string name="edit_change">change</string>
+    <string name="edit_match_by_clock">match by clock</string>
+    <string name="edit_zoom_and_crop">zoom and crop</string>
+    <string name="edit_tap_graph_hint">tap the graph on the picture to change it</string>
+    <string name="edit_phases_count">%1$s phases</string>
+    <string name="edit_recorded_with_video">recorded with the video</string>
+    <string name="edit_of_duration">of %1$s</string>
+    <string name="edit_play">play</string>
+    <string name="edit_pause">pause</string>
+    <string name="edit_style_named">style · %1$s</string>
+    <string name="edit_opacity">opacity %1$s %</string>
+    <string name="edit_making_video">Making your video</string>
+    <string name="edit_saved">Saved</string>
+
+    <!-- Sheets -->
+    <string name="edit_not_in_shot">%1$s: not in this shot</string>
+    <string name="edit_readings">readings</string>
+    <string name="edit_legend">legend</string>
+    <string name="edit_phase_lines">phase lines</string>
+    <string name="edit_use_another_shot">use another shot</string>
+    <string name="edit_file">file</string>
+    <string name="edit_machine">machine</string>
+    <string name="edit_shot_file">a shot file</string>
+    <string name="edit_shot_file_detail">.shot or .json, from SproFiler or the machine</string>
+    <string name="edit_from_machine">from the machine</string>
+    <string name="edit_from_machine_detail">a recent shot from your Gaggiuino on this Wi‑Fi</string>
+    <string name="edit_on_connected_machine">on the connected machine</string>
+    <string name="edit_number_time">time</string>
+    <string name="edit_number_weight">weight</string>
+    <string name="edit_number_phases">phases</string>
+    <string name="edit_status_recorded">recorded with the video, so it is already in step</string>
+    <string name="edit_status_by_clock">lined up by the clock</string>
+    <string name="edit_status_lined_up">lined up</string>
+    <string name="edit_status_not_lined_up">not lined up yet</string>
+    <string name="edit_title">title</string>
+    <string name="edit_recipe">recipe</string>
+    <string name="edit_recipe_placeholder">18 g in · 36 g out · 28 s</string>
+    <string name="edit_time_left">about %1$s left</string>
+    <string name="edit_working_out">working out how long this will take…</string>
+    <string name="edit_keep_open">Keep OnlyShots open while it runs.</string>
+    <string name="edit_cancel">cancel</string>
+    <string name="edit_no_sound">no sound</string>
+    <string name="edit_with_sound">with sound</string>
+    <string name="edit_sound_muted">muted</string>
+</resources>

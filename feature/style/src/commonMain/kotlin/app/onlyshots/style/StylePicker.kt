@@ -1,0 +1,350 @@
+package app.onlyshots.style
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
+import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.component.CgDialog
+import app.onlyshots.core.designsystem.component.CgTextField
+import app.onlyshots.core.designsystem.component.CoffeeScene
+import app.onlyshots.core.designsystem.component.SectionHeader
+import app.onlyshots.core.model.style.GraphStyle
+import app.onlyshots.core.model.style.Material
+import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.style_built_in
+import app.onlyshots.core.resources.style_cancel
+import app.onlyshots.core.resources.style_delete
+import app.onlyshots.core.resources.style_delete_text
+import app.onlyshots.core.resources.style_delete_title
+import app.onlyshots.core.resources.style_edit
+import app.onlyshots.core.resources.style_edit_a_copy
+import app.onlyshots.core.resources.style_long_press_hint
+import app.onlyshots.core.resources.style_name
+import app.onlyshots.core.resources.style_new_style
+import app.onlyshots.core.resources.style_rename
+import app.onlyshots.core.resources.style_rename_style
+import app.onlyshots.core.resources.style_tile_description
+import app.onlyshots.core.resources.style_your_styles
+import app.onlyshots.overlay.GraphStyles
+import org.jetbrains.compose.resources.stringResource
+
+/** What the picker can ask for, besides picking a style. */
+class StylePickerActions(
+    val pick: (id: String) -> Unit,
+    /** Opens the style editor on a new style starting from [baseId]. */
+    val create: (baseId: String) -> Unit,
+    /** Opens the style editor on the user's style [id], to change it in place. */
+    val edit: (id: String) -> Unit,
+    val rename: (id: String, name: String) -> Unit,
+    val delete: (id: String) -> Unit,
+)
+
+/**
+ * Figma 13 · A: the user's styles first, with "new style" (a copy of the selected style), then the built-in ones.
+ * Long-press a style for edit, edit a copy, rename or delete; built-ins can only be copied.
+ */
+@Composable
+fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePickerActions) {
+    var renaming by remember { mutableStateOf<GraphStyle?>(null) }
+    var deleting by remember { mutableStateOf<GraphStyle?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
+        SectionHeader(stringResource(Res.string.style_your_styles))
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
+        ) {
+            for (style in custom) {
+                StyleTile(
+                    style,
+                    picked = style.id == currentId,
+                    width = TILE_SMALL,
+                    onPick = { actions.pick(style.id) },
+                    menu = { close ->
+                        Item(stringResource(Res.string.style_edit)) {
+                            close()
+                            actions.edit(style.id)
+                        }
+                        Item(stringResource(Res.string.style_edit_a_copy)) {
+                            close()
+                            actions.create(style.id)
+                        }
+                        Item(stringResource(Res.string.style_rename)) {
+                            close()
+                            renaming = style
+                        }
+                        Item(stringResource(Res.string.style_delete)) {
+                            close()
+                            deleting = style
+                        }
+                    },
+                )
+            }
+            NewStyleTile(onClick = { actions.create(currentId) })
+        }
+        SectionHeader(stringResource(Res.string.style_built_in))
+        // As many columns as fit (a sheet on a phone takes three, the wide panel and a wide sheet more); a grid that
+        // fills the width rather than three tiles stretched across a tablet.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val columns = (maxWidth / TILE_MIN).toInt().coerceAtLeast(3)
+            Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                for (row in GraphStyles.all.chunked(columns)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                        for (style in row) {
+                            Box(Modifier.weight(1f)) {
+                                StyleTile(
+                                    style,
+                                    picked = style.id == currentId,
+                                    width = null,
+                                    onPick = { actions.pick(style.id) },
+                                    menu = { close ->
+                                        Item(stringResource(Res.string.style_edit_a_copy)) {
+                                            close()
+                                            actions.create(style.id)
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
+        }
+        Text(
+            stringResource(Res.string.style_long_press_hint),
+            style = CgTheme.type.caption,
+            color = CgColors.Text.Secondary,
+            modifier =
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .padding(horizontal = CgSpace.S12, vertical = 10.dp),
+        )
+    }
+    renaming?.let { style ->
+        var name by remember(style.id) { mutableStateOf(style.name) }
+        CgDialog(
+            title = stringResource(Res.string.style_rename_style),
+            onDismiss = { renaming = null },
+            confirm =
+                stringResource(Res.string.style_rename) to
+                    {
+                        actions.rename(style.id, name.trim())
+                        renaming = null
+                    },
+            confirmEnabled = name.isNotBlank(),
+            dismiss = stringResource(Res.string.style_cancel) to { renaming = null },
+        ) {
+            CgTextField(
+                name,
+                onValueChange = { name = it.take(MAX_NAME) },
+                label = stringResource(Res.string.style_name),
+            )
+        }
+    }
+    deleting?.let { style ->
+        CgDialog(
+            title = stringResource(Res.string.style_delete_title, style.name),
+            text = stringResource(Res.string.style_delete_text),
+            onDismiss = { deleting = null },
+            confirm =
+                stringResource(Res.string.style_delete) to
+                    {
+                        actions.delete(style.id)
+                        deleting = null
+                    },
+            dismiss = stringResource(Res.string.style_cancel) to { deleting = null },
+        )
+    }
+}
+
+@Composable
+private fun Item(text: String, onClick: () -> Unit) {
+    DropdownMenuItem(text = { Text(text) }, onClick = onClick)
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun StyleTile(
+    style: GraphStyle,
+    picked: Boolean,
+    width: androidx.compose.ui.unit.Dp?,
+    onPick: () -> Unit,
+    menu: @Composable (close: () -> Unit) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    val description = stringResource(Res.string.style_tile_description, style.name)
+    Column(
+        Modifier.then(if (width != null) Modifier.width(width) else Modifier.fillMaxWidth())
+            .semantics {
+                selected = picked
+                contentDescription = description
+            }
+            .combinedClickable(role = Role.RadioButton, onLongClick = { open = true }, onClick = onPick),
+        verticalArrangement = Arrangement.spacedBy(CgSpace.S6),
+    ) {
+        Box {
+            StyleSwatch(style, picked, Modifier.fillMaxWidth().height(TILE_HEIGHT))
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) { menu { open = false } }
+        }
+        Text(
+            style.name,
+            style = CgTheme.type.caption,
+            color = if (picked) CgColors.Text.Primary else CgColors.Text.Secondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun NewStyleTile(onClick: () -> Unit) {
+    val label = stringResource(Res.string.style_new_style)
+    Column(
+        Modifier.width(TILE_SMALL).combinedClickableCompat(onClick).semantics { contentDescription = label },
+        verticalArrangement = Arrangement.spacedBy(CgSpace.S6),
+    ) {
+        val shape = RoundedCornerShape(10.dp)
+        Box(
+            Modifier.fillMaxWidth().height(TILE_HEIGHT).clip(shape).drawDashedBorder(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                CgIcons.Plus,
+                null,
+                colorFilter = ColorFilter.tint(CgColors.Text.Primary),
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Text(label, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+private fun Modifier.combinedClickableCompat(onClick: () -> Unit): Modifier =
+    combinedClickable(role = Role.Button, onClick = onClick)
+
+private fun Modifier.drawDashedBorder(): Modifier = drawBehind {
+    drawRoundRect(
+        CgColors.Text.Dim,
+        cornerRadius = CornerRadius(10.dp.toPx()),
+        style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))),
+    )
+}
+
+/**
+ * A small picture of [style]: its panel (colour, gradient or tint over the scene) on the drawn espresso scene, with a
+ * pressure and a flow curve in its colours. Not a real overlay — at this size the text would be noise — but the same
+ * surface and colours.
+ */
+@Composable
+fun StyleSwatch(style: GraphStyle, picked: Boolean, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(10.dp)
+    Box(
+        modifier
+            .clip(shape)
+            .border(if (picked) 2.dp else 1.dp, if (picked) CgColors.Text.Primary else CgColors.Line.Hairline, shape)
+    ) {
+        CoffeeScene(Modifier.fillMaxSize(), progress = 0.6f)
+        Canvas(Modifier.fillMaxSize()) {
+            val inset = 6.dp.toPx()
+            val top = size.height * 0.2f
+            val panel = Size(size.width - 2 * inset, size.height - top - inset)
+            val at = Offset(inset, top)
+            val radius = CornerRadius((style.panel.radius / 2f).dp.toPx())
+            val p = style.panel
+            val tiles = p.tiles
+            when {
+                p.material == Material.NONE -> {}
+                p.gradient != null ->
+                    drawRoundRect(
+                        Brush.verticalGradient(
+                            *p.gradient!!.map { it.at to Color(it.color) }.toTypedArray(),
+                            startY = at.y,
+                            endY = at.y + panel.height,
+                        ),
+                        at,
+                        panel,
+                        radius,
+                    )
+                else -> {
+                    if (tiles != null) drawRoundRect(Color(tiles.base), at, panel, radius)
+                    drawRoundRect(Color(p.color).copy(alpha = p.opacity.coerceIn(0.15f, 1f)), at, panel, radius)
+                }
+            }
+            if (p.material == Material.GLASS && p.glass.edge > 0f) {
+                drawRoundRect(
+                    Color.White.copy(alpha = 0.5f),
+                    at,
+                    panel,
+                    radius,
+                    style = Stroke(1.dp.toPx()),
+                )
+            }
+            fun curve(points: List<Pair<Float, Float>>, color: Color) {
+                val path = Path()
+                points.forEachIndexed { i, (x, y) ->
+                    val px = at.x + panel.width * (0.08f + 0.84f * x)
+                    val py = at.y + panel.height * (0.15f + 0.7f * y)
+                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                }
+                drawPath(path, color, style = Stroke(2.dp.toPx()))
+            }
+            curve(listOf(0f to 0.95f, 0.3f to 0.2f, 0.45f to 0.6f, 1f to 0.3f), Color(style.series.pressure))
+            curve(listOf(0f to 1f, 0.35f to 0.75f, 0.7f to 0.65f, 1f to 0.55f), Color(style.series.flow))
+        }
+    }
+}
+
+private val TILE_HEIGHT = 64.dp
+private val TILE_SMALL = 96.dp
+private const val MAX_NAME = 32
+
+/** A built-in style's tile is never narrower than this. */
+private val TILE_MIN = 110.dp

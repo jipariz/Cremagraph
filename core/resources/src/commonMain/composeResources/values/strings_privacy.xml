@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The privacy policy inside the app: the same words as app/webApp/src/webMain/resources/privacy.html. Change both together. -->
+<resources>
+    <string name="privacy_title">privacy</string>
+    <string name="privacy_updated">Last updated October 19, 2026 · applies to the OnlyShots apps for iPhone, iPad, Android and the desktop, and the web editor.</string>
+    <string name="privacy_lead">OnlyShots collects no personal data.</string>
+    <string name="privacy_lead_detail">There is no account, no analytics, no advertising and no tracking. Your videos, shots and settings stay on your device, and nothing is sent to us or to anyone else.</string>
+    <string name="privacy_uses_title">What the app uses, and why</string>
+    <string name="privacy_use_camera">Camera and microphone</string>
+    <string name="privacy_use_camera_why">to film your espresso shot with its sound. The video is saved on your device; you can mute the sound in the editor.</string>
+    <string name="privacy_use_network">Local network</string>
+    <string name="privacy_use_network_why">to read the shot from your own espresso machine (for example a Gaggiuino) on your home Wi‑Fi. The app talks only to the machine you pick.</string>
+    <string name="privacy_use_bluetooth">Bluetooth</string>
+    <string name="privacy_use_bluetooth_why">to read weight from your own Bluetooth scale.</string>
+    <string name="privacy_use_photos">Photos</string>
+    <string name="privacy_use_photos_why">to save the finished video to your library when you ask it to, and to open a video you pick. The app cannot see the rest of your library.</string>
+    <string name="privacy_stored_title">What is stored</string>
+    <string name="privacy_stored">Your recordings, the shot data that goes with them and your settings are kept in the app's storage on your device. The web editor keeps everything in the browser tab and forgets it when the tab closes. Deleting the app, or a video in it, deletes that data. We have no copy.</string>
+    <string name="privacy_sharing_title">Sharing</string>
+    <string name="privacy_sharing">Nothing is shared unless you share it yourself, for example by exporting a video to Photos or sending it with the share sheet. What happens after that is up to the app you send it to.</string>
+    <string name="privacy_children_title">Children</string>
+    <string name="privacy_children">The app is not directed at children and collects no data from anyone.</string>
+    <string name="privacy_changes_title">Changes</string>
+    <string name="privacy_changes">If this ever changes, this page will say so before the app does anything new with your data.</string>
+    <string name="privacy_support_title">Support</string>
+    <string name="privacy_support">Questions, problems or ideas: open an issue on the project's page.</string>
+</resources>

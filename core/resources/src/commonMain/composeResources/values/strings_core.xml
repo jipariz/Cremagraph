@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The design system's components, the shared UI layer (core/ui), the platform pickers and the entry points. -->
+<resources>
+    <!-- Buttons -->
+    <string name="core_back">back</string>
+    <string name="core_record">record</string>
+    <string name="core_stop">stop</string>
+    <string name="core_done">done</string>
+    <string name="core_cancel">cancel</string>
+
+    <!-- The wide editor's export -->
+    <string name="core_export_more">more ways to export</string>
+    <string name="core_export_keep_editing">keep editing</string>
+    <string name="core_export_making">Making your video</string>
+    <string name="core_export_left">about %1$s left</string>
+    <string name="core_export_estimating">working out how long this will take…</string>
+    <string name="core_export_no_webgl">no WebGL in this browser</string>
+    <string name="core_export_notification_channel">exports</string>
+    <string name="core_export_notification_title">creating your video</string>
+
+    <!-- Editor controls -->
+    <string name="core_colour_chip">colour %1$s, tap to change</string>
+    <string name="core_drop_to_open">Drop to open</string>
+    <string name="core_drop_video">Drop a video here</string>
+    <string name="core_drop_formats">.mp4 or .mov, from the phone or the camera</string>
+    <string name="core_choose_file">choose a file</string>
+
+    <!-- Timeline, for screen readers -->
+    <string name="core_timeline_description">timeline, keeping %1$s to %2$s of %3$s seconds, playhead at %4$s seconds</string>
+    <string name="core_timeline_later">%1$s later</string>
+    <string name="core_timeline_earlier">%1$s earlier</string>
+    <string name="core_timeline_trim_start">trim start</string>
+    <string name="core_timeline_trim_end">trim end</string>
+    <string name="core_timeline_playhead">playhead</string>
+
+    <!-- Home -->
+    <string name="core_library_count">library · %1$s</string>
+    <string name="core_scale_connect">connect</string>
+    <string name="core_scale_connecting">connecting…</string>
+    <string name="core_scale_connected">connected</string>
+
+    <!-- Recording rules -->
+    <string name="core_rule_done">done</string>
+    <string name="core_rule_waiting">waiting</string>
+
+    <!-- Data series -->
+    <string name="core_series_targets">targets</string>
+
+    <!-- Pickers and the gallery -->
+    <string name="core_pick_video_title">add a video</string>
+    <string name="core_pick_from_photos">Photos</string>
+    <string name="core_pick_from_files">Files</string>
+    <string name="core_pick_cancel">Cancel</string>
+    <string name="core_pick_shot_dialog">Attach a shot</string>
+    <string name="core_pick_video_dialog">Import a video</string>
+    <string name="core_gallery_refused">the gallery refused the video</string>
+    <string name="core_gallery_write_failed">could not write to the gallery</string>
+    <string name="core_gallery_photos_refused">Photos refused it</string>
+
+    <!-- Entry points -->
+    <string name="core_desktop_window_title">OnlyShots editor</string>
+    <string name="core_desktop_header_note">runs on this computer, nothing is uploaded</string>
+    <string name="core_desktop_videos_note">Exports at the video's full quality, with sound, into Movies/OnlyShots.</string>
+    <string name="core_web_header_note">runs in your browser, nothing is uploaded</string>
+    <string name="core_web_videos_note">Exports at 1080p without sound, in Chrome, Edge or Safari 16.4+.</string>
+    <string name="core_web_file_gone">that file is gone</string>
+    <string name="core_version">OnlyShots %1$s</string>
+</resources>

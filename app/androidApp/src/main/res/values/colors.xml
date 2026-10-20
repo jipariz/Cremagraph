@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#1C1412</color>
+    <!-- Behind the first Compose frame, so the app never flashes white on a cold start. -->
+    <color name="window_background">#120D0B</color>
+</resources>

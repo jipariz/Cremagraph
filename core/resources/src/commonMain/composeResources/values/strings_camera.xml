@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the camera reports, as the record screen's banner words it. -->
+<resources>
+    <string name="camera_no_rear">no rear camera</string>
+    <string name="camera_no_space">not enough free space to record</string>
+    <string name="camera_recording_failed">recording failed</string>
+</resources>

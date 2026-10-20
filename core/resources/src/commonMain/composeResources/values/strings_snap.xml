@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where a dragged graph snaps, as the pill under it names the place. -->
+<resources>
+    <string name="snap_top_below_header">top · below the header</string>
+    <string name="snap_top">top</string>
+    <string name="snap_middle">middle</string>
+    <string name="snap_bottom_above_captions">bottom · above captions</string>
+    <string name="snap_bottom">bottom</string>
+    <string name="snap_left">left</string>
+    <string name="snap_centre">centre</string>
+    <string name="snap_right">right</string>
+</resources>

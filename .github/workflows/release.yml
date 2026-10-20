@@ -1,0 +1,89 @@
+name: release
+
+# A release is a tag: bump the version (./gradlew bumpVersion), commit, then push `v<version>`.
+#   git tag v1.0.0 && git push origin v1.0.0
+# The tag must match onlyshots.version in gradle.properties. This builds the desktop editor on each OS and publishes a
+# GitHub Release with the installers and generated notes. The web editor deploys from main (ci.yml); the phone apps'
+# store uploads are not automated yet.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: The tag is the app's version
+        id: version
+        run: |
+          version=$(sed -n 's/^onlyshots.version=//p' gradle.properties)
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match onlyshots.version=${version}; tag v${version}, or bump first."
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - name: The iOS project carries the same version
+        run: ./gradlew checkAppVersion --stacktrace
+
+  desktop:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            format: dmg
+          - os: windows-latest
+            format: msi
+          - os: ubuntu-latest
+            format: deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      # Each OS packages its own installer, with that OS's FFmpeg natives (desktopNatives in video/build.gradle.kts).
+      - name: Package the desktop editor
+        run: ./gradlew :app:desktopApp:packageDistributionForCurrentOS --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.format }}
+          path: app/desktopApp/build/compose/binaries/main/${{ matrix.format }}/*
+          if-no-files-found: error
+
+  publish:
+    needs: [check, desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --title "OnlyShots ${{ needs.check.outputs.version }}" \
+            --generate-notes \
+            --verify-tag

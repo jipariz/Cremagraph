@@ -1,0 +1,244 @@
+package app.onlyshots.edit
+
+import app.onlyshots.core.model.Origin
+import app.onlyshots.core.model.OverlaySettings
+import app.onlyshots.core.model.Quality
+import app.onlyshots.core.model.ShotHistory
+import app.onlyshots.core.model.VideoFormat
+import app.onlyshots.core.model.VideoItem
+import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.edit_no_pump_at_zero
+import app.onlyshots.core.resources.text
+import app.onlyshots.export.ExportManager
+import app.onlyshots.platform.BackgroundWork
+import app.onlyshots.platform.PlatformShare
+import app.onlyshots.platform.VideoGallery
+import app.onlyshots.storage.AppSettingsRepo
+import app.onlyshots.storage.Library
+import app.onlyshots.storage.LibraryIndex
+import app.onlyshots.storage.LibraryStore
+import app.onlyshots.storage.SettingsStore
+import app.onlyshots.storage.ShareTempFiles
+import app.onlyshots.style.StyleLibrary
+import app.onlyshots.video.ExportProgress
+import app.onlyshots.video.FrameSampler
+import app.onlyshots.video.MonoPcm
+import app.onlyshots.video.VideoExporter
+import app.onlyshots.video.VideoInfo
+import app.onlyshots.video.VideoProbe
+import kotlin.math.PI
+import kotlin.math.sin
+import kotlin.random.Random
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Instant
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import okio.Path
+import okio.Path.Companion.toPath
+import okio.fakefilesystem.FakeFileSystem
+
+/** A probe whose sound is [pcm]: a pump from some point, or nothing at all. */
+private class ScriptedProbe(private val pcm: MonoPcm?) : VideoProbe {
+    override suspend fun info(file: Path) = VideoInfo(DURATION_US, hasAudio = pcm != null, heightPx = 1920)
+
+    override suspend fun writeThumbnail(file: Path, atUs: Long, out: Path, maxWidthPx: Int) = error("no frames here")
+
+    override suspend fun decodeMonoPcm(file: Path, maxSeconds: Int): MonoPcm? = pcm
+
+    override fun supports4k() = false
+}
+
+private object NoExporter : VideoExporter {
+    override fun export(
+        item: VideoItem,
+        quality: Quality,
+        withSound: Boolean,
+        out: Path,
+        alignmentBarcode: Boolean,
+    ): Flow<ExportProgress> = emptyFlow()
+}
+
+private const val DURATION_US = 20_000_000L
+private const val SAMPLE_RATE = 8_000
+
+/** Room noise, then a 120 Hz pump hum from [onsetS] seconds: what PumpOnsetDetector listens for. */
+private fun pump(onsetS: Double): MonoPcm {
+    val rnd = Random(42)
+    val samples =
+        FloatArray(20 * SAMPLE_RATE) { i ->
+            val t = i.toDouble() / SAMPLE_RATE
+            var v = (rnd.nextFloat() - 0.5f) * 0.01f
+            if (t >= onsetS) v += (0.3 * sin(2 * PI * 120 * t) + 0.1 * sin(2 * PI * 240 * t)).toFloat()
+            v
+        }
+    return MonoPcm(samples, SAMPLE_RATE)
+}
+
+/** When a shot file is attached, its start is placed: by the pump's sound, else by the clocks, else at 0:00. */
+@OptIn(ExperimentalCoroutinesApi::class)
+class EditViewModelAttachTest {
+    private val fs = FakeFileSystem()
+    private val store = LibraryStore(fs, "/library".toPath())
+    private val library = Library(store, LibraryIndex.None, fs)
+    private val shotStarted = Instant.parse("2026-10-18T15:42:59Z")
+
+    /**
+     * Main and the view model's work on one test dispatcher: everything runs on the test's thread, nothing after it.
+     */
+    private val main = UnconfinedTestDispatcher()
+
+    @BeforeTest fun mainDispatcher() = Dispatchers.setMain(main)
+
+    @AfterTest fun resetMain() = Dispatchers.resetMain()
+
+    private fun video(
+        recordedAt: Instant? = null,
+        shotStartUs: Long? = null,
+        syncLocked: Boolean = false,
+    ) =
+        VideoItem(
+            id = "v",
+            file = "v.mp4",
+            createdAt = Instant.fromEpochSeconds(0),
+            durationUs = DURATION_US,
+            origin = Origin.IMPORTED,
+            hasAudio = true,
+            shot = null,
+            shotStartInVideoUs = shotStartUs,
+            syncLocked = syncLocked,
+            trimInUs = 0,
+            trimOutUs = DURATION_US,
+            overlay = OverlaySettings(),
+            recordedAt = recordedAt,
+        )
+
+    private fun viewModel(item: VideoItem, sound: MonoPcm?): EditViewModel {
+        library.save(item)
+        val styles = StyleLibrary(AppSettingsRepo(SettingsStore(fs, "/library/settings.json".toPath())))
+        val exports =
+            ExportManager(
+                store = store,
+                exporter = NoExporter,
+                temp = ShareTempFiles(fs, "/cache/share".toPath()),
+                share =
+                    object : PlatformShare {
+                        override fun shareVideos(files: List<Path>, onDone: () -> Unit) = onDone()
+                    },
+                gallery =
+                    object : VideoGallery {
+                        override suspend fun save(file: Path) = Unit
+                    },
+                background =
+                    object : BackgroundWork {
+                        override suspend fun <T> keepAlive(title: String, block: suspend () -> T): T = block()
+                    },
+                nowMs = { 0L },
+                scope = CoroutineScope(Dispatchers.Unconfined),
+            )
+        return EditViewModel(
+            id = item.id,
+            library = library,
+            store = store,
+            probe = ScriptedProbe(sound),
+            source = ShotHistory.None,
+            exports = exports,
+            fs = fs,
+            cacheDir = "/cache/edit".toPath(),
+            styles = styles,
+            sampler =
+                object : FrameSampler {
+                    override suspend fun lumaAt(file: Path, atUs: Long, points: List<Pair<Float, Float>>) = null
+                },
+            work = main,
+        )
+    }
+
+    /** Hands the editor a shot file, the newer Gaggiuino shape, and waits until it is attached. */
+    private suspend fun attach(vm: EditViewModel): VideoItem {
+        vm.ui.first { it.item != null }
+        val path = "/picked/shot.json".toPath()
+        fs.createDirectories(path.parent!!)
+        fs.write(path) {
+            writeUtf8(
+                """{ "id": 121, "duration": 50, "timestamp": ${shotStarted.epochSeconds},
+                    "datapoints": [ { "timeInShot": 0, "pressure": 0.5 }, { "timeInShot": 5000, "pressure": 9 } ],
+                    "profile": { "name": "Flimsy Light" } }"""
+            )
+        }
+        vm.importShotFile(path)
+        return vm.ui.first { it.item?.shot != null && it.busy == null }.item!!
+    }
+
+    @Test
+    fun thePumpPlacesTheStart() = runTest {
+        val vm = viewModel(video(), sound = pump(onsetS = 3.0))
+        val item = attach(vm)
+        val start = item.shotStartInVideoUs!!
+        assertTrue(start in 2_900_000L..3_150_000L, "start at $start")
+        assertNull(vm.ui.value.message)
+    }
+
+    @Test
+    fun withoutAPumpTheClocksPlaceIt() = runTest {
+        val vm = viewModel(video(recordedAt = shotStarted.minusSeconds(4)), sound = null)
+        assertEquals(4_000_000L, attach(vm).shotStartInVideoUs)
+        assertNull(vm.ui.value.message)
+    }
+
+    @Test
+    fun withNeitherTheShotStartsAtZeroAndTheEditorSaysSo() = runTest {
+        val vm = viewModel(video(), sound = null)
+        assertEquals(0L, attach(vm).shotStartInVideoUs)
+        assertEquals(Res.string.edit_no_pump_at_zero.text(), vm.ui.value.message)
+    }
+
+    @Test
+    fun aPlacedFlagStays() = runTest {
+        val vm = viewModel(video(shotStartUs = 7_000_000), sound = pump(onsetS = 3.0))
+        assertEquals(7_000_000L, attach(vm).shotStartInVideoUs)
+    }
+
+    @Test
+    fun aSyncedRecordingKeepsItsStart() = runTest {
+        val vm = viewModel(video(shotStartUs = 2_000_000, syncLocked = true), sound = null)
+        assertEquals(2_000_000L, attach(vm).shotStartInVideoUs)
+        assertNull(vm.ui.value.message)
+    }
+
+    @Test
+    fun oneUndoTakesBackTheShotAndItsStart() = runTest {
+        val vm = viewModel(video(), sound = null)
+        attach(vm)
+        vm.undo()
+        val item = vm.ui.value.item!!
+        assertNull(item.shot)
+        assertNull(item.shotStartInVideoUs)
+    }
+
+    @Test
+    fun aNewFormatRefitsTheGraphInOneUndoStep() = runTest {
+        val vm = viewModel(video(), sound = null)
+        val before = vm.ui.first { it.item != null }.item!!
+        vm.setFormat(VideoFormat.SQUARE_1_1)
+        val square = vm.ui.value.item!!
+        assertEquals(VideoFormat.SQUARE_1_1, square.format)
+        assertEquals(before.overlay.rect.refit(VideoFormat.PORTRAIT_9_16, VideoFormat.SQUARE_1_1), square.overlay.rect)
+        vm.undo()
+        assertEquals(before, vm.ui.value.item)
+    }
+}
+
+private fun Instant.minusSeconds(s: Long) = Instant.fromEpochSeconds(epochSeconds - s)

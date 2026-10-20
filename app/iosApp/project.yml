@@ -1,0 +1,42 @@
+name: iosApp
+options:
+  bundleIdPrefix: dev.parez
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "10000"
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: iosApp
+    # No `info:` block: xcodegen would overwrite the handwritten Info.plist, and with it the
+    # camera, microphone, local-network and Bluetooth usage strings.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.parez.onlyshots
+        INFOPLIST_FILE: iosApp/Info.plist
+        CODE_SIGN_ENTITLEMENTS: iosApp/iosApp.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "5.0"
+        # The Kotlin framework is built and copied by the Gradle phase below.
+        FRAMEWORK_SEARCH_PATHS:
+          - $(inherited)
+          - $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
+        OTHER_LDFLAGS:
+          - $(inherited)
+          - -framework
+          - OnlyShotsApp
+          # The native SQLDelight driver links against the system SQLite.
+          - -lsqlite3
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    preBuildScripts:
+      - name: Build the Kotlin framework
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/../.."
+          ./gradlew :app:shared:embedAndSignAppleFrameworkForXcode

@@ -1,0 +1,21 @@
+<!-- The picked-video tile before a frame of the video is decoded: a cup under the spout, the graph's strip under it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="54dp"
+    android:height="72dp"
+    android:viewportWidth="54"
+    android:viewportHeight="72">
+    <path android:fillColor="#FF2A201C" android:pathData="M0 0H54V72H0Z" />
+    <path android:fillColor="#FF4A3A33" android:pathData="M17 40L37 40L35 54L19 54Z" />
+    <path
+        android:strokeColor="#FF8A5A3C"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M27 18L27 38" />
+    <path
+        android:fillColor="#99120D0B"
+        android:pathData="M9 54H45A3 3 0 0 1 48 57V63A3 3 0 0 1 45 66H9A3 3 0 0 1 6 63V57A3 3 0 0 1 9 54Z" />
+    <path
+        android:strokeColor="#FF6FA8FF"
+        android:strokeWidth="1.4"
+        android:pathData="M9 63C14 63 15 58 19 58C23 58 24 61 28 61C32 61 34 57 38 57C42 57 42 58 45 58" />
+</vector>

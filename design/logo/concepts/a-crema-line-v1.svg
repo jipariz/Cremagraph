@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- A · Crema line: a cup filled up to the shot's pressure curve. Body + handle, black first. -->
+  <path fill="#000" d="M48 138 C76 138 90 82 114 82 C142 82 168 108 196 114 L188 196 Q186 220 162 220 L94 220 Q70 220 66 196 Z"/>
+  <path fill="#000" d="M196 134 A30 30 0 0 1 192 194 L194 176 A13 13 0 0 0 197 150 Z"/>
+</svg>

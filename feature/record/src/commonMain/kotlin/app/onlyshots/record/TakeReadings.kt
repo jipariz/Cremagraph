@@ -17,10 +17,6 @@ import app.onlyshots.core.resources.record_no_sound
 import app.onlyshots.core.resources.record_started_before
 import app.onlyshots.core.resources.record_started_by_hand
 import app.onlyshots.core.resources.record_started_with_shot
-import app.onlyshots.core.resources.record_turn_sideways_body
-import app.onlyshots.core.resources.record_turn_sideways_title
-import app.onlyshots.core.resources.record_turn_upright_body
-import app.onlyshots.core.resources.record_turn_upright_title
 import app.onlyshots.core.resources.record_with_sound
 import app.onlyshots.core.resources.text
 import app.onlyshots.core.resources.unit_bar
@@ -84,22 +80,9 @@ fun takeQuality(fourK: Boolean, sound: Boolean): UiText =
         )
     )
 
-/**
- * Where the screen stands the other way from the format: the format that fits as it stands (16:9 on a sideways screen,
- * 9:16 on an upright one), offered in its place.
- */
+/** The camera's whole frame as a window stands: 16:9 on its side, 9:16 upright. */
 fun formatThatFits(windowWidth: Int, windowHeight: Int): VideoFormat =
     if (windowWidth > windowHeight) VideoFormat.LANDSCAPE_16_9 else VideoFormat.PORTRAIT_9_16
-
-/** "Stand the phone upright" or "Turn it on its side", for the paused camera. */
-fun turnTitle(format: VideoFormat): StringResource =
-    if (format.landscape) Res.string.record_turn_sideways_title else Res.string.record_turn_upright_title
-
-/** Why the camera waits, under [turnTitle]. */
-fun turnBody(format: VideoFormat): UiText =
-    (if (format.landscape) Res.string.record_turn_sideways_body else Res.string.record_turn_upright_body).text(
-        format.label
-    )
 
 /** How a rule reads in the panel while recording: whether the take began with the shot, and when it will stop. */
 fun startRuleLine(settings: RecordingSettings): UiText =

@@ -4,7 +4,6 @@ import app.onlyshots.core.model.RecordingSettings
 import app.onlyshots.core.model.Sample
 import app.onlyshots.core.model.SourceKind
 import app.onlyshots.core.model.StopRule
-import app.onlyshots.core.model.VideoFormat
 import app.onlyshots.core.model.oneDecimal
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.UiText
@@ -16,9 +15,6 @@ import app.onlyshots.core.resources.home_action_sample_caption
 import app.onlyshots.core.resources.home_action_scale_caption
 import app.onlyshots.core.resources.home_action_without_data
 import app.onlyshots.core.resources.home_auto_start_brew_switch
-import app.onlyshots.core.resources.home_format_hint
-import app.onlyshots.core.resources.home_format_landscape_wrong_way
-import app.onlyshots.core.resources.home_format_portrait_wrong_way
 import app.onlyshots.core.resources.home_found
 import app.onlyshots.core.resources.home_row_busy
 import app.onlyshots.core.resources.home_row_connected
@@ -26,7 +22,9 @@ import app.onlyshots.core.resources.home_row_connecting
 import app.onlyshots.core.resources.home_row_offline
 import app.onlyshots.core.resources.home_row_ready
 import app.onlyshots.core.resources.home_rule_start_now
+import app.onlyshots.core.resources.home_rule_start_now_scale
 import app.onlyshots.core.resources.home_rule_start_pre_roll
+import app.onlyshots.core.resources.home_rule_start_pre_roll_scale
 import app.onlyshots.core.resources.home_rule_stop_fixed
 import app.onlyshots.core.resources.home_rule_stop_manual
 import app.onlyshots.core.resources.home_rule_stop_settles
@@ -291,20 +289,18 @@ private fun machineReadings(live: Sample?): List<TakeReading> {
 }
 
 /**
- * The line under the format picker. Where the screen stands the other way from the format (an iPhone Duo's inner
- * display, which ignores the orientation lock), what to do about it, as a warning; otherwise how each shape is held.
+ * "Start with the shot" and what it keeps, for the rule's switch. A scale knows no pump: its shot starts with the first
+ * drops landing.
  */
-fun formatHint(format: VideoFormat, wrongWay: Boolean): Pair<UiText, Boolean> =
-    when {
-        wrongWay && format.landscape -> Res.string.home_format_landscape_wrong_way.text() to true
-        wrongWay -> Res.string.home_format_portrait_wrong_way.text(format.label) to true
-        else -> Res.string.home_format_hint.text() to false
+fun startRuleDetail(settings: RecordingSettings, kind: SourceKind?): UiText {
+    val scale = kind == SourceKind.SCALE
+    return when {
+        settings.preRollSeconds == 0 && scale -> Res.string.home_rule_start_now_scale.text()
+        settings.preRollSeconds == 0 -> Res.string.home_rule_start_now.text()
+        scale -> Res.string.home_rule_start_pre_roll_scale.text(settings.preRollSeconds.toString())
+        else -> Res.string.home_rule_start_pre_roll.text(settings.preRollSeconds.toString())
     }
-
-/** "Start with the shot" and what it keeps, for the rule's switch. */
-fun startRuleDetail(settings: RecordingSettings): UiText =
-    if (settings.preRollSeconds == 0) Res.string.home_rule_start_now.text()
-    else Res.string.home_rule_start_pre_roll.text(settings.preRollSeconds.toString())
+}
 
 /** "Stop after the shot" and when, for the rule's switch. */
 fun stopRuleDetail(settings: RecordingSettings, kind: SourceKind?): UiText =

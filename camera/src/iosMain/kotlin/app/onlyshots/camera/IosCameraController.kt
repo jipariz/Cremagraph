@@ -210,8 +210,20 @@ class IosCameraController(
                 (camera.minAvailableVideoZoomFactor / lensScale).toFloat(),
                 (camera.maxAvailableVideoZoomFactor / lensScale).toFloat(),
             )
+        // A virtual camera switches lens at these factors: each one is where a longer lens takes over.
+        val switches =
+            camera.virtualDeviceSwitchOverVideoZoomFactors
+                .mapNotNull { (it as? Number)?.toFloat() }
+                .map { it / lensScale.toFloat() }
+        val lenses = lensStops(listOf(range.start) + switches, range.start, range.endInclusive)
         _state.update {
-            it.copy(previewReady = true, minZoom = range.start, maxZoom = range.endInclusive, error = null)
+            it.copy(
+                previewReady = true,
+                minZoom = range.start,
+                maxZoom = range.endInclusive,
+                lenses = lenses,
+                error = null,
+            )
         }
     }
 

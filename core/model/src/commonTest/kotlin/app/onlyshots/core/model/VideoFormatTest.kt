@@ -88,10 +88,14 @@ class VideoFormatTest {
     }
 
     @Test
-    fun recordingSettingsRefitTheGraphWithTheFormat() {
-        val s = RecordingSettings().withFormat(VideoFormat.LANDSCAPE_16_9)
-        assertEquals(VideoFormat.LANDSCAPE_16_9, s.format)
-        assertEquals(NormRect.Default.refit(VideoFormat.PORTRAIT_9_16, VideoFormat.LANDSCAPE_16_9), s.overlay.rect)
+    fun aGraphIsKeptInsideWhatTheScreenShowsOfTheFrame() {
+        val shown = NormRect(0.1f, 0f, 0.8f, 1f)
+        val moved = NormRect.Default.within(shown)
+        assertEquals(NormRect(0.1f, NormRect.Default.y, 0.8f, NormRect.Default.h), moved, "narrowed to what shows")
+        assertTrue(moved.inside(shown))
+        val small = NormRect(0f, 0.5f, 0.3f, 0.1f).within(shown)
+        assertEquals(NormRect(0.1f, 0.5f, 0.3f, 0.1f), small, "moved in, its size kept")
+        assertEquals(small, small.within(shown))
     }
 
     @Test

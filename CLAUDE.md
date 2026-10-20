@@ -121,13 +121,14 @@ another with those alone: new style field needs edit + control, or test fail.
   gives Haze (`toHazeStyle`); exporters give Haze's vendored shader (`overlay/.../glass/`, SkSL for Skia, GLSL for
   Android). Change both sides together.
 
-**Formats.** `VideoFormat` (9:16, 4:5, 1:1, 16:9; `VideoItem.format`, `RecordingSettings.format`). Output size
+**Formats.** `VideoFormat` (9:16, 4:5, 1:1, 16:9; `VideoItem.format`). Output size
 `Quality.size(format)` (1080 or 2160 short side). Overlay unit `u = min(w, h) / 390`. `NormRect`, `Reframe` =
 fractions of output frame. Default rect, min size, snap targets per format (`NormRect.default/minW/minH/refit`,
 `OverlaySnap.snap(…, format)`). `sourcePoint` maps output point to source (cover crop, then reframe), as every
-exporter and `VideoSurface` draws. Phones film 9:16 for 9:16/4:5/1:1 (cropped, rest dimmed), true landscape for 16:9.
-Record screen holds screen the format's way (`LockOrientation`; iOS via app delegate). `CameraController.setFormat`
-turns iOS writer. Lock no hold (iPhone Duo inner display)? `heldWrongWay` keeps camera disarmed until turned.
+exporter and `VideoSurface` draws. Recording picks no format: camera films whole frame the way screen stands
+(`formatThatFits` → `RecordViewModel.captureFormat`, 9:16 or 16:9; turned while armed = re-arm), saved as video's
+format; editor crops. Screen held only while take runs (`LockOrientation`; iOS via app delegate).
+`CameraController.setFormat` turns iOS writer. Saved record graph rect kept in 9:16 frame, refit to capture frame.
 
 **Export** per platform in `:video`:
 
@@ -173,8 +174,10 @@ browser `File` on web.
 foldable iPhone fold from `IosHinge`, fed by Swift `FoldWatchingController` (Kotlin UIKit bindings lack iOS 27.1 hinge
 API). Every adaptive branch goes through it (`LocalWindowLayout`). No ad hoc size checks.
 
-- **`Wide`:** `WidePanes`. On fold (`WindowLayout.fold`): two pages meeting at fold. Else `SupportingPaneScaffold`,
-  picture beside 380 dp panel, where phone's bottom sheets go.
+- **`Wide`:** `WidePanes`. On fold (`WindowLayout.fold`): two pages meeting at fold. Else picture beside panel or
+  above it, whichever gives picture more room (`placePanel`), where phone's bottom sheets go.
+- **Record screen:** no panes. `Phone` and `Wide` = camera fills window, `FloatingControls` over it, settings and
+  graph pages in bottom sheets. Graph kept where screen shows it (`OverlayEditLayer(bounds)`).
 - **Foldables:** follow "OnlyShots Foldables" canvas. Previews in `screenshots/.../FoldablePreviews.kt` hand posture
   directly. `TwoPane` only for tabletop (`Stacked`). Remaining bottom sheets capped 640 dp.
 

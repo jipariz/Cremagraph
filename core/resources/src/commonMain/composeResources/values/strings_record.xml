@@ -5,6 +5,8 @@
     <string name="record_status_no_camera">no camera · allow it to record</string>
     <string name="record_status_pre_roll">pre-roll · waiting for the first drop</string>
     <string name="record_status_brewing">brewing · %1$s s</string>
+    <string name="record_status_recording">recording · %1$s</string>
+    <string name="record_status_waiting">recording · %1$s · waiting for the shot</string>
     <string name="record_status_shot_ended">shot ended · %1$s</string>
     <string name="record_status_armed">armed · starts when %1$s</string>
     <string name="record_status_manual">auto-start off · tap record</string>
@@ -44,12 +46,9 @@
     <!-- Readings and the take -->
     <string name="record_with_sound">with sound</string>
     <string name="record_no_sound">no sound</string>
-    <string name="record_paused">paused</string>
     <string name="record_armed">armed</string>
     <string name="record_ready">ready</string>
     <string name="record_simulate_shot">simulate shot</string>
-    <string name="record_graph_settings">graph style, data and text</string>
-    <string name="record_title">record</string>
     <string name="record_style">style</string>
     <string name="record_data">data</string>
     <string name="record_allow_camera">allow camera</string>
@@ -59,38 +58,16 @@
     <string name="record_settings">recording settings</string>
     <string name="record_save_failed">that recording could not be saved</string>
 
-    <!-- Held the wrong way -->
-    <string name="record_turn_sideways_title">Turn it on its side</string>
-    <string name="record_turn_upright_title">Stand the phone upright</string>
-    <string name="record_turn_sideways_body">%1$s needs the screen on its side. Turn it a quarter turn. Until then the camera waits and the shot won’t start a take.</string>
-    <string name="record_turn_upright_body">%1$s needs the screen standing tall. Close it, or turn it a quarter turn. Until then the camera waits and the shot won’t start a take.</string>
-    <string name="record_turn_sideways_hint">turn sideways to film %1$s</string>
-    <string name="record_turn_upright_hint">turn upright to film %1$s</string>
-    <string name="record_camera_paused">camera paused</string>
-    <string name="record_the_way_it_stands">Or record the way it stands</string>
-    <string name="record_fits_screen">fits this screen as it stands · %1$s</string>
-    <string name="record_switch_to">switch to %1$s</string>
-    <string name="record_needs_side">needs it on its side</string>
-    <string name="record_needs_upright">needs it upright</string>
-    <string name="record_chosen">chosen · %1$s</string>
-    <string name="record_button_returns">The record button comes back as soon as the screen and the format agree.</string>
-    <string name="record_switched_format">On its side, 16:9 fills the camera · switched from %1$s for this take</string>
-    <string name="record_keep_format">keep %1$s</string>
 
     <!-- Zoom -->
-    <string name="record_zoom">zoom</string>
-    <string name="record_zoom_open">zoom %1$s, tap for 1×</string>
-    <string name="record_zoom_closed">zoom %1$s, tap to change</string>
+    <string name="record_zoom_lens">zoom to %1$s</string>
 
     <!-- Recording settings -->
     <string name="record_settings_title">recording</string>
-    <string name="record_format">format</string>
-    <string name="record_format_hint_landscape">16:9 is filmed with the phone turned sideways</string>
-    <string name="record_format_hint_portrait">filmed portrait; 4:5 and 1:1 keep the middle, and the editor can move the crop</string>
     <string name="record_auto_start">start with the shot</string>
     <string name="record_auto_start_hint">starts when %1$s</string>
     <string name="record_pre_roll">pre-roll</string>
-    <string name="record_pre_roll_hint_scale">seconds of picture kept from before the first drops, which land a few seconds after the pump starts: 6–8 s catches it</string>
+    <string name="record_pre_roll_hint_scale">seconds of picture kept from before the first drops land: 6–8 s also shows the shot getting going</string>
     <string name="record_pre_roll_hint">seconds of picture kept from before the shot started</string>
     <string name="record_seconds">%1$s s</string>
     <string name="record_stops_header">stops</string>

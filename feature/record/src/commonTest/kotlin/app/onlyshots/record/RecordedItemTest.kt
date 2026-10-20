@@ -56,6 +56,32 @@ class RecordedItemTest {
     }
 
     @Test
+    fun aTakeStartedByHandLinesTheGraphUpWithTheShotThatCameAfter() {
+        // Pressed 10.4 s into the file (the session counted 3 s of pre-roll there); the shot began 6 s later.
+        val recording = Recording("f", durationUs = 50_000_000, hasAudio = true, triggerVideoUs = 10_400_000)
+        val v =
+            recordedVideoItem(
+                id = "v",
+                file = "v.mp4",
+                createdAt = Instant.fromEpochSeconds(100),
+                recording = recording,
+                finished =
+                    FinishedRecording(
+                        shot,
+                        recording.durationUs,
+                        shotStartInVideoUs = 9_000_000,
+                        stopReason = null,
+                        takeStartInVideoUs = 3_000_000,
+                    ),
+                preRollSeconds = 3,
+                overlay = OverlaySettings(),
+            )
+        assertEquals(16_400_000, v.shotStartInVideoUs, "the shot, not the press")
+        assertEquals(7_400_000, v.trimInUs, "the pre-roll before the press")
+        assertTrue(v.syncLocked)
+    }
+
+    @Test
     fun aManualRecordingWithoutAShotIsNotLocked() {
         val v = item(Recording("f", durationUs = 12_000_000, hasAudio = false, triggerVideoUs = null), shot = null)
         assertEquals(0, v.trimInUs)

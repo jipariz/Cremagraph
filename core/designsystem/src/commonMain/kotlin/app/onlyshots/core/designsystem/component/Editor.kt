@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -288,9 +289,9 @@ fun ExportOverlay(
 fun RulesStrip(start: String, startDetail: String?, stop: String, modifier: Modifier = Modifier) {
     StripFrame(modifier) {
         Box(Modifier.weight(1f)) {
-            RuleLine("▶", CgColors.Text.Secondary, start + startDetail?.let { " · $it" }.orEmpty())
+            RuleLine(CgIcons.Play, CgColors.Text.Secondary, start + startDetail?.let { " · $it" }.orEmpty())
         }
-        RuleLine("■", CgColors.Text.Secondary, stop)
+        RuleLine(CgIcons.Stop, CgColors.Text.Secondary, stop)
     }
 }
 
@@ -353,9 +354,9 @@ fun IconCircleButton(
 }
 
 @Composable
-private fun RuleLine(glyph: String, color: Color, text: String) {
+private fun RuleLine(icon: ImageVector, color: Color, text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S6), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(RULE_GLYPH), Alignment.Center) { Text(glyph, style = CgTheme.type.caption, color = color) }
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(RULE_GLYPH))
         Text(
             text,
             style = CgTheme.type.label,

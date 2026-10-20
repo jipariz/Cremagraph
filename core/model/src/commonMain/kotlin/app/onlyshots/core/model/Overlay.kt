@@ -62,6 +62,26 @@ data class NormRect(val x: Float, val y: Float, val w: Float, val h: Float) {
         return NormRect(cx - nw / 2f, cy - nh / 2f, nw, nh).clamped(to)
     }
 
+    /**
+     * The same rect kept inside [bounds] (a part of the frame, such as what a screen shows of it): moved in, and made
+     * smaller only where it is larger than they are.
+     */
+    fun within(bounds: NormRect): NormRect {
+        val nw = w.coerceAtMost(bounds.w)
+        val nh = h.coerceAtMost(bounds.h)
+        // The upper limit never under the lower one: a rect as wide as the bounds rounds either way.
+        val nx = x.coerceIn(bounds.x, maxOf(bounds.x, bounds.right - nw))
+        val ny = y.coerceIn(bounds.y, maxOf(bounds.y, bounds.bottom - nh))
+        return NormRect(nx, ny, nw, nh)
+    }
+
+    /** Whether this rect lies inside [bounds], give or take [slack]. */
+    fun inside(bounds: NormRect, slack: Float = 0f): Boolean =
+        x >= bounds.x - slack &&
+            y >= bounds.y - slack &&
+            right <= bounds.right + slack &&
+            bottom <= bounds.bottom + slack
+
     companion object {
         const val REF_W = 390f
         const val REF_H = REF_W * 16f / 9f

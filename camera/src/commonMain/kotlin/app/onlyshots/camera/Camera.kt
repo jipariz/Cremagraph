@@ -8,6 +8,11 @@ data class CameraState(
     val zoom: Float = 1f,
     val minZoom: Float = 1f,
     val maxZoom: Float = 1f,
+    /**
+     * The rear lenses as zoom stops, the way the camera app offers them: 0.5 or 0.6 for an ultra-wide, 1 for the main
+     * lens, 2, 3, 5 for telephotos. Always holds 1; zoom between them is a pinch.
+     */
+    val lenses: List<Float> = listOf(1f),
     val focusLocked: Boolean = false,
     val micOn: Boolean = false,
     val supports4k: Boolean = false,
@@ -41,6 +46,27 @@ const val MAX_ZOOM = 10f
 fun zoomRange(minRatio: Float, maxRatio: Float): ClosedFloatingPointRange<Float> {
     val min = minRatio.coerceAtLeast(0.1f)
     return min..maxRatio.coerceIn(min, maxOf(min, MAX_ZOOM))
+}
+
+/**
+ * The zoom stops for lenses at [zooms] (relative to the main lens), within [min]..[max]: an ultra-wide is the camera's
+ * least zoom, a telephoto its ratio rounded as the camera apps print it (2.9 is 3), lenses closer than a tenth apart
+ * are one, and the main lens is always there.
+ */
+fun lensStops(zooms: List<Float>, min: Float, max: Float): List<Float> {
+    val stops = mutableListOf<Float>()
+    for (z in (zooms + 1f).map { if (it < 1f) min else rounded(it) }.sorted()) {
+        if (z < min - 0.01f || z > max + 0.01f) continue
+        if (stops.lastOrNull()?.let { z - it < 0.1f } == true) continue
+        stops += z
+    }
+    return stops.ifEmpty { listOf(1f) }
+}
+
+/** One decimal, or the whole number when it is within a tenth of one. */
+private fun rounded(z: Float): Float {
+    val whole = kotlin.math.round(z)
+    return if (kotlin.math.abs(z - whole) < 0.1f) whole else kotlin.math.round(z * 10f) / 10f
 }
 
 /**

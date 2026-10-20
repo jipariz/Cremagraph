@@ -94,9 +94,12 @@ fun chartWindowUs(shot: Shot, tUs: Long): Long {
     return maxOf(OverlayMetrics.MIN_WINDOW_US, shown + OverlayMetrics.WINDOW_HEADROOM_US)
 }
 
-/** Selected curve series that the shot actually has data for, in legend order. */
+/**
+ * Selected curve series that the shot actually has data for, in legend order. Before its first sample (the record
+ * screen, waiting for the shot) every selected one, so the readings wait at "–" rather than appearing as data arrives.
+ */
 fun visibleSeries(shot: Shot, selected: Set<Series>): List<Series> = LegendSeries.filter { s ->
-    s in selected && shot.samples.any { it.value(s) != null }
+    s in selected && (shot.samples.isEmpty() || shot.samples.any { it.value(s) != null })
 }
 
 /** Temperature axis: min and max of the shot (targets included) ± 2.5 °C. */

@@ -4,8 +4,17 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraCharacteristics
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+import androidx.camera.core.CameraInfo
+import kotlin.math.hypot
+import androidx.camera.lifecycle.ProcessCameraProvider
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import android.os.StatFs
 import android.os.SystemClock
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.DynamicRange
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.SurfaceOrientedMeteringPointFactory
@@ -37,6 +46,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import androidx.camera.video.Quality as CxQuality
 import androidx.camera.video.Recording as CxRecording
@@ -78,6 +88,10 @@ class AndroidCameraController(
         )
     }
 
+    init {
+        RecorderCrashGuard.install(this)
+    }
+
     private val _state = MutableStateFlow(CameraState())
     override val state: StateFlow<CameraState> = _state.asStateFlow()
 
@@ -94,6 +108,7 @@ class AndroidCameraController(
     private var arming = false
     private var fourK = false
     private var triggerVideoUs: Long? = null
+    private var preRollSeconds = 0
     private var preRollUs = 0L
 
     /** The file before the current one and its finished duration, kept for a shot that starts just after a restart. */
@@ -113,13 +128,105 @@ class AndroidCameraController(
     fun bind(owner: LifecycleOwner) {
         cameraController.bindToLifecycle(owner)
         bound.complete(Unit)
-        val zoom = cameraController.zoomState.value
+        readCamera()
+        // The zoom and the lenses are known once CameraX has opened the camera, which can be after the first bind.
+        scope.launch {
+            cameraController.initializationFuture.await()
+            if (lens.cameraId == null) findLenses()
+            readCamera()
+        }
+    }
+
+    /**
+     * A rear lens as a zoom stop. [cameraId] is a camera of its own to switch to (a phone that shows its ultra-wide to
+     * apps as a camera beside the main one), or null for a zoom of the default camera (a logical camera that switches
+     * lens by itself).
+     */
+    private data class Lens(val stop: Float, val cameraId: String?)
+
+    private var lenses = listOf(Lens(1f, null))
+
+    /** The lens in use. */
+    private var lens = lenses.first()
+
+    /**
+     * The lenses as the camera app offers them, from 35 mm-equivalent focal lengths against the main lens: the stops
+     * the default camera zooms to itself, then the back cameras of their own that reach a stop it cannot.
+     */
+    @OptIn(ExperimentalCamera2Interop::class)
+    private suspend fun findLenses() {
+        val main = cameraController.cameraInfo ?: return
+        val zoom = cameraController.zoomState.value ?: return
+        val range = zoomRange(zoom.minZoomRatio, zoom.maxZoomRatio)
+        val mainFocal = equivalentFocal(main) ?: return
+        val mainId = cameraId(main)
+        // The least zoom stands for an ultra-wide behind the default camera: stops under 1 become its minimum.
+        val own =
+            listOf(0f) +
+                runCatching { main.physicalCameraInfos }
+                    .getOrDefault(emptySet())
+                    .mapNotNull { info -> equivalentFocal(info)?.let { it / mainFocal } }
+        val found = lensStops(own, range.start, range.endInclusive).map { Lens(it, null) }.toMutableList()
+        val provider = runCatching { ProcessCameraProvider.getInstance(context).awaitValue() }.getOrNull()
+        val others =
+            provider
+                ?.availableCameraInfos
+                .orEmpty()
+                .filter { it.lensFacing == CameraSelector.LENS_FACING_BACK && cameraId(it) != mainId }
+        for (info in others) {
+            val id = cameraId(info) ?: continue
+            val ratio = equivalentFocal(info)?.div(mainFocal) ?: continue
+            val stop = (ratio * 10f).roundToInt() / 10f
+            // A second main lens (the same sensor again, as a logical camera's twin) is no other lens.
+            if (found.none { abs(it.stop - stop) < 0.1f }) found += Lens(stop, id)
+        }
+        lenses = found.sortedBy { it.stop }
+        lens = lenses.firstOrNull { it.cameraId == null && abs(it.stop - 1f) < 0.01f } ?: Lens(1f, null)
+    }
+
+    @OptIn(ExperimentalCamera2Interop::class)
+    private fun cameraId(info: CameraInfo): String? = runCatching { Camera2CameraInfo.from(info).cameraId }.getOrNull()
+
+    @OptIn(ExperimentalCamera2Interop::class)
+    private fun equivalentFocal(info: CameraInfo): Float? =
+        runCatching {
+                val c = Camera2CameraInfo.from(info)
+                val focal = c.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)?.minOrNull()
+                val sensor = c.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
+                if (focal == null || sensor == null) null
+                else focal * FULL_FRAME_DIAGONAL_MM / hypot(sensor.width, sensor.height)
+            }
+            .getOrNull()
+
+    /** The zoom the app counts against the camera's own: a camera of its own starts at its lens's stop. */
+    private val base: Float
+        get() = if (lens.cameraId != null) lens.stop else 1f
+
+    /**
+     * How far a pinch goes on the lens in use: what its camera zooms, short of the stops another camera is for (those
+     * are a tap on the lens, which switches).
+     */
+    private fun pinchRange(): ClosedFloatingPointRange<Float> {
+        val zoom = cameraController.zoomState.value ?: return lens.stop..lens.stop
+        val own = zoomRange(zoom.minZoomRatio, zoom.maxZoomRatio)
+        var lo = own.start * base
+        var hi = own.endInclusive * base
+        for (other in lenses.filter { it.cameraId != lens.cameraId }) {
+            if (other.stop < base) lo = maxOf(lo, other.stop + SWITCH_MARGIN)
+            else hi = minOf(hi, other.stop - SWITCH_MARGIN)
+        }
+        return lo..maxOf(lo, hi)
+    }
+
+    private fun readCamera() {
         val camera = cameraController.cameraInfo
+        val range = pinchRange()
         _state.update {
             it.copy(
                 previewReady = true,
-                minZoom = zoom?.let { z -> zoomRange(z.minZoomRatio, z.maxZoomRatio).start } ?: it.minZoom,
-                maxZoom = zoom?.let { z -> zoomRange(z.minZoomRatio, z.maxZoomRatio).endInclusive } ?: it.maxZoom,
+                minZoom = range.start,
+                maxZoom = range.endInclusive,
+                lenses = lenses.map { l -> l.stop },
                 supports4k = camera != null &&
                     Recorder.getVideoCapabilities(camera).isQualitySupported(CxQuality.UHD, DynamicRange.SDR),
             )
@@ -136,11 +243,44 @@ class AndroidCameraController(
     }
 
     override fun setZoom(zoom: Float) {
-        val s = _state.value
-        val ratio = zoom.coerceIn(s.minZoom, s.maxZoom)
-        cameraController.setZoomRatio(ratio)
-        _state.update { it.copy(zoom = ratio) }
+        val range = pinchRange()
+        // A stop on another camera (a tap on its lens, a pinch out to it) switches to that camera.
+        val other = lenses.firstOrNull { it.cameraId != lens.cameraId && abs(it.stop - zoom) < SWITCH_MARGIN }
+        if (zoom !in range && other != null) return switchTo(other, zoom)
+        val z = zoom.coerceIn(range)
+        cameraController.setZoomRatio(z / base)
+        _state.update { it.copy(zoom = z) }
     }
+
+    /**
+     * Another lens with a camera of its own: CameraX rebinds to it, so the pre-roll filmed with the other one is let go
+     * and starts again. Never under a recording: the lenses are hidden then.
+     */
+    private fun switchTo(target: Lens, zoom: Float) {
+        val rearm = armed
+        // The file being written is let go first, and the camera switched once it is closed: CameraX's recorder still
+        // stopping would leave the new camera's session waiting for a surface it never gets.
+        val closing = finalized
+        if (rearm) disarm()
+        lens = Lens(if (target.cameraId == null) 1f else target.stop, target.cameraId)
+        _state.update { it.copy(zoom = zoom) }
+        switching?.cancel()
+        switching = scope.launch {
+            closing?.let { withTimeoutOrNull(CLOSE_TIMEOUT_MS) { it.await() } }
+            val id = target.cameraId
+            cameraController.cameraSelector =
+                if (id == null) CameraSelector.DEFAULT_BACK_CAMERA
+                else CameraSelector.Builder().addCameraFilter { all -> all.filter { cameraId(it) == id } }.build()
+            // The new camera's zoom is known once it is bound.
+            delay(SWITCH_SETTLE_MS)
+            readCamera()
+            setZoom(zoom)
+            if (rearm) arm(preRollSeconds)
+        }
+    }
+
+    private var switching: Job? = null
+
 
     /** The preview on screen, whose crop maps a tap to the sensor; set by [CameraPreview]. */
     internal var previewView: PreviewView? = null
@@ -203,7 +343,15 @@ class AndroidCameraController(
         } finally {
             arming = false
         }
+        // Without a rear camera (an emulator, some Chromebooks) CameraX opens nothing and refuses to record with a
+        // crash: say so, as iOS does, and stay disarmed.
+        // With no camera at all CameraX never initializes, and even asking throws.
+        if (runCatching { cameraController.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) }.getOrDefault(false).not()) {
+            _state.update { it.copy(error = CameraError.NoRearCamera) }
+            return
+        }
         armed = true
+        this.preRollSeconds = preRollSeconds
         preRollUs = preRollSeconds * 1_000_000L
         startFile()
         rotateJob = scope.launch {
@@ -357,6 +505,31 @@ class AndroidCameraController(
         startFile()
     }
 
+    /**
+     * CameraX's recorder failed inside itself ([RecorderCrashGuard]) and is stuck mid-reset, refusing every recording
+     * after. The file being written is given up: a take under way ends with what reached the disk (its save may fail,
+     * and says so), and an armed camera arms again on a new recorder.
+     */
+    internal fun recoverFromRecorderFailure() {
+        val wasArmed = armed
+        val inTake = triggerVideoUs != null
+        recording?.stop()
+        recording = null
+        // Nothing will finalize these now: a stop() waiting on the take goes on with what it has.
+        finalized?.complete(statusUs)
+        previousDone?.complete(0)
+        _state.update { it.copy(error = CameraError.RecordingFailed(null)) }
+        // Setting the quality again builds a new VideoCapture, and with it a new recorder.
+        cameraController.videoCaptureQualitySelector = cameraController.videoCaptureQualitySelector
+        if (wasArmed && !inTake) {
+            disarm()
+            scope.launch {
+                delay(RECOVER_MS)
+                arm(preRollSeconds)
+            }
+        }
+    }
+
     private fun restartFile() {
         recording?.stop()
         recording = null
@@ -366,6 +539,12 @@ class AndroidCameraController(
         previousDone = finalized
         startFile()
     }
+
+    private suspend fun <T> com.google.common.util.concurrent.ListenableFuture<T>.awaitValue(): T =
+        suspendCancellableCoroutine { cont ->
+            addListener({ cont.resume(get()) }, executor)
+            cont.invokeOnCancellation { cancel(false) }
+        }
 
     private suspend fun com.google.common.util.concurrent.ListenableFuture<Void>.await() =
         suspendCancellableCoroutine { cont ->
@@ -379,5 +558,20 @@ class AndroidCameraController(
     private companion object {
         /** The stop rule uses the same threshold; refuse to arm below it. */
         const val LOW_STORAGE_BYTES = 200L * 1024 * 1024
+
+        /** A 35 mm frame's diagonal, for focal lengths every sensor can be compared by. */
+        const val FULL_FRAME_DIAGONAL_MM = 43.27f
+
+        /** How near a zoom has to come to a lens on another camera to switch to it. */
+        const val SWITCH_MARGIN = 0.05f
+
+        /** How long a lens switch waits for the file being let go to close. */
+        const val CLOSE_TIMEOUT_MS = 2_000L
+
+        /** How long another lens's camera gets to bind before its zoom is set and it records. */
+        const val SWITCH_SETTLE_MS = 400L
+
+        /** How long the new recorder gets to bind before it records. */
+        const val RECOVER_MS = 1_000L
     }
 }

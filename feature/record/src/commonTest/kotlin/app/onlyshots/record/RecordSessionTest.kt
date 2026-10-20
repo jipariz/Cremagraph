@@ -6,7 +6,6 @@ import app.onlyshots.core.model.SourceKind
 import app.onlyshots.core.model.StopReason
 import app.onlyshots.core.model.StopRule
 import app.onlyshots.core.model.VideoFormat
-import app.onlyshots.core.model.heldWrongWay
 import app.onlyshots.core.model.sample.SampleShots
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.UiText
@@ -20,8 +19,9 @@ import app.onlyshots.core.resources.record_status_brewing
 import app.onlyshots.core.resources.record_status_busy
 import app.onlyshots.core.resources.record_status_no_camera
 import app.onlyshots.core.resources.record_status_no_machine
-import app.onlyshots.core.resources.record_status_pre_roll
+import app.onlyshots.core.resources.record_status_recording
 import app.onlyshots.core.resources.record_status_shot_ended
+import app.onlyshots.core.resources.record_status_waiting
 import app.onlyshots.core.resources.record_stop_tail
 import app.onlyshots.core.resources.record_trigger_gaggiuino
 import app.onlyshots.core.resources.text
@@ -91,24 +91,6 @@ class RecordSessionTest {
     }
 
     @Test
-    fun heldTheWrongWayNothingStartsUntilItIsTurned() = runTest {
-        val source = FakeShotSource()
-        val s = session(source)
-        s.heldWrongWay = true
-        runCurrent()
-        s.recordPressed()
-        assertEquals(RecordPhase.ARMED, s.state.value.phase, "not by hand")
-        launch { source.pull() }
-        advanceTimeBy(1_000)
-        runCurrent()
-        assertEquals(RecordPhase.ARMED, s.state.value.phase, "nor by the machine")
-        s.heldWrongWay = false
-        s.recordPressed()
-        assertEquals(RecordPhase.RECORDING, s.state.value.phase)
-        backgroundScope.coroutineContext.cancelChildren()
-    }
-
-    @Test
     fun withoutTheCameraNothingStartsUntilItIsAllowed() = runTest {
         val source = FakeShotSource()
         val s = session(source)
@@ -127,29 +109,6 @@ class RecordSessionTest {
         s.recordPressed()
         assertEquals(RecordPhase.RECORDING, s.state.value.phase)
         backgroundScope.coroutineContext.cancelChildren()
-    }
-
-    @Test
-    fun theScreenStandsTheFormatsWayOrNot() {
-        assertFalse(heldWrongWay(1080, 2340, VideoFormat.PORTRAIT_9_16))
-        assertTrue(heldWrongWay(1080, 2340, VideoFormat.LANDSCAPE_16_9), "a 16:9 video on an upright screen")
-        assertTrue(heldWrongWay(2853, 2007, VideoFormat.SQUARE_1_1), "a foldable's inner display held sideways")
-        assertFalse(heldWrongWay(0, 0, VideoFormat.LANDSCAPE_16_9), "a window not measured yet")
-    }
-
-    @Test
-    fun onItsSideATallFormatRecordsWideForTheTake() {
-        assertEquals(
-            VideoFormat.LANDSCAPE_16_9,
-            takeFormatFor(onItsSide = true, VideoFormat.PORTRAIT_9_16, keepTall = false),
-        )
-        assertEquals(null, takeFormatFor(onItsSide = true, VideoFormat.PORTRAIT_9_16, keepTall = true), "keep 9:16")
-        assertEquals(null, takeFormatFor(onItsSide = false, VideoFormat.PORTRAIT_9_16, keepTall = false))
-        assertEquals(
-            null,
-            takeFormatFor(onItsSide = true, VideoFormat.LANDSCAPE_16_9, keepTall = false),
-            "wide already",
-        )
     }
 
     @Test
@@ -189,7 +148,7 @@ class RecordSessionTest {
         s.recordPressed()
         advanceTimeBy(2_050)
         runCurrent()
-        assertEquals(Res.string.record_status_pre_roll.text(), s.state.value.status)
+        assertEquals(Res.string.record_status_waiting.text("0:02"), s.state.value.status, "the take's time, by hand")
         s.recordPressed()
         val finished = assertNotNull(s.state.value.finished)
         assertNull(finished.shot)
@@ -197,6 +156,37 @@ class RecordSessionTest {
         assertEquals(2_050_000L, finished.durationUs)
         s.recordPressed() // record another
         assertEquals(RecordPhase.MANUAL, s.state.value.phase)
+    }
+
+    @Test
+    fun aTakeStartedByHandKnowsHowLongAfterItTheShotBegan() = runTest {
+        val source = FakeShotSource()
+        val s = session(source, RecordingSettings(autoStart = false, stopRule = StopRule.Manual))
+        runCurrent()
+        s.recordPressed()
+        advanceTimeBy(4_000)
+        launch { source.pull() }
+        advanceTimeBy(2_000)
+        runCurrent()
+        s.recordPressed()
+        val finished = assertNotNull(s.state.value.finished)
+        assertNotNull(finished.shot)
+        assertEquals(4_000_000L, assertNotNull(finished.shotStartInVideoUs) - finished.takeStartInVideoUs)
+        backgroundScope.coroutineContext.cancelChildren()
+    }
+
+    @Test
+    fun withoutAMachineTheTakeCountsItsOwnTime() = runTest {
+        val source = FakeShotSource()
+        source.setConnection(ConnectionState.Unreachable("no machine set up"))
+        val s = session(source)
+        runCurrent()
+        s.recordPressed()
+        advanceTimeBy(12_050)
+        runCurrent()
+        assertEquals(Res.string.record_status_recording.text("0:12"), s.state.value.status)
+        s.recordPressed()
+        backgroundScope.coroutineContext.cancelChildren()
     }
 
     @Test

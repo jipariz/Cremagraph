@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -49,6 +51,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.StyleEditorRoute
@@ -120,6 +123,11 @@ import app.onlyshots.label
 import app.onlyshots.layout.LayoutKind
 import app.onlyshots.layout.LocalWindowLayout
 import app.onlyshots.layout.WidePanes
+import app.onlyshots.layout.animateSizeOn
+import app.onlyshots.layout.belowPanelHeightDp
+import app.onlyshots.layout.fitRatio
+import app.onlyshots.layout.placePanel
+import app.onlyshots.layout.sidePanelWidthDp
 import app.onlyshots.machineLabel
 import app.onlyshots.overlay.compose.ShotOverlay
 import app.onlyshots.overlayTitleText
@@ -445,80 +453,106 @@ fun EditBody(
     if (layout.kind == LayoutKind.Wide && video != null) {
         // As the web editor's desk: the picture with its timeline, and everything else in a panel beside it.
         Box(Modifier.fillMaxSize().background(CgColors.Surface.Base).then(keys)) {
-            WidePanes(
-                layout,
-                Modifier.fillMaxSize().safeDrawingPadding(),
-                main = {
-                    Column(Modifier.fillMaxSize()) {
-                        WideTopBar(ui = ui, onBack = leave, actions = actions)
-                        ui.message?.let {
-                            Banner(
-                                it.text(),
-                                BannerKind.Warning,
-                                action = stringResource(Res.string.edit_ok),
-                                onAction = actions::clearMessage,
+            BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+                // The panel beside the picture, or under it across the window where that leaves the video more room (a
+                // wide
+                // or square video on an upright tablet); picking another format moves it there animated.
+                val placement =
+                    placePanel(
+                        maxWidth.value,
+                        maxHeight.value,
+                        video.format.ratio,
+                        chromeDp = WIDE_CHROME_DP,
+                        belowPanelDp = BELOW_PANEL_DP,
+                    )
+                WidePanes(
+                    layout,
+                    placement = placement,
+                    belowHeight =
+                        belowPanelHeightDp(
+                                maxWidth.value,
+                                maxHeight.value,
+                                video.format.ratio,
+                                WIDE_CHROME_DP,
+                                BELOW_PANEL_DP,
                             )
+                            .dp,
+                    panelWidth = sidePanelWidthDp(maxWidth.value).dp,
+                    animateOn = video.format,
+                    main = {
+                        Column(Modifier.fillMaxSize()) {
+                            WideTopBar(ui = ui, onBack = leave, actions = actions)
+                            ui.message?.let {
+                                Banner(
+                                    it.text(),
+                                    BannerKind.Warning,
+                                    action = stringResource(Res.string.edit_ok),
+                                    onAction = actions::clearMessage,
+                                )
+                            }
+                            // The picture as large as the column's width allows, the timeline right under it, and what
+                            // height
+                            // is left over above and below the two rather than between them.
+                            Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Center) {
+                                Picture(
+                                    ui = ui,
+                                    video = video,
+                                    player = player,
+                                    actions = actions,
+                                    picture = picture,
+                                    selected = graphSelected,
+                                    onSelected = { graphSelected = it },
+                                    reframing = reframing,
+                                    formatStrip = false,
+                                    toolbar = false,
+                                    modifier = Modifier.weight(1f, fill = false),
+                                )
+                                TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions)
+                            }
                         }
-                        // The picture as large as the column's width allows, the timeline right under it, and what
-                        // height
-                        // is left over above and below the two rather than between them.
-                        Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Center) {
-                            Picture(
+                    },
+                    panel = {
+                        // The graph's settings while the graph is selected, else the video's: its shot, its frame and
+                        // the export. The graph's page stays where it was while something else (an export) borrows the
+                        // sheet.
+                        if (graphPanel) {
+                            val page = ui.sheet?.takeIf { it in PanelPages } ?: lastPage
+                            LaunchedEffect(page) { lastPage = page }
+                            EditPanel(
+                                page,
+                                title = stringResource(Res.string.edit_graph),
+                                onPage = actions::openSheet,
+                                onDone = { graphSelected = false },
+                                tools = {
+                                    Pill(
+                                        "◐ ${(video.overlay.opacity * 100).roundToInt()} %",
+                                        onClick = { actions.overlay { it.withOpacity(nextOpacity(it.opacity)) } },
+                                    )
+                                    Pill(
+                                        "↺",
+                                        onClick = {
+                                            actions.overlay { it.copy(rect = NormRect.default(video.format)) }
+                                        },
+                                    )
+                                },
+                                footer = exportBar,
+                            ) {
+                                sheetBody(page, video)
+                            }
+                        } else {
+                            VideoPanel(
                                 ui = ui,
                                 video = video,
-                                player = player,
                                 actions = actions,
-                                picture = picture,
-                                selected = graphSelected,
-                                onSelected = { graphSelected = it },
                                 reframing = reframing,
-                                formatStrip = false,
-                                toolbar = false,
-                                modifier = Modifier.weight(1f, fill = false),
+                                onReframing = setReframing,
+                                onPickShotFile = onPickShotFile,
+                                footer = exportBar,
                             )
-                            TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions)
                         }
-                    }
-                },
-                panel = {
-                    // The graph's settings while the graph is selected, else the video's: its shot, its frame and
-                    // the export. The graph's page stays where it was while something else (an export) borrows the
-                    // sheet.
-                    if (graphPanel) {
-                        val page = ui.sheet?.takeIf { it in PanelPages } ?: lastPage
-                        LaunchedEffect(page) { lastPage = page }
-                        EditPanel(
-                            page,
-                            title = stringResource(Res.string.edit_graph),
-                            onPage = actions::openSheet,
-                            onDone = { graphSelected = false },
-                            tools = {
-                                Pill(
-                                    "◐ ${(video.overlay.opacity * 100).roundToInt()} %",
-                                    onClick = { actions.overlay { it.withOpacity(nextOpacity(it.opacity)) } },
-                                )
-                                Pill(
-                                    "↺",
-                                    onClick = { actions.overlay { it.copy(rect = NormRect.default(video.format)) } },
-                                )
-                            },
-                            footer = exportBar,
-                        ) {
-                            sheetBody(page, video)
-                        }
-                    } else {
-                        VideoPanel(
-                            ui = ui,
-                            video = video,
-                            actions = actions,
-                            reframing = reframing,
-                            onReframing = setReframing,
-                            onPickShotFile = onPickShotFile,
-                            footer = exportBar,
-                        )
-                    }
-                },
-            )
+                    },
+                )
+            }
             if (overlay) {
                 val wording = LocalExportWording.current
                 val detail =
@@ -657,10 +691,16 @@ private fun Picture(
     // The video is Haze's source, so styles that blur what is behind the graph blur the video.
     val haze = rememberHazeState()
     val sheetOpen by rememberUpdatedState(ui.sheet != null)
-    Box(modifier.fillMaxWidth().background(CgColors.Surface.Scrim), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(
+        modifier.fillMaxWidth().background(CgColors.Surface.Scrim),
+        contentAlignment = Alignment.Center,
+    ) {
         // The video's own shape, as large as it fits: the width first (a wide format fills it), the height where the
-        // width would make it too tall (a tall format fills the height).
-        Box(Modifier.aspectRatio(video.format.ratio)) {
+        // width would make it too tall (a tall format fills the height). Another format picked grows or shrinks it
+        // animated; the window turned or resized moves it at once.
+        val (fitW, fitH) = fitRatio(maxWidth.value, maxHeight.value, video.format.ratio)
+        val frame = animateSizeOn(DpSize(fitW.dp, fitH.dp), animateOn = video.format)
+        Box(Modifier.size(frame.width, frame.height)) {
             val reframe by rememberUpdatedState(video.reframe)
             // Tap to play; tap again to put down whatever is open. While reframing, drag and pinch move the picture
             // instead. The reframed picture is drawn inside the haze source, so a blur behind the graph blurs what the
@@ -878,6 +918,12 @@ private fun Modifier.editorKeys(
 }
 
 /** The wide panel's pages while the graph is selected: its settings. The shot and export are the video panel's. */
+/** What always takes height on a wide window besides the picture: the top bar and the timeline band. */
+private const val WIDE_CHROME_DP = 236f
+
+/** The least the panel under the picture gets on an upright window: its pages scroll, the export stays pinned. */
+private const val BELOW_PANEL_DP = 360f
+
 private val PanelPages = listOf(EditSheet.STYLE, EditSheet.DATA, EditSheet.TEXT)
 
 /**
@@ -1150,15 +1196,14 @@ private fun EditPanel(
     footer: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    val pages = PanelPages
     Column(
         Modifier.fillMaxSize().padding(CgSpace.S16),
         verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
     ) {
         SegmentedControl(
-            pages.map { stringResource(it.label) },
-            pages.indexOf(page),
-            onSelect = { onPage(pages[it]) },
+            PanelPages.map { stringResource(it.label) },
+            PanelPages.indexOf(page),
+            onSelect = { onPage(PanelPages[it]) },
             fill = true,
             modifier = Modifier.fillMaxWidth(),
         )

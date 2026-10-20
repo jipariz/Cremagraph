@@ -8,7 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 
-/** Sensor portrait or sensor landscape: either way up, as the phone is held, but never the other shape. */
+/**
+ * Sensor portrait or sensor landscape: either way up, as the phone is held, but never the other shape. Android 16 and
+ * later ignore it on a large screen (a tablet, a foldable's inner display); the record screen keeps a take's shape
+ * there by not re-arming until the take ends.
+ */
 @Composable
 actual fun LockOrientation(landscape: Boolean) {
     val activity = LocalContext.current.findActivity() ?: return

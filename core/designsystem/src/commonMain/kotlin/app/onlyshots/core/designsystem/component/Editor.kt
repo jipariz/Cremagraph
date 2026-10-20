@@ -1,5 +1,19 @@
 package app.onlyshots.core.designsystem.component
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,6 +63,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -61,6 +76,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgRadius
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
@@ -238,40 +254,60 @@ fun ExportOverlay(
                             .clip(RoundedCornerShape(CgRadius.Chip)),
                 )
             }
-            if (done != null) {
-                Text("✓ $done", style = CgTheme.type.sheetTitle, color = CgColors.Status.Live)
-                Text(detail, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
-                Row(
-                    Modifier.fillMaxWidth().padding(top = CgSpace.S8),
-                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S8, Alignment.End),
-                ) {
-                    CgButton(
-                        stringResource(Res.string.core_export_keep_editing),
-                        onClick = onKeepEditing,
-                        kind = CgButtonKind.Secondary,
-                    )
-                    CgButton(next, onClick = onNext)
-                }
-            } else {
-                Text(stringResource(Res.string.core_export_making), style = CgTheme.type.sheetTitle)
-                ProgressLine(progress ?: 0f)
-                Row(Modifier.fillMaxWidth()) {
-                    Text(
-                        "${((progress ?: 0f) * 100).toInt()} %",
-                        style = CgTheme.type.label,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        left?.let { stringResource(Res.string.core_export_left, it) }
-                            ?: stringResource(Res.string.core_export_estimating),
-                        style = CgTheme.type.caption,
-                        color = CgColors.Text.Dim,
-                    )
-                }
-                Text(detail, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
-                Text(footer, style = CgTheme.type.caption, color = CgColors.Text.Dim)
-                Row(Modifier.fillMaxWidth().padding(top = CgSpace.S8), horizontalArrangement = Arrangement.End) {
-                    CgButton(stringResource(Res.string.core_cancel), onClick = onCancel, kind = CgButtonKind.Secondary)
+            // Making → made: the progress gives way to where the video went, and the card eases to its new height.
+            AnimatedContent(
+                done != null,
+                transitionSpec = {
+                    (fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.92f)) togetherWith
+                        fadeOut(CgMotion.short()) using
+                        SizeTransform { _, _ -> CgMotion.sizeSpec }
+                },
+                label = "export",
+            ) { finished ->
+                Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
+                    if (finished) {
+                        Text("✓ ${done.orEmpty()}", style = CgTheme.type.sheetTitle, color = CgColors.Status.Live)
+                        Text(detail, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = CgSpace.S8),
+                            horizontalArrangement = Arrangement.spacedBy(CgSpace.S8, Alignment.End),
+                        ) {
+                            CgButton(
+                                stringResource(Res.string.core_export_keep_editing),
+                                onClick = onKeepEditing,
+                                kind = CgButtonKind.Secondary,
+                            )
+                            CgButton(next, onClick = onNext)
+                        }
+                    } else {
+                        Text(stringResource(Res.string.core_export_making), style = CgTheme.type.sheetTitle)
+                        ProgressLine(progress ?: 0f)
+                        Row(Modifier.fillMaxWidth()) {
+                            Text(
+                                "${((progress ?: 0f) * 100).toInt()} %",
+                                style = CgTheme.type.label,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                left?.let { stringResource(Res.string.core_export_left, it) }
+                                    ?: stringResource(Res.string.core_export_estimating),
+                                style = CgTheme.type.caption,
+                                color = CgColors.Text.Dim,
+                            )
+                        }
+                        Text(detail, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+                        Text(footer, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+                        Row(
+                            Modifier.fillMaxWidth().padding(top = CgSpace.S8),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            CgButton(
+                                stringResource(Res.string.core_cancel),
+                                onClick = onCancel,
+                                kind = CgButtonKind.Secondary,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -384,23 +420,30 @@ fun Pill(
     /** Drawn before the text, in the text's colour. */
     icon: ImageVector? = null,
 ) {
+    val alpha by animateFloatAsState(if (enabled) 1f else 0.4f, CgMotion.short(), label = "alpha")
+    val ground by
+        animateColorAsState(
+            if (light) CgColors.Text.Primary else CgColors.Surface.Raised,
+            CgMotion.short(),
+            label = "bg",
+        )
+    val fg by animateColorAsState(if (light) CgColors.Text.OnLight else color, CgMotion.short(), label = "fg")
     Box(
         modifier
             .heightIn(min = CgSize.Touch)
-            .alpha(if (enabled) 1f else 0.4f)
+            .graphicsLayer { this.alpha = alpha }
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         Alignment.Center,
     ) {
         Box(
             Modifier.clip(Chip)
-                .background(if (light) CgColors.Text.Primary else CgColors.Surface.Raised)
+                .background(ground)
                 .heightIn(min = 34.dp)
                 .widthIn(min = minWidth)
                 .then(if (fill) Modifier.fillMaxWidth() else Modifier)
                 .padding(horizontal = CgSpace.S12, vertical = CgSpace.S8),
             Alignment.Center,
         ) {
-            val fg = if (light) CgColors.Text.OnLight else color
             if (icon == null) {
                 Text(text, style = CgTheme.type.label, color = fg)
             } else {
@@ -488,6 +531,8 @@ fun EditorSheet(
             // A sheet, not a wall: on a tablet or the desktop it keeps Material's sheet width and stays centred.
             .widthIn(max = SHEET_MAX_WIDTH)
             .fillMaxWidth()
+            // Rows that come and go inside (a switch that shows its settings) grow the sheet rather than jump it.
+            .animateContentSize(CgMotion.sizeSpec)
             .clip(CgShape.Sheet)
             .background(CgColors.Surface.Bar)
             // Touches on the sheet stay on the sheet: without this they fall through to the timeline under it.
@@ -502,6 +547,39 @@ fun EditorSheet(
             verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
             content = content,
         )
+    }
+}
+
+/**
+ * Where an [EditorSheet] shows: none while [sheet] is null; one slides up from the bottom when it is set and back down
+ * when it is cleared (the last one stays drawn while it leaves); a switch from one sheet to another cross-fades in
+ * place as the height eases. Shown at once on the first frame, so a screenshot finds it open.
+ */
+@Composable
+fun <T : Any> EditorSheetSlot(
+    sheet: T?,
+    modifier: Modifier = Modifier,
+    content: @Composable (T) -> Unit,
+) {
+    AnimatedContent(
+        sheet,
+        modifier,
+        transitionSpec = {
+            when {
+                initialState == null ->
+                    slideInVertically(CgMotion.long()) { it } + fadeIn(CgMotion.medium()) togetherWith
+                        ExitTransition.None
+                targetState == null ->
+                    EnterTransition.None togetherWith
+                        slideOutVertically(tween(CgMotion.MEDIUM, easing = CgMotion.EmphasizedAccelerate)) { it } +
+                            fadeOut(CgMotion.medium())
+                else -> fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short())
+            } using SizeTransform(clip = false) { _, _ -> CgMotion.sizeSpec }
+        },
+        contentAlignment = Alignment.BottomCenter,
+        label = "sheet",
+    ) { shown ->
+        if (shown != null) content(shown)
     }
 }
 
@@ -539,8 +617,10 @@ fun SheetHeader(title: String, onDone: (() -> Unit)?, modifier: Modifier = Modif
 /** A 6 dp progress line, orange on the divider colour. */
 @Composable
 fun ProgressLine(fraction: Float, modifier: Modifier = Modifier) {
+    // The export reports in steps; the line glides between them instead of jumping.
+    val shown by animateFloatAsState(fraction.coerceIn(0f, 1f), CgMotion.settle(), label = "progress")
     Box(modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(CgColors.Line.Divider)) {
-        Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).fillMaxHeight().background(CgColors.Brand.Orange))
+        Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(CgColors.Brand.Orange))
     }
 }
 

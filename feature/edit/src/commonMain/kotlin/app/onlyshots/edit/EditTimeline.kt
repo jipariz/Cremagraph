@@ -1,5 +1,8 @@
 package app.onlyshots.edit
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -36,6 +39,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
@@ -48,6 +52,7 @@ import app.onlyshots.core.resources.edit_timeline_description
 import app.onlyshots.core.resources.edit_timeline_seconds
 import app.onlyshots.core.resources.edit_timeline_trim
 import app.onlyshots.core.resources.edit_timeline_zoom
+import kotlin.math.abs
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -91,12 +96,30 @@ fun EditTimeline(
             snapLabel = null
         }
     }
+    // What is drawn eases to a jump (a tap on the overview, "start here", a zoom key) and follows playback and the
+    // finger exactly: a drag or a pinch sets [moving] for as long as it lasts.
+    var moving by remember { mutableStateOf(false) }
+    val shownPlayhead = remember { Animatable(playheadUs.toFloat()) }
+    LaunchedEffect(playheadUs) {
+        val target = playheadUs.toFloat()
+        if (moving || abs(target - shownPlayhead.value) < JUMP_US) shownPlayhead.snapTo(target)
+        else shownPlayhead.animateTo(target, tween(CgMotion.MEDIUM, easing = CgMotion.Emphasized))
+    }
+    val shownZoom = remember { Animatable(zoomFactor ?: 1f) }
+    LaunchedEffect(zoomFactor) {
+        val target = zoomFactor ?: 1f
+        if (moving) shownZoom.snapTo(target) else shownZoom.animateTo(target, CgMotion.settle())
+    }
+    // The snap label fades out rather than vanishing, still saying what it said.
+    var lastSnapLabel by remember { mutableStateOf<StringResource?>(null) }
+    if (snapLabel != null) lastSnapLabel = snapLabel
+    val labelAlpha by animateFloatAsState(if (snapLabel != null) 1f else 0f, CgMotion.medium(), label = "snap")
     val current by rememberUpdatedState(item)
     val playhead by rememberUpdatedState(playheadUs)
     val zoom by rememberUpdatedState(zoomFactor)
     val act by rememberUpdatedState(actions)
     val description = stringResource(Res.string.edit_timeline_description)
-    val snapText = snapLabel?.let { stringResource(Res.string.edit_snapped_to, stringResource(it)) }
+    val snapText = lastSnapLabel?.let { stringResource(Res.string.edit_snapped_to, stringResource(it)) }
     val words =
         HeaderWords(
             trim = stringResource(Res.string.edit_timeline_trim, clock(item.trimInUs), clock(item.trimOutUs)),
@@ -191,6 +214,7 @@ fun EditTimeline(
                         val event = awaitPointerEvent()
                         val pressed = event.changes.filter { it.pressed }
                         if (pressed.isEmpty()) break
+                        moving = true
                         if (pressed.size >= 2) {
                             // A second finger turns the gesture into a zoom and drops the drag.
                             val d = (pressed[0].position - pressed[1].position).getDistance()
@@ -210,11 +234,19 @@ fun EditTimeline(
                         change.consume()
                         apply(change.position.x)
                     }
+                    moving = false
                 }
             }
     ) {
         val pad = PAD.dp.toPx()
-        val v = timelineView(size.width, item.durationUs, playheadUs, pad, zoomFactor)
+        val v =
+            timelineView(
+                size.width,
+                item.durationUs,
+                shownPlayhead.value.toLong(),
+                pad,
+                shownZoom.value.takeIf { it > 1.001f },
+            )
         header(text, font, words, v)
         overview(item, v, pad)
         ruler(text, font, v, pad)
@@ -222,7 +254,7 @@ fun EditTimeline(
         wave(v, pad, waveform, pumpUs, item.durationUs)
         flag(item, v)
         playheadMark(v)
-        snapText?.let { label(text, font, it, v) }
+        if (labelAlpha > 0f) snapText?.let { label(text, font, it, v, labelAlpha) }
     }
 }
 
@@ -401,6 +433,7 @@ private fun DrawScope.label(
     font: androidx.compose.ui.text.font.FontFamily?,
     label: String,
     v: TimelineView,
+    alpha: Float,
 ) {
     val measured = text.measure(label, TextStyle(fontFamily = font, fontSize = 12.sp, color = CgColors.Text.Primary))
     val w = measured.size.width + 20.dp.toPx()
@@ -408,8 +441,8 @@ private fun DrawScope.label(
     val pad = PAD.dp.toPx()
     val left = (v.x(v.playheadUs) - w / 2f).coerceIn(pad, (size.width - pad - w).coerceAtLeast(pad))
     val top = OVERVIEW.dp.toPx() - 7.dp.toPx()
-    drawRoundRect(CgColors.Brand.Orange, Offset(left, top), Size(w, h), CornerRadius(4.dp.toPx()))
-    drawText(measured, topLeft = Offset(left + 10.dp.toPx(), top + (h - measured.size.height) / 2f))
+    drawRoundRect(CgColors.Brand.Orange, Offset(left, top), Size(w, h), CornerRadius(4.dp.toPx()), alpha = alpha)
+    drawText(measured, topLeft = Offset(left + 10.dp.toPx(), top + (h - measured.size.height) / 2f), alpha = alpha)
 }
 
 /** The view for a zoom given as a multiple of the fitted scale, capped at [TimelineMath.MAX_PX_PER_SECOND]. */
@@ -446,3 +479,6 @@ private const val HANDLE_W = 10
 private const val GRAB = 22
 private const val SNAP = 8
 private const val SNAP_LABEL_MS = 1_400L
+
+/** A playhead move at least this long (µs) is a jump, and eases there; anything shorter is playback, and follows. */
+private const val JUMP_US = 250_000f

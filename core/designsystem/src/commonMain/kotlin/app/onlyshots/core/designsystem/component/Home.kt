@@ -1,10 +1,22 @@
 package app.onlyshots.core.designsystem.component
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +36,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -34,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.Role
@@ -44,6 +60,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
@@ -124,9 +141,12 @@ fun SectionHeader(
             val target = onTrailing?.let {
                 Modifier.heightIn(min = CgSize.Touch).clickable(role = Role.Button, onClick = it)
             }
+            val ink by animateColorAsState(trailingColor, CgMotion.medium())
             Box(target ?: Modifier, contentAlignment = Alignment.CenterEnd) {
-                if (searching) SearchingNote(trailing, trailingColor)
-                else Text(trailing, style = CgTheme.type.label, color = trailingColor)
+                // "searching…" gives way to "2 found" with a fade, not a jump.
+                Crossfade(searching, animationSpec = CgMotion.medium(), label = "searching") { busy ->
+                    if (busy) SearchingNote(trailing, ink) else Text(trailing, style = CgTheme.type.label, color = ink)
+                }
             }
         }
     }
@@ -174,8 +194,15 @@ fun StatusPill(text: String, dot: Color, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(7.dp).clip(CircleShape).background(dot))
-        Text(text, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+        val dotColor by animateColorAsState(dot, CgMotion.medium())
+        Box(Modifier.size(7.dp).clip(CircleShape).background(dotColor))
+        AnimatedContent(
+            text,
+            transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) using SizeTransform() },
+            label = "status",
+        ) {
+            Text(it, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+        }
     }
 }
 
@@ -196,13 +223,17 @@ fun MachineRow(
     live: String? = null,
     enabled: Boolean = true,
 ) {
+    val alpha by animateFloatAsState(if (enabled) 1f else 0.5f, CgMotion.short())
+    val ground by animateColorAsState(if (selected) CgColors.Surface.Raised else CgColors.Surface.Bar, CgMotion.short())
+    val edge by animateColorAsState(if (selected) CgColors.Text.Primary else CgColors.Line.Hairline, CgMotion.short())
+    val edgeWidth by animateDpAsState(if (selected) 2.dp else 1.dp, CgMotion.short())
     Row(
         modifier
             .fillMaxWidth()
-            .alpha(if (enabled) 1f else 0.5f)
+            .graphicsLayer { this.alpha = alpha }
             .clip(Card)
-            .background(if (selected) CgColors.Surface.Raised else CgColors.Surface.Bar)
-            .border(if (selected) 2.dp else 1.dp, if (selected) CgColors.Text.Primary else CgColors.Line.Hairline, Card)
+            .background(ground)
+            .border(edgeWidth, edge, Card)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(start = CgSpace.S12, end = CgSpace.S14, top = CgSpace.S12, bottom = CgSpace.S12),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
@@ -217,7 +248,16 @@ fun MachineRow(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(name, style = CgTheme.type.body)
             Text(detail, style = CgTheme.type.caption, color = CgColors.Text.Dim)
-            if (live != null) Text(live, style = CgTheme.type.caption, color = CgColors.Status.Live)
+            // The live line opens under the name when readings start, rather than pushing the row taller at once.
+            AnimatedVisibility(
+                live != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                var last by remember { mutableStateOf(live.orEmpty()) }
+                if (live != null) last = live
+                Text(last, style = CgTheme.type.caption, color = CgColors.Status.Live)
+            }
         }
         StatusPill(status, statusDot)
     }
@@ -435,22 +475,22 @@ fun RecordAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val ground by
+        animateColorAsState(if (enabled) CgColors.Text.Primary else CgColors.Surface.Raised, CgMotion.medium())
+    val dot by animateColorAsState(if (enabled) CgColors.Status.Record else CgColors.Text.Dim, CgMotion.medium())
+    val ink by animateColorAsState(if (enabled) CgColors.Text.OnLight else CgColors.Text.Dim, CgMotion.medium())
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
         Row(
             Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(28.dp))
-                .background(if (enabled) CgColors.Text.Primary else CgColors.Surface.Raised)
+                .background(ground)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
                 .padding(vertical = CgSpace.S16),
             horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                Modifier.size(14.dp)
-                    .clip(CircleShape)
-                    .background(if (enabled) CgColors.Status.Record else CgColors.Text.Dim)
-            )
-            Text(text, style = CgTheme.type.body, color = if (enabled) CgColors.Text.OnLight else CgColors.Text.Dim)
+            Box(Modifier.size(14.dp).clip(CircleShape).background(dot))
+            Text(text, style = CgTheme.type.body, color = ink)
         }
         Text(
             caption,

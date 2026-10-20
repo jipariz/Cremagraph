@@ -1,5 +1,11 @@
 package app.onlyshots.open
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,8 +38,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.onlyshots.SharedKeys
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.CgButton
@@ -71,6 +79,7 @@ import app.onlyshots.core.resources.text
 import app.onlyshots.platform.rememberShotFilePicker
 import app.onlyshots.platform.rememberVideoPicker
 import app.onlyshots.platform.videoDrop
+import app.onlyshots.shareBounds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.compose.resources.stringResource
@@ -287,7 +296,10 @@ private fun Page(onBack: (() -> Unit)?, modifier: Modifier, content: @Composable
                 HeaderBack(
                     stringResource(Res.string.open_header_edit),
                     onBack = onBack,
-                    modifier = Modifier.padding(vertical = CgSpace.S8),
+                    // Where Start's "edit a video" card lands.
+                    modifier =
+                        Modifier.shareBounds(SharedKeys.START_EDIT, clip = RoundedCornerShape(12.dp))
+                            .padding(vertical = CgSpace.S8),
                 )
             } else {
                 Row(
@@ -316,39 +328,51 @@ private fun Step(
     highlighted: Boolean = false,
 ) {
     val card = RoundedCornerShape(16.dp)
+    // A step lights up as it is done or hovered with a file, rather than switching at once.
+    val ground by
+        animateColorAsState(if (highlighted) CgColors.Surface.Raised else CgColors.Surface.Bar, CgMotion.short())
+    val edge by
+        animateColorAsState(
+            when {
+                highlighted -> CgColors.Text.Primary
+                done -> CgColors.Text.Secondary
+                else -> CgColors.Line.Hairline
+            },
+            CgMotion.short(),
+        )
+    val edgeWidth by animateDpAsState(if (highlighted) 2.dp else 1.dp, CgMotion.short())
+    val disc by animateColorAsState(if (done) CgColors.Text.Primary else CgColors.Surface.Raised, CgMotion.medium())
+    val digit by animateColorAsState(if (done) CgColors.Text.OnLight else CgColors.Text.Primary, CgMotion.medium())
     Row(
         Modifier.fillMaxWidth()
             .clip(card)
-            .background(if (highlighted) CgColors.Surface.Raised else CgColors.Surface.Bar)
-            .border(
-                if (highlighted) 2.dp else 1.dp,
-                when {
-                    highlighted -> CgColors.Text.Primary
-                    done -> CgColors.Text.Secondary
-                    else -> CgColors.Line.Hairline
-                },
-                card,
-            )
+            .background(ground)
+            .border(edgeWidth, edge, card)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(CgSpace.S16),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(32.dp)
-                .clip(CircleShape)
-                .background(if (done) CgColors.Text.Primary else CgColors.Surface.Raised),
+            Modifier.size(32.dp).clip(CircleShape).background(disc),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 "$number",
                 style = CgTheme.type.label,
-                color = if (done) CgColors.Text.OnLight else CgColors.Text.Primary,
+                color = digit,
             )
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = CgTheme.type.body)
-            Text(detail, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+            // "choose a video" → the picked file's name and length, with a fade.
+            AnimatedContent(
+                detail,
+                transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) },
+                label = "detail",
+            ) {
+                Text(it, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+            }
         }
         Text(action, style = CgTheme.type.label, color = CgColors.Text.Secondary)
     }

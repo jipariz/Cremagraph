@@ -1,5 +1,12 @@
 package app.onlyshots.open
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
 import app.onlyshots.core.model.VideoItem
@@ -126,39 +134,43 @@ internal fun MobileOpenBody(
             }
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 val opening = status?.takeIf { it == Opening }?.text()
-                if (picked == null) {
-                    CompactStep(
-                        1,
-                        stringResource(Res.string.open_phone_video_title),
-                        opening ?: stringResource(Res.string.open_mobile_video_detail),
-                        next = true,
-                        onClick = onPickVideo,
-                    )
-                } else {
-                    PickedStep(
-                        name = pickedFile?.name ?: stringResource(Res.string.open_video),
-                        detail = videoLine(picked, pickedFile),
-                        tile = { VideoTile(pickedFile?.thumb) },
-                        onChange = onPickVideo,
-                        highlighted = false,
-                    )
+                StepSwap(picked != null) { done ->
+                    if (!done || picked == null) {
+                        CompactStep(
+                            1,
+                            stringResource(Res.string.open_phone_video_title),
+                            opening ?: stringResource(Res.string.open_mobile_video_detail),
+                            next = true,
+                            onClick = onPickVideo,
+                        )
+                    } else {
+                        PickedStep(
+                            name = pickedFile?.name ?: stringResource(Res.string.open_video),
+                            detail = videoLine(picked, pickedFile),
+                            tile = { VideoTile(pickedFile?.thumb, picked.id) },
+                            onChange = onPickVideo,
+                            highlighted = false,
+                        )
+                    }
                 }
-                if (shot == null) {
-                    CompactStep(
-                        2,
-                        stringResource(Res.string.open_phone_shot_title),
-                        stringResource(Res.string.open_mobile_shot_detail),
-                        next = picked != null,
-                        onClick = onPickShot,
-                    )
-                } else {
-                    PickedStep(
-                        name = shot.label,
-                        detail = shotLine(shot),
-                        tile = { ShotTile() },
-                        onChange = onPickShot,
-                        highlighted = false,
-                    )
+                StepSwap(shot != null) { done ->
+                    if (!done || shot == null) {
+                        CompactStep(
+                            2,
+                            stringResource(Res.string.open_phone_shot_title),
+                            stringResource(Res.string.open_mobile_shot_detail),
+                            next = picked != null,
+                            onClick = onPickShot,
+                        )
+                    } else {
+                        PickedStep(
+                            name = shot.label,
+                            detail = shotLine(shot),
+                            tile = { ShotTile() },
+                            onChange = onPickShot,
+                            highlighted = false,
+                        )
+                    }
                 }
                 status
                     ?.takeIf { it != Opening }
@@ -193,14 +205,16 @@ internal fun MobileOpenBody(
                     Modifier.fillMaxWidth()
                         .heightIn(min = 56.dp)
                         .clip(RoundedCornerShape(28.dp))
-                        .background(if (ready) CgColors.Brand.Orange else CgColors.Surface.Raised)
+                        .background(
+                            animateColorAsState(if (ready) CgColors.Brand.Orange else CgColors.Surface.Raised).value
+                        )
                         .clickable(enabled = ready, role = Role.Button, onClick = onOpenEditor),
                     Alignment.Center,
                 ) {
                     Text(
                         stringResource(Res.string.open_editor),
                         style = CgTheme.type.body.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
-                        color = if (ready) CgColors.Text.OnLight else CgColors.Text.Dim,
+                        color = animateColorAsState(if (ready) CgColors.Text.OnLight else CgColors.Text.Dim).value,
                     )
                 }
             }
@@ -344,7 +358,8 @@ private fun Fold(title: String, text: String) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(title, style = CgTheme.type.body.copy(fontSize = 15.sp), color = CgColors.Brand.Cream)
-            Canvas(Modifier.size(16.dp).rotate(if (open) 180f else 0f)) {
+            val turn by animateFloatAsState(if (open) 180f else 0f, CgMotion.settle(), label = "chevron")
+            Canvas(Modifier.size(16.dp).rotate(turn)) {
                 val s = size.width / 16f
                 drawPath(
                     Path().apply {
@@ -357,7 +372,11 @@ private fun Fold(title: String, text: String) {
                 )
             }
         }
-        if (open) {
+        AnimatedVisibility(
+            open,
+            enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
+            exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+        ) {
             Text(
                 text,
                 style = CgTheme.type.body.copy(fontSize = 14.sp, lineHeight = 21.sp),

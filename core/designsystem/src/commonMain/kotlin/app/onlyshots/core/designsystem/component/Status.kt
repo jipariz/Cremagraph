@@ -1,5 +1,6 @@
 package app.onlyshots.core.designsystem.component
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -14,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +30,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
@@ -36,12 +39,14 @@ import app.onlyshots.core.designsystem.CgTheme
 /** Figma "Status chip" over the camera view. Recording turns it red. */
 @Composable
 fun StatusChip(text: String, recording: Boolean, modifier: Modifier = Modifier, dot: Color? = null) {
+    val ground by
+        animateColorAsState(if (recording) CgColors.Status.RecordingChip else CgColors.Surface.Bar, CgMotion.medium())
     Row(
         modifier
             // Opaque, not a tint: over a dark frame a translucent chip is unreadable.
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
             .clip(CgShape.Pill)
-            .background(if (recording) CgColors.Status.RecordingChip else CgColors.Surface.Bar)
+            .background(ground)
             .padding(horizontal = CgSpace.S12, vertical = CgSpace.S6),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
@@ -141,7 +146,12 @@ fun HeaderPivot(items: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit
                 Text(
                     label,
                     style = CgTheme.type.pivot,
-                    color = if (i == selectedIndex) CgColors.Text.Primary else CgColors.Text.Dim,
+                    color =
+                        animateColorAsState(
+                                if (i == selectedIndex) CgColors.Text.Primary else CgColors.Text.Dim,
+                                CgMotion.short(),
+                            )
+                            .value,
                     modifier = Modifier.padding(vertical = CgSpace.S4),
                 )
             }

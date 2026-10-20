@@ -1,5 +1,13 @@
 package app.onlyshots.open
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,7 +63,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import app.onlyshots.PRIVACY_URL
+import app.onlyshots.SharedKeys
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
@@ -98,6 +109,7 @@ import app.onlyshots.core.resources.unit_grams
 import app.onlyshots.core.resources.unit_ml_per_s
 import app.onlyshots.core.resources.unit_seconds
 import app.onlyshots.machineLabel
+import app.onlyshots.shareBounds
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -300,51 +312,55 @@ private fun Steps(
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (picked == null) {
-                EmptyStep(
-                    number = 1,
-                    title = stringResource(Res.string.open_wide_video_title),
-                    detail =
-                        opening
-                            ?: stringResource(
-                                if (dragging) Res.string.open_drop_to_use else Res.string.open_wide_video_drop
-                            ),
-                    action = stringResource(Res.string.open_wide_choose_video),
-                    next = true,
-                    highlighted = dragging,
-                    onClick = onPickVideo,
-                )
-            } else {
-                PickedStep(
-                    name = pickedFile?.name ?: stringResource(Res.string.open_video),
-                    detail = videoLine(picked, pickedFile),
-                    tile = { VideoTile(pickedFile?.thumb) },
-                    onChange = onPickVideo,
-                    highlighted = dragging,
-                )
+            StepSwap(picked != null) { done ->
+                if (!done || picked == null) {
+                    EmptyStep(
+                        number = 1,
+                        title = stringResource(Res.string.open_wide_video_title),
+                        detail =
+                            opening
+                                ?: stringResource(
+                                    if (dragging) Res.string.open_drop_to_use else Res.string.open_wide_video_drop
+                                ),
+                        action = stringResource(Res.string.open_wide_choose_video),
+                        next = true,
+                        highlighted = dragging,
+                        onClick = onPickVideo,
+                    )
+                } else {
+                    PickedStep(
+                        name = pickedFile?.name ?: stringResource(Res.string.open_video),
+                        detail = videoLine(picked, pickedFile),
+                        tile = { VideoTile(pickedFile?.thumb, picked.id) },
+                        onChange = onPickVideo,
+                        highlighted = dragging,
+                    )
+                }
             }
-            if (shot == null) {
-                EmptyStep(
-                    number = 2,
-                    title = stringResource(Res.string.open_wide_shot_title),
-                    detail =
-                        stringResource(
-                            if (fromMachine) Res.string.open_wide_shot_detail_machine
-                            else Res.string.open_wide_shot_detail
-                        ),
-                    action = stringResource(Res.string.open_wide_choose_shot),
-                    next = picked != null,
-                    highlighted = false,
-                    onClick = onPickShot,
-                )
-            } else {
-                PickedStep(
-                    name = shot.label,
-                    detail = shotLine(shot),
-                    tile = { ShotTile() },
-                    onChange = onPickShot,
-                    highlighted = false,
-                )
+            StepSwap(shot != null) { done ->
+                if (!done || shot == null) {
+                    EmptyStep(
+                        number = 2,
+                        title = stringResource(Res.string.open_wide_shot_title),
+                        detail =
+                            stringResource(
+                                if (fromMachine) Res.string.open_wide_shot_detail_machine
+                                else Res.string.open_wide_shot_detail
+                            ),
+                        action = stringResource(Res.string.open_wide_choose_shot),
+                        next = picked != null,
+                        highlighted = false,
+                        onClick = onPickShot,
+                    )
+                } else {
+                    PickedStep(
+                        name = shot.label,
+                        detail = shotLine(shot),
+                        tile = { ShotTile() },
+                        onChange = onPickShot,
+                        highlighted = false,
+                    )
+                }
             }
             status
                 ?.takeIf { it != Opening }
@@ -355,13 +371,15 @@ private fun Steps(
             Row(
                 Modifier.heightIn(min = 56.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .background(if (ready) CgColors.Brand.Orange else CgColors.Surface.Raised)
+                    .background(
+                        animateColorAsState(if (ready) CgColors.Brand.Orange else CgColors.Surface.Raised).value
+                    )
                     .clickable(enabled = ready, role = Role.Button, onClick = onOpenEditor)
                     .padding(horizontal = 36.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                val fg = if (ready) CgColors.Text.OnLight else CgColors.Text.Dim
+                val fg by animateColorAsState(if (ready) CgColors.Text.OnLight else CgColors.Text.Dim)
                 Text(
                     stringResource(Res.string.open_editor),
                     style = CgTheme.type.body.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
@@ -573,21 +591,22 @@ private fun Details(fromMachine: Boolean, videosNote: String?, columns: Boolean)
  * of a cup under the spout with the graph's strip along the bottom.
  */
 @Composable
-internal fun VideoTile(thumb: ImageBitmap? = null) {
-    if (thumb != null) {
-        Image(
-            thumb,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(54.dp, 72.dp).clip(RoundedCornerShape(10.dp)),
-        )
-        return
+internal fun VideoTile(thumb: ImageBitmap? = null, videoId: String? = null) {
+    val shape = RoundedCornerShape(10.dp)
+    // The editor's picture grows out of this tile when the editor opens on the video.
+    val shared = if (videoId != null) Modifier.shareBounds(SharedKeys.video(videoId), clip = shape) else Modifier
+    // The frame fades in over the drawing once it is decoded.
+    Crossfade(thumb, shared.size(54.dp, 72.dp).clip(shape), CgMotion.medium(), label = "thumb") { frame ->
+        if (frame != null) {
+            Image(frame, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        } else {
+            Image(
+                painterResource(Res.drawable.illus_video_tile),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
-    Image(
-        painterResource(Res.drawable.illus_video_tile),
-        contentDescription = null,
-        modifier = Modifier.size(54.dp, 72.dp).clip(RoundedCornerShape(10.dp)),
-    )
 }
 
 /** The shot's tile: two curves, pressure and flow. */
@@ -767,3 +786,19 @@ internal fun ctaHint(video: Boolean, shot: Boolean): StringResource =
         shot -> Res.string.open_hint_add_video
         else -> Res.string.open_hint_both
     }
+
+/** An empty step and the same step picked: the one fades into the other, the column easing to its new height. */
+@Composable
+internal fun StepSwap(done: Boolean, content: @Composable (done: Boolean) -> Unit) {
+    AnimatedContent(
+        done,
+        transitionSpec = {
+            (fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.96f)) togetherWith
+                fadeOut(CgMotion.short()) using
+                SizeTransform { _, _ -> CgMotion.sizeSpec }
+        },
+        label = "step",
+    ) {
+        content(it)
+    }
+}

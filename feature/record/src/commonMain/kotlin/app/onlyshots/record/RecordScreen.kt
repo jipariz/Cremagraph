@@ -1,5 +1,15 @@
 package app.onlyshots.record
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -26,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -43,11 +54,13 @@ import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.onlyshots.SharedKeys
 import app.onlyshots.StyleEditorRoute
 import app.onlyshots.camera.CameraError
 import app.onlyshots.camera.CameraPreview
 import app.onlyshots.camera.CameraState
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
@@ -55,6 +68,7 @@ import app.onlyshots.core.designsystem.component.Banner
 import app.onlyshots.core.designsystem.component.BannerKind
 import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.EditorSheet
+import app.onlyshots.core.designsystem.component.EditorSheetSlot
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.RecordButton
 import app.onlyshots.core.designsystem.component.RecordButtonState
@@ -93,6 +107,7 @@ import app.onlyshots.platform.LockOrientation
 import app.onlyshots.platform.rememberCameraGranted
 import app.onlyshots.platform.rememberMediaPermission
 import app.onlyshots.platform.rememberOpenAppSettings
+import app.onlyshots.shareBounds
 import app.onlyshots.style.StylePicker
 import app.onlyshots.style.StylePickerActions
 import dev.chrisbanes.haze.hazeSource
@@ -355,14 +370,13 @@ fun RecordBody(
         }
     }
 
-    graphSheet?.let { sheet ->
-        // The graph for this and the next recordings; a recorded video keeps its own copy, edited in the editor.
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+    // The graph for this and the next recordings; a recorded video keeps its own copy, edited in the editor.
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        EditorSheetSlot(graphSheet, Modifier.fillMaxHeight(0.72f).wrapContentHeight(Alignment.Bottom)) { sheet ->
             EditorSheet(
                 title =
                     stringResource(if (sheet == EditSheet.STYLE) Res.string.record_style else Res.string.record_data),
                 onDone = { graphSheet = null },
-                modifier = Modifier.fillMaxHeight(0.72f).wrapContentHeight(Alignment.Bottom),
             ) {
                 if (sheet == EditSheet.STYLE) {
                     StylePicker(
@@ -469,6 +483,8 @@ private fun CameraPane(
         }
         Box(
             Modifier.requiredSize(frameW, frameH)
+                // The frame the editor opens on once this take is saved: it carries over from here.
+                .shareBounds(SharedKeys.TAKE_FRAME, overlay = false)
                 // Its whole size, not the part on screen that its bounds in the root would clip it to.
                 .onGloballyPositioned { frame = Rect(it.positionInRoot(), it.size.toSize()) }
                 .background(CgColors.Surface.Scrim)
@@ -516,7 +532,12 @@ private fun CameraPane(
                 }
             }
             // Without a machine there is nothing to draw: the screen is a camera, and the shot comes in the editor.
-            if (!tiny && state.hasData)
+            AnimatedVisibility(
+                !tiny && state.hasData,
+                Modifier.fillMaxSize(),
+                enter = fadeIn(CgMotion.long()),
+                exit = fadeOut(CgMotion.medium()),
+            ) {
                 ShotOverlay(
                     shot = state.shot,
                     videoTimeUs = state.videoTimeUs,
@@ -541,8 +562,14 @@ private fun CameraPane(
                     hazeState = haze,
                     backdropLuma = luma,
                 )
+            }
             // Placed by hand before a shot; while recording nothing on the picture moves.
-            if (!tiny && !state.recording && state.hasData)
+            AnimatedVisibility(
+                !tiny && !state.recording && state.hasData,
+                Modifier.fillMaxSize(),
+                enter = fadeIn(CgMotion.medium()),
+                exit = fadeOut(CgMotion.short()),
+            ) {
                 OverlayEditLayer(
                     rect = rect,
                     onChange = { moved, _ -> actions.updateOverlay { it.copy(rect = moved) } },
@@ -564,37 +591,52 @@ private fun CameraPane(
                     },
                     modifier = Modifier.fillMaxSize(),
                 )
-            val ring = focusAt
-            if (camera.focusLocked && ring != null && granted && !tiny && !state.recording) {
-                // Under the ring, as the camera apps put their lock label: tap it to go back to continuous focus and
-                // exposure. A held focus survives into the recording, as it should.
-                Pill(
-                    stringResource(Res.string.record_focus_locked),
-                    onClick = actions::unlockFocus,
-                    color = FocusYellow,
-                    modifier = Modifier.belowFocusRing(ring),
-                )
+            }
+            var ring by remember { mutableStateOf<Offset?>(null) }
+            if (focusAt != null) ring = focusAt
+            AnimatedVisibility(
+                camera.focusLocked && focusAt != null && granted && !tiny && !state.recording,
+                Modifier.matchParentSize(),
+                enter = fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.9f),
+                exit = fadeOut(CgMotion.short()),
+            ) {
+                // Under the ring, as the camera apps put their lock label: tap it to go back to continuous focus
+                // and exposure. A held focus survives into the recording, as it should.
+                ring?.let {
+                    Pill(
+                        stringResource(Res.string.record_focus_locked),
+                        onClick = actions::unlockFocus,
+                        color = FocusYellow,
+                        modifier = Modifier.belowFocusRing(it),
+                    )
+                }
             }
         }
         if (ownControls && !tiny) {
-            // While filming, the panel under the picture says how long: one clock.
-            if (state.statusWorthShowing && !state.recording)
+            // While filming, the panel under the picture says how long: one clock. The opposite corner from the
+            // overlay, which it must never cover: when the graph is dragged across the middle, the chip travels to
+            // the other corner rather than jumping there.
+            val corner by animateFloatAsState(if (rect.y < 0.5f) 1f else -1f, CgMotion.settle(), label = "chip")
+            AnimatedVisibility(
+                state.statusWorthShowing && !state.recording,
+                Modifier.align(BiasAlignment(-1f, corner)).padding(CgSpace.S12),
+                enter = fadeIn(CgMotion.medium()),
+                exit = fadeOut(CgMotion.short()),
+            ) {
                 StatusChip(
                     text = state.status.text(),
                     recording = state.recording,
                     dot = if (state.recording) CgColors.Text.Primary else null,
-                    // The opposite corner from the overlay, which it must never cover.
-                    modifier =
-                        Modifier.align(if (rect.y < 0.5f) Alignment.BottomStart else Alignment.TopStart)
-                            .padding(CgSpace.S12),
                 )
-            if (!state.recording && granted) {
-                LensPicker(
-                    camera,
-                    actions::setZoom,
-                    Modifier.align(Alignment.CenterEnd).padding(CgSpace.S12),
-                    vertical = true,
-                )
+            }
+            // The lenses step out of the way when recording starts, and back after.
+            AnimatedVisibility(
+                !state.recording && granted,
+                Modifier.align(Alignment.CenterEnd).padding(CgSpace.S12),
+                enter = fadeIn(CgMotion.medium()),
+                exit = fadeOut(CgMotion.short()) + slideOutHorizontally(CgMotion.offsetSpec) { it / 2 },
+            ) {
+                LensPicker(camera, actions::setZoom, vertical = true)
             }
         }
     }
@@ -629,8 +671,22 @@ private fun graphBounds(shown: NormRect, clear: Rect?, frame: Rect, capture: Vid
 /** Why the camera or the last take failed, over the picture. */
 @Composable
 internal fun Banners(camera: CameraState, saveError: UiText?) {
-    camera.error?.let { Banner(it.text(), BannerKind.Warning) }
-    saveError?.let { Banner(it.text(), BannerKind.Warning) }
+    WarningBanner(camera.error?.text())
+    WarningBanner(saveError?.text())
+}
+
+/** A warning that opens over the picture's edge and closes up again, still saying what it said while it goes. */
+@Composable
+private fun WarningBanner(text: String?) {
+    var last by remember { mutableStateOf(text) }
+    if (text != null) last = text
+    AnimatedVisibility(
+        text != null,
+        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
+        exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+    ) {
+        last?.let { Banner(it, BannerKind.Warning) }
+    }
 }
 
 /** A cover screen or a sliver of split screen: the clock over the picture and the button under it, nothing else. */
@@ -643,7 +699,13 @@ private fun BoxScope.TinyControls(state: RecordUiState, actions: RecordActions) 
             Modifier.align(Alignment.TopCenter)
                 .padding(top = CgSpace.S24)
                 .clip(CgShape.Pill)
-                .background(if (state.recording) CgColors.Status.RecordingChip else CgColors.Surface.Raised)
+                .background(
+                    animateColorAsState(
+                            if (state.recording) CgColors.Status.RecordingChip else CgColors.Surface.Raised,
+                            CgMotion.medium(),
+                        )
+                        .value
+                )
                 .padding(horizontal = CgSpace.S14, vertical = CgSpace.S4),
     )
     RecordButton(
@@ -699,3 +761,15 @@ private fun CameraError.text(): String =
         CameraError.NoSpace -> stringResource(Res.string.camera_no_space)
         is CameraError.RecordingFailed -> detail ?: stringResource(Res.string.camera_recording_failed)
     }
+
+/** A small control that pops into place and out again, rather than appearing and vanishing. */
+@Composable
+internal fun PopIn(visible: Boolean, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible,
+        enter = fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.8f),
+        exit = fadeOut(CgMotion.short()) + scaleOut(CgMotion.short(), targetScale = 0.8f),
+    ) {
+        content()
+    }
+}

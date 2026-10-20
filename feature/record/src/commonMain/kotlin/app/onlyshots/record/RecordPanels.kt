@@ -1,5 +1,13 @@
 package app.onlyshots.record
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import app.onlyshots.camera.CameraState
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.BackButton
@@ -104,7 +113,7 @@ internal fun TakeTopRow(take: TakeInputs, back: Boolean) {
         )
         Spacer(Modifier.weight(1f))
         // Start, pre-roll and stop rules, as the phone's gear: they need a machine and are closed mid-shot.
-        if (take.state.hasData && !take.state.recording) {
+        PopIn(take.state.hasData && !take.state.recording) {
             IconCircleButton(CgIcons.Settings, stringResource(Res.string.record_settings), onClick = take.onSettings)
         }
     }
@@ -136,12 +145,41 @@ internal fun ReadingsGrid(take: TakeInputs, columns: Int, large: Boolean, only: 
 internal fun RulesBlock(take: TakeInputs) {
     val settings = take.settings
     val stop = RecordSession.stopRuleShort(settings.effectiveFor(take.state.sourceKind).stopRule).text()
-    if (take.state.recording) {
+    val mode =
+        when {
+            take.state.recording -> RulesMode.RUNNING
+            take.state.hasData -> RulesMode.RULES
+            else -> RulesMode.HINT
+        }
+    // The rules turn into their progress when recording starts, with a cross-fade and the block easing to its height.
+    AnimatedContent(
+        mode,
+        transitionSpec = {
+            fadeIn(CgMotion.medium()) togetherWith
+                fadeOut(CgMotion.short()) using
+                SizeTransform { _, _ -> CgMotion.sizeSpec }
+        },
+        label = "rules",
+    ) { shown ->
+        RulesBlockContent(take, shown, stop)
+    }
+}
+
+private enum class RulesMode {
+    RUNNING,
+    RULES,
+    HINT,
+}
+
+@Composable
+private fun RulesBlockContent(take: TakeInputs, mode: RulesMode, stop: String) {
+    val settings = take.settings
+    if (mode == RulesMode.RUNNING) {
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(CgColors.Surface.Base)) {
             RuleStatusRow(startRuleLine(settings).text(), done = take.state.shot.samples.isNotEmpty())
             RuleStatusRow(stringResource(Res.string.record_stops, stop), done = false)
         }
-    } else if (take.state.hasData) {
+    } else if (mode == RulesMode.RULES) {
         val (start, startDetail) = RecordSession.startRuleShort(settings)
         RulesStrip(start.text(), startDetail?.text(), stop, Modifier.clip(RoundedCornerShape(12.dp)))
     } else {
@@ -161,17 +199,26 @@ internal fun TakeFooter(take: TakeInputs) {
         ) {
             Column(Modifier.weight(1f)) {
                 // While filming, the take's one clock (the brew's, once the shot runs); before, a word says where
-                // things
-                // stand.
-                if (state.recording) Text(state.status.text(), style = CgTheme.type.cardTitle)
-                else
-                    Text(
-                        when {
-                            state.phase == RecordPhase.ARMED -> stringResource(Res.string.record_armed)
-                            else -> stringResource(Res.string.record_ready)
-                        },
-                        style = CgTheme.type.cardTitle,
-                    )
+                // things stand. One gives way to the other with a fade.
+                AnimatedContent(
+                    state.recording,
+                    transitionSpec = {
+                        fadeIn(CgMotion.medium()) togetherWith
+                            fadeOut(CgMotion.short()) using
+                            SizeTransform { _, _ -> CgMotion.sizeSpec }
+                    },
+                    label = "clock",
+                ) { recording ->
+                    if (recording) Text(state.status.text(), style = CgTheme.type.cardTitle)
+                    else
+                        Text(
+                            when {
+                                state.phase == RecordPhase.ARMED -> stringResource(Res.string.record_armed)
+                                else -> stringResource(Res.string.record_ready)
+                            },
+                            style = CgTheme.type.cardTitle,
+                        )
+                }
                 Text(
                     takeQuality(take.camera.supports4k, take.camera.micOn).text(),
                     style = CgTheme.type.caption,
@@ -180,7 +227,11 @@ internal fun TakeFooter(take: TakeInputs) {
             }
             RecordButton(state.buttonState(), onClick = take.actions::recordPressed)
         }
-        if (take.canSimulate) {
+        AnimatedVisibility(
+            take.canSimulate,
+            enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
+            exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+        ) {
             CgButton(
                 stringResource(Res.string.record_simulate_shot),
                 onClick = take.actions::simulateShot,
@@ -222,8 +273,19 @@ internal fun TabletopPanel(take: TakeInputs, modifier: Modifier = Modifier) {
     PanelColumn(modifier, footer = take) {
         TakeTopRow(take, back = true)
         RulesBlock(take)
-        if (take.state.recording) ReadingsGrid(take, columns = 4, large = false)
-        else ReadingsGrid(take, columns = 2, large = false, only = setOf(Quantity.Temperature, Quantity.Weight))
+        // Recording, every reading; before, the two that matter, faded one into the other.
+        AnimatedContent(
+            take.state.recording,
+            transitionSpec = {
+                fadeIn(CgMotion.medium()) togetherWith
+                    fadeOut(CgMotion.short()) using
+                    SizeTransform { _, _ -> CgMotion.sizeSpec }
+            },
+            label = "tabletop",
+        ) { recording ->
+            if (recording) ReadingsGrid(take, columns = 4, large = false)
+            else ReadingsGrid(take, columns = 2, large = false, only = setOf(Quantity.Temperature, Quantity.Weight))
+        }
         Banners(take.camera, take.saveError)
     }
 }

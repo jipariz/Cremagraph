@@ -44,7 +44,7 @@ fun OnlyShotsApp() {
         val machine: SourceHolder = koinInject()
         LifecycleEventEffect(Lifecycle.Event.ON_START) { machine.resume() }
         LifecycleEventEffect(Lifecycle.Event.ON_STOP) { machine.pause() }
-        ProvideWindowLayout { Graph(backStack) }
+        ProvideWindowLayout { SharedMotion { Graph(backStack) } }
     }
 }
 
@@ -56,7 +56,15 @@ private fun Graph(nav: NavBackStack<NavKey>) {
         onBack = { nav.back() },
         // Each screen keeps its own saved state and view models (the editor's is keyed by its video), as before.
         entryDecorators =
-            listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
+            listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
+                rememberNavMotionDecorator(),
+            ),
+        sharedTransitionScope = LocalSharedTransitionScope.current,
+        transitionSpec = ScreenMotion.forward(),
+        popTransitionSpec = ScreenMotion.back(),
+        predictivePopTransitionSpec = ScreenMotion.predictiveBack(),
         entryProvider =
             entryProvider {
                 entry<StartRoute> {
@@ -83,7 +91,7 @@ private fun Graph(nav: NavBackStack<NavKey>) {
                         onPrivacy = { nav.go(PrivacyRoute) },
                     )
                 }
-                entry<PrivacyRoute> { PrivacyScreen(onBack = { nav.back() }) }
+                entry<PrivacyRoute>(metadata = ModalMotion) { PrivacyScreen(onBack = { nav.back() }) }
                 entry<RecordRoute> { route ->
                     RecordScreen(
                         playSample = route.sample,
@@ -114,7 +122,7 @@ private fun Graph(nav: NavBackStack<NavKey>) {
                         onSavedStyleUsed = { results.savedStyle.value = null },
                     )
                 }
-                entry<MachineShotsRoute> {
+                entry<MachineShotsRoute>(metadata = ModalMotion) {
                     MachineShotsScreen(
                         onPicked = { shot ->
                             results.pickedShot.value = SidecarCodec.json.encodeToString(Shot.serializer(), shot)
@@ -123,7 +131,7 @@ private fun Graph(nav: NavBackStack<NavKey>) {
                         onBack = { nav.back() },
                     )
                 }
-                entry<StyleEditorRoute> { route ->
+                entry<StyleEditorRoute>(metadata = FadeMotion) { route ->
                     StyleEditorScreen(
                         baseId = route.baseId,
                         editId = route.editId,

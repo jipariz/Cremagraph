@@ -1,5 +1,8 @@
 package app.onlyshots.core.designsystem.component
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,15 +25,24 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -39,11 +51,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /** A switch: a pill track, white when on, with a round knob; 44 dp tall to touch. */
@@ -54,25 +70,24 @@ fun CgToggle(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    // The knob slides and the colours follow it; both start where they belong, so a still frame shows them settled.
+    // As an alignment's bias, so the settled knob sits on exactly the pixels Start and End put it on.
+    val knobAt by animateFloatAsState(if (checked) 1f else -1f, CgMotion.settle(), label = "knob")
+    val track by animateColorAsState(if (checked) CgColors.Text.Primary else CgColors.Surface.Raised, CgMotion.short())
+    val knob by animateColorAsState(if (checked) CgColors.Text.OnLight else CgColors.Text.Primary, CgMotion.short())
+    val alpha by animateFloatAsState(if (enabled) 1f else 0.4f, CgMotion.short())
     Box(
         modifier
             .size(width = 52.dp, height = CgSize.Touch)
-            .alpha(if (enabled) 1f else 0.4f)
+            .graphicsLayer { this.alpha = alpha }
             .toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange),
         contentAlignment = Alignment.Center,
     ) {
         Box(
-            Modifier.size(width = 46.dp, height = 26.dp)
-                .clip(CgShape.Pill)
-                .background(if (checked) CgColors.Text.Primary else CgColors.Surface.Raised)
-                .padding(3.dp),
-            contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
+            Modifier.size(width = 46.dp, height = 26.dp).clip(CgShape.Pill).background(track).padding(3.dp),
+            contentAlignment = BiasAlignment(knobAt, 0f),
         ) {
-            Box(
-                Modifier.size(20.dp)
-                    .clip(CircleShape)
-                    .background(if (checked) CgColors.Text.OnLight else CgColors.Text.Primary)
-            )
+            Box(Modifier.size(20.dp).clip(CircleShape).background(knob))
         }
     }
 }
@@ -90,13 +105,15 @@ fun SeriesChip(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val alpha = if (enabled) 1f else 0.35f
+    val alpha by animateFloatAsState(if (enabled) 1f else 0.35f, CgMotion.short())
+    val bg by animateColorAsState(if (selected) CgColors.Surface.Raised else Color.Transparent, CgMotion.short())
+    val edge by animateColorAsState(if (selected) color else CgColors.Surface.Raised, CgMotion.short())
     Row(
         modifier
             .defaultMinSize(minHeight = CgSize.Touch)
             .clip(CgShape.Chip)
-            .background(if (selected) CgColors.Surface.Raised else Color.Transparent)
-            .border(2.dp, (if (selected) color else CgColors.Surface.Raised).copy(alpha = alpha), CgShape.Chip)
+            .background(bg)
+            .border(2.dp, edge.copy(alpha = alpha), CgShape.Chip)
             .toggleable(selected, enabled = enabled, role = Role.Checkbox, onValueChange = { onClick() })
             .padding(horizontal = CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
@@ -119,19 +136,48 @@ fun SegmentedControl(
     modifier: Modifier = Modifier,
     fill: Boolean = false,
 ) {
+    // The white pill slides from the old choice to the new one: its edges are read from where the segments were placed
+    // (layout, the same frame), and only drawing follows the animated index, so a still frame shows it settled.
+    val edges = remember(options.size) { FloatArray(options.size * 2) }
+    val at = remember { Animatable(selectedIndex.toFloat()) }
+    LaunchedEffect(selectedIndex) { at.animateTo(selectedIndex.toFloat(), CgMotion.settle()) }
     Row(
-        modifier.clip(CgShape.Pill).background(CgColors.Surface.Raised).padding(3.dp),
+        modifier.clip(CgShape.Pill).background(CgColors.Surface.Raised).padding(3.dp).drawBehind {
+            if (options.isEmpty()) return@drawBehind
+            val v = at.value.coerceIn(0f, options.lastIndex.toFloat())
+            val a = floor(v).toInt()
+            val b = ceil(v).toInt()
+            val t = v - a
+            val left = lerp(edges[a * 2], edges[b * 2], t)
+            val right = lerp(edges[a * 2 + 1], edges[b * 2 + 1], t)
+            // Only while it slides: settled, the chosen segment wears the pill itself.
+            if (!at.isRunning || right <= left) return@drawBehind
+            drawRoundRect(
+                CgColors.Text.Primary,
+                Offset(left, 0f),
+                Size(right - left, size.height),
+                CornerRadius(size.height / 2),
+            )
+        },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         options.forEachIndexed { i, label ->
             val on = i == selectedIndex
+            val ink by animateColorAsState(if (on) CgColors.Text.OnLight else CgColors.Text.Primary, CgMotion.short())
             Box(
                 // Stretched, each takes room by its label's length, so "weight settles" fits beside "fixed".
                 (if (fill) Modifier.weight(label.length.coerceAtLeast(MIN_SEGMENT_CHARS).toFloat()) else Modifier)
                     // A minimum, not a height: at 200 % font the label must still fit.
                     .heightIn(min = CgSize.Touch - 6.dp)
+                    .onPlaced {
+                        val x = it.positionInParent().x
+                        if (i * 2 + 1 < edges.size) {
+                            edges[i * 2] = x
+                            edges[i * 2 + 1] = x + it.size.width
+                        }
+                    }
                     .clip(CgShape.Pill)
-                    .background(if (on) CgColors.Text.Primary else Color.Transparent)
+                    .background(if (on && !at.isRunning) CgColors.Text.Primary else Color.Transparent)
                     .selectable(on, role = Role.RadioButton, onClick = { onSelect(i) })
                     .padding(horizontal = if (fill) 4.dp else 12.dp),
                 contentAlignment = Alignment.Center,
@@ -139,7 +185,7 @@ fun SegmentedControl(
                 Text(
                     label,
                     style = CgTheme.type.label,
-                    color = if (on) CgColors.Text.OnLight else CgColors.Text.Primary,
+                    color = ink,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -205,6 +251,10 @@ fun CgSlider(
         return range.start + ((c - range.start) / step).roundToInt() * step
     }
     val f = if (span > 0f) ((value - range.start) / span).coerceIn(0f, 1f) else 0f
+    // A drag follows the finger exactly; a tap (or a value set from elsewhere) glides the thumb there.
+    var dragging by remember { mutableStateOf(false) }
+    val shown = remember { Animatable(f) }
+    LaunchedEffect(f) { if (dragging) shown.snapTo(f) else shown.animateTo(f, CgMotion.settle()) }
     fun at(x: Float, width: Float) = snapped(range.start + (x / width).coerceIn(0f, 1f) * span)
     Canvas(
         // As wide as it is allowed, like Material's slider: a width or weight from the caller still decides.
@@ -221,13 +271,19 @@ fun CgSlider(
             }
             .pointerInput(range, steps) { detectTapGestures { onValueChange(at(it.x, size.width.toFloat())) } }
             .pointerInput(range, steps) {
-                detectHorizontalDragGestures { c, _ -> onValueChange(at(c.position.x, size.width.toFloat())) }
+                detectHorizontalDragGestures(
+                    onDragStart = { dragging = true },
+                    onDragEnd = { dragging = false },
+                    onDragCancel = { dragging = false },
+                ) { c, _ ->
+                    onValueChange(at(c.position.x, size.width.toFloat()))
+                }
             }
     ) {
         val y = size.height / 2f
         val track = 4.dp.toPx()
         val r = 9.dp.toPx()
-        val x = r + (size.width - 2 * r) * f
+        val x = r + (size.width - 2 * r) * shown.value
         drawRoundRect(
             CgColors.Surface.Raised,
             Offset(r, y - track / 2),

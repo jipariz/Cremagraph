@@ -1,5 +1,14 @@
 package app.onlyshots.style
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -46,9 +55,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -68,7 +80,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.onlyshots.SharedKeys
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
@@ -79,6 +93,7 @@ import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CgToggle
 import app.onlyshots.core.designsystem.component.CoffeeScene
 import app.onlyshots.core.designsystem.component.EditorSheet
+import app.onlyshots.core.designsystem.component.EditorSheetSlot
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.SectionHeader
 import app.onlyshots.core.designsystem.component.SettingRow
@@ -139,6 +154,7 @@ import app.onlyshots.overlay.compose.label
 import app.onlyshots.overlay.fixReadability
 import app.onlyshots.overlay.readabilityIssue
 import app.onlyshots.overlay.relativeLuminance
+import app.onlyshots.shareBounds
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlin.math.roundToInt
@@ -214,6 +230,7 @@ fun StyleEditorScreen(
         draft = draft,
         frames = frames,
         live = live,
+        sharedKey = (editId ?: baseId)?.let(SharedKeys::style),
         isNew = viewModel.isNew,
         onChange = viewModel::change,
         onBack = { if (viewModel.dirty) askDiscard = true else onClose(null) },
@@ -308,6 +325,8 @@ fun StyleEditorBody(
     isNew: Boolean = false,
     initialTab: StyleTab = StyleTab.PANEL,
     sheetOverride: (@Composable () -> Unit)? = null,
+    /** The style tile this editor was opened from, which its preview grows out of. */
+    sharedKey: Any? = null,
 ) {
     var tab by remember { mutableStateOf(initialTab) }
     var frame by remember { mutableIntStateOf(0) }
@@ -331,20 +350,42 @@ fun StyleEditorBody(
                 m.verticalScroll(rememberScrollState()).padding(CgSpace.S16),
                 verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
             ) {
-                when (tab) {
-                    StyleTab.PANEL -> PanelControls(draft, onChange) { color = it }
-                    StyleTab.LINES -> LineControls(draft, onChange) { color = it }
-                    StyleTab.GRID -> GridControls(draft, onChange) { color = it }
-                    StyleTab.TEXT -> TextControls(draft, onChange) { color = it }
-                    StyleTab.READINGS -> ReadingControls(draft, luma, onChange) { color = it }
+                // A tab's controls slide in from the side the tab sits on; rows that come and go inside ease the
+                // height.
+                AnimatedContent(
+                    tab,
+                    transitionSpec = {
+                        val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                        (slideInHorizontally(CgMotion.offsetSpec) { dir * it / 8 } + fadeIn(CgMotion.medium()))
+                            .togetherWith(fadeOut(CgMotion.short()))
+                            .using(SizeTransform(clip = false) { _, _ -> CgMotion.sizeSpec })
+                    },
+                    label = "tab",
+                ) { shown ->
+                    Column(
+                        Modifier.animateContentSize(CgMotion.sizeSpec),
+                        verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
+                    ) {
+                        when (shown) {
+                            StyleTab.PANEL -> PanelControls(draft, onChange) { color = it }
+                            StyleTab.LINES -> LineControls(draft, onChange) { color = it }
+                            StyleTab.GRID -> GridControls(draft, onChange) { color = it }
+                            StyleTab.TEXT -> TextControls(draft, onChange) { color = it }
+                            StyleTab.READINGS -> ReadingControls(draft, luma, onChange) { color = it }
+                        }
+                    }
                 }
             }
         }
+    // The save sheet, else a colour's: one slides up at a time, and back down; the last one stays while it leaves.
+    var lastOverride by remember { mutableStateOf(sheetOverride) }
+    if (sheetOverride != null) lastOverride = sheetOverride
+    val sheet: Any? = if (sheetOverride != null) SaveSheetKey else color
     val sheets =
         @Composable {
-            when {
-                sheetOverride != null -> sheetOverride()
-                color != null -> ColorSheet(color!!, draft, onChange, onDone = { color = null })
+            EditorSheetSlot(sheet) { shown ->
+                if (shown === SaveSheetKey) lastOverride?.invoke()
+                else (shown as? ColorTarget)?.let { ColorSheet(it, draft, onChange, onDone = { color = null }) }
             }
         }
     val layout = LocalWindowLayout.current
@@ -371,6 +412,7 @@ fun StyleEditorBody(
                         onFrame = { d -> frame = (frame + d).coerceIn(0, (frames.size - 1).coerceAtLeast(0)) },
                         modifier = Modifier.weight(1f).padding(bottom = CgSpace.S16),
                         full = true,
+                        sharedKey = sharedKey,
                     )
                 }
             },
@@ -396,6 +438,7 @@ fun StyleEditorBody(
                 luma,
                 frames.size,
                 onFrame = { d -> frame = (frame + d).coerceIn(0, (frames.size - 1).coerceAtLeast(0)) },
+                sharedKey = sharedKey,
             )
             Tabs(tab) { tab = it }
             controls(Modifier.fillMaxWidth().weight(1f))
@@ -504,11 +547,15 @@ private fun Preview(
     modifier: Modifier = Modifier,
     /** The whole 9:16 frame fitted to the space (a wide window), rather than the strip the graph sits on. */
     full: Boolean = false,
+    sharedKey: Any? = null,
 ) {
     val haze = rememberHazeState()
     val drag = live == null && frameCount > 1
     BoxWithConstraints(
         (if (full) modifier.fillMaxSize() else modifier.fillMaxWidth().height(PREVIEW_HEIGHT))
+            // Grows out of the tile it was opened from. Drawn in its own layer: the picture under it may be a camera
+            // or a video, and the graph's blur needs its source.
+            .then(if (sharedKey != null) Modifier.shareBounds(sharedKey, overlay = false) else Modifier)
             .clipToBounds()
             .pointerInput(drag) {
                 if (!drag) return@pointerInput
@@ -578,30 +625,32 @@ private fun Preview(
 
 @Composable
 private fun Tabs(tab: StyleTab, onTab: (StyleTab) -> Unit) {
-    Row(Modifier.fillMaxWidth().height(44.dp)) {
+    // The underline slides from tab to tab; drawn under the row, so only drawing follows it.
+    val at = remember { Animatable(tab.ordinal.toFloat()) }
+    LaunchedEffect(tab) { at.animateTo(tab.ordinal.toFloat(), CgMotion.settle()) }
+    val count = StyleTab.entries.size
+    Row(
+        Modifier.fillMaxWidth().height(44.dp).drawBehind {
+            val w = size.width / count
+            val h = 3.dp.toPx()
+            drawRect(CgColors.Text.Primary, Offset(w * at.value, size.height - h), Size(w, h))
+        }
+    ) {
         for (t in StyleTab.entries) {
             val on = t == tab
+            val ink by animateColorAsState(if (on) CgColors.Text.Primary else CgColors.Text.Dim, CgMotion.short())
             Box(
                 Modifier.weight(1f).fillMaxSize().clickable(role = Role.Tab) { onTab(t) },
                 Alignment.Center,
             ) {
-                Text(
-                    stringResource(t.label),
-                    style = CgTheme.type.body,
-                    color = if (on) CgColors.Text.Primary else CgColors.Text.Dim,
-                )
-                if (on) {
-                    Box(
-                        Modifier.align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(3.dp)
-                            .background(CgColors.Text.Primary)
-                    )
-                }
+                Text(stringResource(t.label), style = CgTheme.type.body, color = ink)
             }
         }
     }
 }
+
+/** The save sheet's place in the sheet slot, beside the colour targets. */
+private object SaveSheetKey
 
 // Rows --------------------------------------------------------------------------------------
 

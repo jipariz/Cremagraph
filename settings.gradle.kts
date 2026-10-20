@@ -63,6 +63,7 @@ dependencyResolutionManagement {
 include(
     ":app:shared",
     ":app:androidApp",
+    ":app:baselineprofile",
     ":app:desktopApp",
     ":core:ui",
     ":feature:style",

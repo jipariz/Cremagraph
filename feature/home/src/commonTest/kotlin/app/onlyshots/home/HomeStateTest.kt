@@ -6,7 +6,6 @@ import app.onlyshots.core.model.SourceKind
 import app.onlyshots.core.model.StopRule
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.home_action_open_camera
-import app.onlyshots.core.resources.home_action_sample
 import app.onlyshots.core.resources.home_action_scale_caption
 import app.onlyshots.core.resources.home_action_without_data
 import app.onlyshots.core.resources.home_auto_start_brew_switch
@@ -19,7 +18,6 @@ import app.onlyshots.core.resources.home_status_brewing
 import app.onlyshots.core.resources.home_status_idle
 import app.onlyshots.core.resources.home_status_no_source
 import app.onlyshots.core.resources.home_status_offline
-import app.onlyshots.core.resources.home_status_sample
 import app.onlyshots.core.resources.home_status_waiting
 import app.onlyshots.core.resources.raw
 import app.onlyshots.core.resources.reading_flow
@@ -166,17 +164,6 @@ class HomeStateTest {
         assertEquals(
             Res.string.home_rule_start_now_scale.text(),
             startRuleDetail(s.copy(preRollSeconds = 0), SourceKind.SCALE),
-        )
-    }
-
-    @Test
-    fun theSampleShotStandsInForAMachine() {
-        val s = HomeUiState(sample = true)
-        assertEquals(Res.string.home_action_sample.text(), recordAction(s).text)
-        assertEquals(Res.string.home_status_sample.text(), takeStatus(s, null))
-        assertEquals(
-            listOf(Res.string.reading_temperature, Res.string.reading_pressure, Res.string.reading_weight),
-            takeReadings(s, null).map { it.label },
         )
     }
 }

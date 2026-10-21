@@ -66,8 +66,8 @@ object GraphStyles {
         )
 
     /**
-     * Windows Phone tiles as acrylic glass: the header and chart are one cobalt tile, each reading its own colour tile,
-     * 4 px apart; each tile is the blurred video under a black base and the tile colour.
+     * Windows Phone tiles: the header and chart are one cobalt tile, each reading its own colour tile, solid, on a
+     * black base that shows as the 2 px lines between them.
      */
     val Metro =
         GraphStyle(
@@ -78,14 +78,22 @@ object GraphStyles {
                 PanelStyle(
                     Material.BLUR,
                     color = rgb(0x0050EF),
-                    opacity = 0.6f,
+                    opacity = 1f,
                     blur = 24f,
                     radius = 0f,
                     padding = 6f,
-                    tiles = TileStyle(gap = 4f, base = rgba(0, 0, 0, 0.4f), edgeLine = rgba(255, 255, 255, 0.14f)),
+                    tiles = TileStyle(gap = 2f, base = rgb(0x000000), edgeLine = rgba(255, 255, 255, 0.14f)),
                 ),
             grid = GridStyle(GridMode.ROWS, rgba(255, 255, 255, 0.18f)),
-            series = SeriesColors(rgb(0xFFFFFF), rgb(0xFFE14D), rgb(0xA4F05A), rgb(0x6EE7E0), rgb(0xFF9EC4)),
+            // Each line a light tint of its reading's tile below, so they pair up, and light enough to read on cobalt.
+            series =
+                SeriesColors(
+                    pressure = rgb(0xFF6EC7),
+                    flow = rgb(0xF0B860),
+                    weight = rgb(0x7EE07E),
+                    weightFlow = rgb(0xC88CFF),
+                    temperature = rgb(0xFF7F7F),
+                ),
             lines = LineStyle(targetOpacity = 0.8f),
             text =
                 TextColors(

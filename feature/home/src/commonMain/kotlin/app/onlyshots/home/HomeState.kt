@@ -10,8 +10,6 @@ import app.onlyshots.core.resources.UiText
 import app.onlyshots.core.resources.home_action_offline
 import app.onlyshots.core.resources.home_action_open_camera
 import app.onlyshots.core.resources.home_action_pick_source
-import app.onlyshots.core.resources.home_action_sample
-import app.onlyshots.core.resources.home_action_sample_caption
 import app.onlyshots.core.resources.home_action_scale_caption
 import app.onlyshots.core.resources.home_action_without_data
 import app.onlyshots.core.resources.home_auto_start_brew_switch
@@ -36,7 +34,6 @@ import app.onlyshots.core.resources.home_status_connecting
 import app.onlyshots.core.resources.home_status_idle
 import app.onlyshots.core.resources.home_status_no_source
 import app.onlyshots.core.resources.home_status_offline
-import app.onlyshots.core.resources.home_status_sample
 import app.onlyshots.core.resources.home_status_scale_loaded
 import app.onlyshots.core.resources.home_status_scale_settled
 import app.onlyshots.core.resources.home_status_waiting
@@ -83,11 +80,6 @@ data class HomeUiState(
     val connectingScaleId: String? = null,
     val addressSheet: Boolean = false,
     val address: String = MachineLog.defaultAddress(NetworkMachines.all.first().kind),
-    /**
-     * The sample shot is the source for now: a recorded Zer0 shot replayed on the record screen, so the app can be
-     * tried (and reviewed) without a machine. Never saved; picking a machine or a scale ends it.
-     */
-    val sample: Boolean = false,
 ) {
     val savedMachine: SavedSource?
         get() = saved?.takeUnless { it.isScale }
@@ -164,12 +156,6 @@ data class RecordActionModel(val text: UiText, val caption: UiText, val enabled:
 fun recordAction(s: HomeUiState): RecordActionModel {
     val saved = s.saved
     return when {
-        s.sample ->
-            RecordActionModel(
-                Res.string.home_action_sample.text(),
-                Res.string.home_action_sample_caption.text(),
-                enabled = true,
-            )
         saved == null ->
             RecordActionModel(
                 Res.string.home_action_without_data.text(),
@@ -237,7 +223,6 @@ data class TakeReading(
 
 /** The line over the tiles: whether readings are coming in, and what the machine is doing. */
 fun takeStatus(s: HomeUiState, live: Sample?): UiText {
-    if (s.sample) return Res.string.home_status_sample.text()
     val saved = s.saved ?: return Res.string.home_status_no_source.text()
     return when (s.connection) {
         ConnectionState.Connected ->
@@ -261,7 +246,6 @@ fun takeStatus(s: HomeUiState, live: Sample?): UiText {
  * scale's weight and how fast it climbs. Nothing without a source.
  */
 fun takeReadings(s: HomeUiState, live: Sample?): List<TakeReading> {
-    if (s.sample) return machineReadings(live)
     val saved = s.saved ?: return emptyList()
     fun v(x: Float?) = x?.oneDecimal() ?: "–"
     return if (saved.isScale)

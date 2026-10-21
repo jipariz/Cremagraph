@@ -88,8 +88,8 @@ data class PanelStyle(
     val glow: Glow? = null,
     /**
      * Acrylic tiles instead of one panel (Metro): the header and chart are one tile, each reading its own,
-     * [TileStyle.gap] apart. Each tile is the blurred video under [TileStyle.base], then its colour at [opacity], then
-     * the edge line.
+     * [TileStyle.gap] apart. Under them the blurred video and [TileStyle.base] across the whole panel, so the gaps are
+     * the base too; then each tile's colour at [opacity], then the edge line.
      */
     val tiles: TileStyle? = null,
 )

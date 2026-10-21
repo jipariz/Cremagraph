@@ -1,5 +1,6 @@
 package app.onlyshots.home
 
+import androidx.lifecycle.ViewModelStore
 import app.onlyshots.core.model.SourceKind
 import app.onlyshots.sources.SourceHolder
 import app.onlyshots.sources.ble.FoundBleDevice
@@ -19,6 +20,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,8 +62,11 @@ class HomeViewModelTest {
 
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
-    private fun TestScope.viewModel(machine: MovingMachine, scales: () -> Flow<FoundBleDevice>): HomeViewModel {
-        val holder = SourceHolder(backgroundScope, FakeShotSource())
+    private fun TestScope.viewModel(
+        machine: MovingMachine,
+        holder: SourceHolder = SourceHolder(backgroundScope, FakeShotSource()),
+        scales: () -> Flow<FoundBleDevice>,
+    ): HomeViewModel {
         val settings = AppSettingsRepo(SettingsStore(FakeFileSystem(), "/settings.json".toPath()))
         val scan = NetworkScan(client, MdnsBrowser.None, { listOf("192.168.1.20") }, listOf(machine))
         return HomeViewModel(holder, settings, client, scan, scales, pauseBetweenSearchesMs = 1_000)
@@ -102,5 +108,39 @@ class HomeViewModelTest {
             assertEquals(2, attempts)
             assertFalse(vm.state.value.bluetoothDenied)
             vm.stopSearching()
+        }
+
+    @Test
+    fun backOnHomeTheSampleIsOver() =
+        runTest(dispatcher) {
+            val initial = FakeShotSource()
+            val holder = SourceHolder(backgroundScope, initial)
+            val vm = viewModel(MovingMachine(emptySet()), holder) { emptyFlow() }
+            vm.useSample()
+            runCurrent()
+            assertNotSame(initial, holder.current.value)
+            // Home says nothing of it: the record button stays the one for no machine.
+            assertEquals(recordAction(HomeUiState()), recordAction(vm.state.value))
+
+            vm.endSample()
+            runCurrent()
+            assertSame(initial, holder.current.value)
+        }
+
+    @Test
+    fun leavingHomeEndsTheSample() =
+        runTest(dispatcher) {
+            val initial = FakeShotSource()
+            val holder = SourceHolder(backgroundScope, initial)
+            val vm = viewModel(MovingMachine(emptySet()), holder) { emptyFlow() }
+            val store = ViewModelStore().apply { put("home", vm) }
+            vm.useSample()
+            runCurrent()
+            assertNotSame(initial, holder.current.value)
+
+            // Nothing was set up, so the app is back on the source it started with.
+            store.clear()
+            runCurrent()
+            assertSame(initial, holder.current.value)
         }
 }

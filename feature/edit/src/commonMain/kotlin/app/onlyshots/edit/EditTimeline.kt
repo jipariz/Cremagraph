@@ -1,7 +1,11 @@
 package app.onlyshots.edit
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -19,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -84,7 +90,20 @@ fun EditTimeline(
     pumpUs: Long?,
     actions: TimelineActions,
     modifier: Modifier = Modifier,
+    loading: Boolean = false,
 ) {
+    // While the frames are being made, a light sweeps across the empty strip. Only then: an endless animation would
+    // keep the canvas drawing, and the screenshots from settling.
+    val sweep =
+        if (loading)
+            rememberInfiniteTransition(label = "strip")
+                .animateFloat(
+                    0f,
+                    1f,
+                    infiniteRepeatable(tween(SHIMMER_MS, easing = LinearEasing)),
+                    label = "sweep",
+                )
+        else null
     val text = rememberTextMeasurer()
     val haptic = LocalHapticFeedback.current
     val font = CgTheme.type.caption.fontFamily
@@ -250,7 +269,7 @@ fun EditTimeline(
         header(text, font, words, v)
         overview(item, v, pad)
         ruler(text, font, v, pad)
-        strip(item, v, pad, thumbnails)
+        strip(item, v, pad, thumbnails, sweep?.value)
         wave(v, pad, waveform, pumpUs, item.durationUs)
         flag(item, v)
         playheadMark(v)
@@ -343,15 +362,42 @@ private fun DrawScope.ruler(
     }
 }
 
-/** The filmstrip, dimmed outside the trim, with a handle at each end of it. */
-private fun DrawScope.strip(item: VideoItem, v: TimelineView, pad: Float, thumbnails: List<ImageBitmap>) {
+/**
+ * The filmstrip, dimmed outside the trim, with a handle at each end of it. While its frames are being made it shimmers,
+ * a light at [sweep] (0 to 1) of its way across.
+ */
+private fun DrawScope.strip(
+    item: VideoItem,
+    v: TimelineView,
+    pad: Float,
+    thumbnails: List<ImageBitmap>,
+    sweep: Float?,
+) {
     val top = STRIP.dp.toPx()
     val h = STRIP_H.dp.toPx()
     clipRect(pad, top, size.width - pad, top + h) {
         drawRect(CgColors.Surface.Raised, Offset(pad, top), Size(size.width - 2 * pad, h))
+        val x0 = v.x(0)
+        val cell = (v.x(item.durationUs) - x0) / thumbnails.size.coerceAtLeast(1)
+        if (sweep != null) {
+            // Over the clip as it lies in the timeline, zoomed or not.
+            val from = maxOf(pad, x0)
+            val to = minOf(size.width - pad, v.x(item.durationUs))
+            if (to > from) {
+                val band = SHIMMER_BAND.dp.toPx()
+                val at = pad - band + sweep * (size.width - 2 * pad + band)
+                drawRect(
+                    Brush.horizontalGradient(
+                        listOf(Color.Transparent, CgColors.Text.Primary.copy(alpha = 0.12f), Color.Transparent),
+                        startX = at,
+                        endX = at + band,
+                    ),
+                    Offset(from, top),
+                    Size(to - from, h),
+                )
+            }
+        }
         if (thumbnails.isNotEmpty()) {
-            val x0 = v.x(0)
-            val cell = (v.x(item.durationUs) - x0) / thumbnails.size
             thumbnails.forEachIndexed { i, image ->
                 val left = x0 + i * cell
                 if (left + cell >= pad && left <= size.width - pad) {
@@ -482,3 +528,6 @@ private const val SNAP_LABEL_MS = 1_400L
 
 /** A playhead move at least this long (µs) is a jump, and eases there; anything shorter is playback, and follows. */
 private const val JUMP_US = 250_000f
+/** One sweep of the light across the filmstrip while its frames are made, and the light's width. */
+private const val SHIMMER_MS = 1_200
+private const val SHIMMER_BAND = 96

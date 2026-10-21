@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
  * drives them.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class SourceHolder(private val scope: CoroutineScope, initial: ShotSource) : ShotSource {
+class SourceHolder(private val scope: CoroutineScope, private val initial: ShotSource) : ShotSource {
     private val _current = MutableStateFlow(initial)
     val current: StateFlow<ShotSource> = _current.asStateFlow()
 
@@ -105,6 +105,14 @@ class SourceHolder(private val scope: CoroutineScope, initial: ShotSource) : Sho
             _current.value = source
             _override.value = null
         }
+    }
+
+    /** Back to the source the app starts on with nothing set up, forgetting whatever [use] was given. */
+    fun useInitial() {
+        factory = null
+        stopConnection()
+        _current.value = initial
+        _override.value = null
     }
 
     /** Drops the connection but keeps the machine's identity, so the UI still names it. */

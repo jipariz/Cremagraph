@@ -3,6 +3,7 @@ package app.onlyshots.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.onlyshots.connect.factoryFor
+import app.onlyshots.connect.sourceFactory
 import app.onlyshots.core.model.RecordingSettings
 import app.onlyshots.core.model.Sample
 import app.onlyshots.core.model.SourceKind
@@ -160,16 +161,31 @@ class HomeViewModel(
     fun connectTo(found: FoundMachine) = use(found.machine.kind, found.address)
 
     /**
-     * Try the app without a machine: the recorded Zer0 shot becomes the source until a machine or a scale is picked.
-     * Nothing is saved, so the next launch starts as before.
+     * Try the app without a machine: the recorded Zer0 shot becomes the source for the record screen it opens, until
+     * Home is back in front ([endSample]). Nothing is saved, so the next launch starts as before.
      */
     fun useSample() {
-        local.update { it.copy(sample = true) }
+        sample = true
         holder.use { FakeShotSource() }
     }
 
+    /** The sample is the source; Home itself never says so, because it ends as soon as Home is back. */
+    private var sample = false
+
+    /**
+     * Back from the sample's record screen (or Home left altogether): the sample is over, and the source that was there
+     * is put back, the saved machine or scale, else none: the record screen opened next has what Home's button says.
+     */
+    fun endSample() {
+        if (!sample) return
+        sample = false
+        sourceFactory(settings.value, client)?.let(holder::use) ?: holder.useInitial()
+    }
+
+    override fun onCleared() = endSample()
+
     fun connectScale(device: FoundBleDevice) {
-        local.update { it.copy(sample = false) }
+        sample = false
         val factory = factoryFor(SourceKind.SCALE, "", device.id, client) ?: return
         settings.update { it.copy(source = SourceKind.SCALE, scaleId = device.id, scaleName = device.name) }
         local.update { it.copy(saved = savedSource(settings.value), connectingScaleId = device.id) }
@@ -192,7 +208,8 @@ class HomeViewModel(
     private fun use(kind: SourceKind, address: String): Boolean {
         val factory = factoryFor(kind, address, null, client) ?: return false
         settings.update { it.copy(source = kind, host = address) }
-        local.update { it.copy(saved = savedSource(settings.value), sample = false) }
+        sample = false
+        local.update { it.copy(saved = savedSource(settings.value)) }
         holder.use(factory)
         return true
     }

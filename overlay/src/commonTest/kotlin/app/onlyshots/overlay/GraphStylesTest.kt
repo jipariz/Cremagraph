@@ -80,7 +80,10 @@ class GraphStylesTest {
         }
         with(GraphStyles.Metro) {
             assertEquals(24f, panel.blur)
-            assertEquals(4f, panel.tiles?.gap)
+            // Thinner than Figma's 4 px: solid tiles on black read best with a hairline between them.
+            assertEquals(2f, panel.tiles?.gap)
+            assertEquals(1f, panel.opacity)
+            assertEquals(rgb(0x000000), panel.tiles?.base)
             assertEquals(CellLook.TILES, cells.look)
             assertEquals(rgb(0xC4006A), cells.tiles[Reading.PRESSURE])
             assertEquals(300, cells.valueWeight)

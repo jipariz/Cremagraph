@@ -464,6 +464,9 @@ private fun RuleLine(icon: ImageVector, color: Color, text: String) {
 
 private val RULE_GLYPH = 12.dp
 
+/** How opaque the ink ground of a control over the video is, as the camera's keys have it. */
+const val OVER_VIDEO = 0.85f
+
 /**
  * A small square key: the timeline's tools, the sheets' buttons. A hairline outline with Mono capitals; [light] is the
  * bone one that confirms.
@@ -481,10 +484,12 @@ fun Pill(
     fill: Boolean = false,
     /** Drawn before the text, in the text's colour. */
     icon: ImageVector? = null,
+    /** Over the picture: on an ink ground, so it reads over any frame of the video. */
+    overVideo: Boolean = false,
 ) {
     val alpha by animateFloatAsState(if (enabled) 1f else 0.4f, CgMotion.short(), label = "alpha")
-    val ground by
-        animateColorAsState(if (light) CgColors.Brand.Bone else Color.Transparent, CgMotion.short(), label = "bg")
+    val rest = if (overVideo) CgColors.Surface.Base.copy(alpha = OVER_VIDEO) else Color.Transparent
+    val ground by animateColorAsState(if (light) CgColors.Brand.Bone else rest, CgMotion.short(), label = "bg")
     val edge = if (light) CgColors.Brand.Bone else CgColors.Line.Hairline
     val fg by animateColorAsState(if (light) CgColors.Text.OnLight else color, CgMotion.short(), label = "fg")
     Box(

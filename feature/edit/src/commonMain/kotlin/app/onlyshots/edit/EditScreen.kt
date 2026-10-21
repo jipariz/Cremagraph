@@ -37,8 +37,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +64,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -88,6 +91,7 @@ import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
@@ -102,6 +106,7 @@ import app.onlyshots.core.designsystem.component.EditorSheetSlot
 import app.onlyshots.core.designsystem.component.ExportOverlay
 import app.onlyshots.core.designsystem.component.FormatOption
 import app.onlyshots.core.designsystem.component.FormatPicker
+import app.onlyshots.core.designsystem.component.OVER_VIDEO
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.SegmentedControl
 import app.onlyshots.core.designsystem.component.StatusChip
@@ -894,6 +899,7 @@ private fun Picture(
                     else stringResource(Res.string.edit_frame_switch),
                     onClick = { set(!reframing) },
                     light = reframing,
+                    overVideo = true,
                     modifier =
                         Modifier.align(BiasAlignment(1f, bias))
                             .padding(horizontal = CgSpace.S8)
@@ -1340,17 +1346,36 @@ private fun ToolChips(ui: EditUiState, video: VideoItem, actions: EditActions, o
 
 private val FORMAT_OPTIONS = VideoFormat.entries.map { FormatOption(it.label, it.ratio) }
 
-/** The video's shape, while framing: the four formats, the current one lit. */
+/**
+ * The video's shape, while framing: the four formats as one strip on an ink ground over the picture, like the camera's
+ * lenses, the current one filled bone.
+ */
 @Composable
 private fun FormatStrip(format: VideoFormat, onPick: (VideoFormat) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
+    Row(
+        modifier
+            .background(CgColors.Surface.Base.copy(alpha = OVER_VIDEO))
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .padding(CgStroke.Hairline),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         for (f in VideoFormat.entries) {
-            Pill(
-                f.label,
-                onClick = { onPick(f) },
-                light = f == format,
-                modifier = Modifier.testTag(TestTags.format(f.label)),
-            )
+            val on = f == format
+            Box(
+                Modifier.testTag(TestTags.format(f.label))
+                    .heightIn(min = CgSize.Touch)
+                    .widthIn(min = 64.dp)
+                    .background(if (on) CgColors.Brand.Bone else Color.Transparent)
+                    .selectable(on, role = Role.RadioButton, onClick = { onPick(f) })
+                    .padding(horizontal = CgSpace.S12),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    f.label,
+                    style = CgTheme.type.labelStrong,
+                    color = if (on) CgColors.Text.OnLight else CgColors.Text.Primary,
+                )
+            }
         }
     }
 }

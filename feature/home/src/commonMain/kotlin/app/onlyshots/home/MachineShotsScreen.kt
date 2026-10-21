@@ -33,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -44,6 +43,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
@@ -431,7 +433,7 @@ fun MachineShotsScreen(
     }
     // From a machine's shots back to the machines; from the machines back to the editor.
     val back = { if (state.machine != null) viewModel.back() else onBack() }
-    BackHandler { back() }
+    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None)) { back() }
     MachineShotsBody(
         state = state,
         onMachine = viewModel::chooseMachine,

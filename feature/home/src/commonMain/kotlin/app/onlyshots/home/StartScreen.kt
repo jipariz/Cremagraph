@@ -1,6 +1,5 @@
 package app.onlyshots.home
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -28,8 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -324,38 +323,55 @@ private fun GraphCard(modifier: Modifier, big: Boolean) {
             Text("0:28", style = CgTheme.type.data, color = CgColors.Text.Secondary)
         }
         val trace = if (big) 2.dp else 1.5.dp
-        Canvas(Modifier.fillMaxWidth().weight(1f).clearAndSetSemantics {}) {
-            // The canvas draws it in a 300 × 120 box, stretched to fit.
-            val sx = size.width / 300f
-            val sy = size.height / 120f
-            val hair = CgStroke.Hairline.toPx()
-            for (y in floatArrayOf(24f, 60f, 96f)) {
-                drawLine(CgColors.Line.Divider, Offset(0f, y * sy), Offset(size.width, y * sy), hair)
-            }
-            for (x in floatArrayOf(75f, 150f, 225f)) {
-                drawLine(CgColors.Line.Divider, Offset(x * sx, 0f), Offset(x * sx, size.height), hair)
-            }
-            fun line(color: Color, build: Path.() -> Unit) =
-                drawPath(Path().apply(build), color, style = Stroke(trace.toPx()))
-            line(CgColors.Brand.Signal) {
-                moveTo(0f, 118f * sy)
-                cubicTo(20f * sx, 118f * sy, 30f * sx, 30f * sy, 50f * sx, 24f * sy)
-                lineTo(180f * sx, 24f * sy)
-                cubicTo(220f * sx, 26f * sy, 260f * sx, 40f * sy, 300f * sx, 48f * sy)
-            }
-            line(CgColors.Text.Primary) {
-                moveTo(0f, 118f * sy)
-                cubicTo(40f * sx, 116f * sy, 60f * sx, 90f * sy, 90f * sx, 72f * sy)
-                cubicTo(140f * sx, 60f * sy, 200f * sx, 56f * sy, 300f * sx, 54f * sy)
-            }
-            line(BluetoothBlue) {
-                moveTo(0f, 118f * sy)
-                lineTo(40f * sx, 118f * sy)
-                cubicTo(120f * sx, 110f * sy, 200f * sx, 60f * sy, 300f * sx, 14f * sy)
-            }
-        }
+        // Built once per size, not on every draw.
+        Spacer(
+            Modifier.fillMaxWidth()
+                .weight(1f)
+                .clearAndSetSemantics {}
+                .drawWithCache {
+                    // The card draws it in a 300 × 120 box, stretched to fit.
+                    val sx = size.width / 300f
+                    val sy = size.height / 120f
+                    val hair = CgStroke.Hairline.toPx()
+                    val stroke = Stroke(trace.toPx())
+                    val signal =
+                        Path().apply {
+                            moveTo(0f, 118f * sy)
+                            cubicTo(20f * sx, 118f * sy, 30f * sx, 30f * sy, 50f * sx, 24f * sy)
+                            lineTo(180f * sx, 24f * sy)
+                            cubicTo(220f * sx, 26f * sy, 260f * sx, 40f * sy, 300f * sx, 48f * sy)
+                        }
+                    val primary =
+                        Path().apply {
+                            moveTo(0f, 118f * sy)
+                            cubicTo(40f * sx, 116f * sy, 60f * sx, 90f * sy, 90f * sx, 72f * sy)
+                            cubicTo(140f * sx, 60f * sy, 200f * sx, 56f * sy, 300f * sx, 54f * sy)
+                        }
+                    val blue =
+                        Path().apply {
+                            moveTo(0f, 118f * sy)
+                            lineTo(40f * sx, 118f * sy)
+                            cubicTo(120f * sx, 110f * sy, 200f * sx, 60f * sy, 300f * sx, 14f * sy)
+                        }
+                    onDrawBehind {
+                        for (y in GRID_ROWS) {
+                            drawLine(CgColors.Line.Divider, Offset(0f, y * sy), Offset(size.width, y * sy), hair)
+                        }
+                        for (x in GRID_COLUMNS) {
+                            drawLine(CgColors.Line.Divider, Offset(x * sx, 0f), Offset(x * sx, size.height), hair)
+                        }
+                        drawPath(signal, CgColors.Brand.Signal, style = stroke)
+                        drawPath(primary, CgColors.Text.Primary, style = stroke)
+                        drawPath(blue, BluetoothBlue, style = stroke)
+                    }
+                }
+        )
     }
 }
+
+/** The card's grid, in its 300 × 120 box. */
+private val GRID_ROWS = floatArrayOf(24f, 60f, 96f)
+private val GRID_COLUMNS = floatArrayOf(75f, 150f, 225f)
 
 /** The phone card: its header and a 112 dp graph, as the canvas draws it. */
 private val GRAPH_CARD_PHONE = 152.dp

@@ -3,13 +3,13 @@ package app.onlyshots.record
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,12 +58,9 @@ fun LensPicker(state: CameraState, onZoom: (Float) -> Unit, modifier: Modifier =
                 Box(
                     Modifier.size(width = STOP_WIDTH, height = STOP_HEIGHT)
                         .background(if (on) CgColors.Brand.Bone else Color.Transparent)
-                        .clickable { onZoom(stop) }
-                        .semantics {
-                            role = Role.Button
-                            contentDescription = description
-                            selected = on
-                        },
+                        // One choice of several: read out as such, the one in use as selected.
+                        .selectable(selected = on, role = Role.RadioButton) { onZoom(stop) }
+                        .semantics { contentDescription = description },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(

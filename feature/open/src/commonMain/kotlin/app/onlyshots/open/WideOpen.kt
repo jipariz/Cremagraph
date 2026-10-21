@@ -3,11 +3,9 @@ package app.onlyshots.open
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,12 +31,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -47,6 +47,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalUriHandler
@@ -119,6 +121,7 @@ import app.onlyshots.overlay.GraphStyles
 import app.onlyshots.overlay.compose.ShotOverlay
 import app.onlyshots.shareBounds
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -537,33 +540,29 @@ internal fun StepKey(
 @Composable
 private fun Modifier.shine(): Modifier {
     if (LocalInspectionMode.current) return this
-    val at by
-        rememberInfiniteTransition(label = "shine")
-            .animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec =
-                    infiniteRepeatable(
-                        keyframes {
-                            durationMillis = SHINE_PERIOD_MS
-                            0f at 0
-                            0f at SHINE_REST_MS using LinearEasing
-                            1f at SHINE_PERIOD_MS
-                        }
-                    ),
-                label = "at",
-            )
-    return clipToBounds().drawWithContent {
-        drawContent()
+    // A wait, a run across, back to the start: nothing draws while it waits, so the screen can go idle.
+    val at = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(SHINE_REST_MS.toLong())
+            at.animateTo(1f, tween(SHINE_PERIOD_MS - SHINE_REST_MS, easing = LinearEasing))
+            at.snapTo(0f)
+        }
+    }
+    // Its own layer, so only the key redraws; the light made once per size and moved.
+    return graphicsLayer().clipToBounds().drawWithCache {
         val band = size.height * 2f
-        val x = -band + (size.width + band * 2f) * at
-        drawRect(
+        val light =
             Brush.linearGradient(
                 listOf(Color.Transparent, Color.White.copy(alpha = 0.35f), Color.Transparent),
-                start = Offset(x - band / 2f, 0f),
-                end = Offset(x + band / 2f, size.height),
+                start = Offset(-band / 2f, 0f),
+                end = Offset(band / 2f, size.height),
             )
-        )
+        onDrawWithContent {
+            drawContent()
+            val x = -band + (size.width + band * 2f) * at.value
+            translate(left = x) { drawRect(light, topLeft = Offset(-x, 0f), size = size) }
+        }
     }
 }
 
@@ -577,14 +576,15 @@ private const val SHINE_REST_MS = 2_400
  */
 @Composable
 internal fun OpenEditorKey(ready: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, fill: Boolean = false) {
-    val ground by animateColorAsState(if (ready) CgColors.Brand.Signal else Color.Transparent, CgMotion.short())
+    // Read while drawing: the change of colour redraws the key, it does not recompose it.
+    val ground = animateColorAsState(if (ready) CgColors.Brand.Signal else Color.Transparent, CgMotion.short())
     val ink by animateColorAsState(if (ready) CgColors.Text.OnLight else CgColors.Text.Disabled, CgMotion.short())
     Row(
         modifier
             .testTag(TestTags.OpenEditor)
             .then(if (fill) Modifier.fillMaxWidth() else Modifier)
             .heightIn(min = 56.dp)
-            .background(ground)
+            .drawBehind { drawRect(ground.value) }
             .border(CgStroke.Hairline, if (ready) CgColors.Brand.Signal else CgColors.Line.Hairline)
             .clickable(enabled = ready, role = Role.Button, onClick = onClick)
             .padding(horizontal = if (fill) 20.dp else 24.dp),

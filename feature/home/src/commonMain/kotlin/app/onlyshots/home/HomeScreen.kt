@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -125,6 +126,7 @@ import app.onlyshots.core.resources.home_take_machine
 import app.onlyshots.core.resources.home_title
 import app.onlyshots.core.resources.home_try_sample
 import app.onlyshots.core.resources.home_turn_on_bluetooth
+import app.onlyshots.core.resources.open_dismiss
 import app.onlyshots.core.resources.record_pre_roll_hint
 import app.onlyshots.core.resources.record_pre_roll_hint_scale
 import app.onlyshots.core.resources.record_seconds
@@ -282,7 +284,13 @@ fun HomeBody(
                             Box(
                                 Modifier.fillMaxSize()
                                     .background(CgColors.Surface.Scrim.copy(alpha = 0.6f))
-                                    .clickable(onClick = onFoldPageDismiss)
+                                    // The dimmed page closes the other one: said so, and no ripple over a whole page.
+                                    .clickable(
+                                        remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClickLabel = stringResource(Res.string.open_dismiss),
+                                        onClick = onFoldPageDismiss,
+                                    )
                             )
                         }
                     }
@@ -563,12 +571,13 @@ private fun NextTakePane(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val live = state.connection == ConnectionState.Connected && take.live != null
-                        val dot by
+                        // Read while drawing: the dot's change of colour redraws it, it does not recompose the pane.
+                        val dot =
                             animateColorAsState(
                                 if (live) CgColors.Status.Live else CgColors.Text.Dim,
                                 CgMotion.medium(),
                             )
-                        Box(Modifier.size(CgSpace.S6).background(dot))
+                        Box(Modifier.size(CgSpace.S6).drawBehind { drawRect(dot.value) })
                         Text(
                             takeStatus(state, take.live).text(),
                             style = CgTheme.type.caption,

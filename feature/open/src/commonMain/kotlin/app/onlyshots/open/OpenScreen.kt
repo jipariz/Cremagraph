@@ -45,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -61,6 +60,9 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
@@ -87,6 +89,7 @@ import app.onlyshots.core.resources.UiText
 import app.onlyshots.core.resources.app_name
 import app.onlyshots.core.resources.open_change
 import app.onlyshots.core.resources.open_choose
+import app.onlyshots.core.resources.open_dismiss
 import app.onlyshots.core.resources.open_drop_to_use
 import app.onlyshots.core.resources.open_from_file
 import app.onlyshots.core.resources.open_from_machine
@@ -569,7 +572,7 @@ private fun FoldPageSheet(
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    BackHandler(onBack = onDismiss)
+    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None)) { onDismiss() }
     TwoPane(
         vertical = false,
         splitDp = layout.splitDp.dp,
@@ -579,7 +582,12 @@ private fun FoldPageSheet(
             Box(
                 Modifier.fillMaxSize()
                     .background(CgColors.Surface.Scrim.copy(alpha = 0.6f))
-                    .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
+                    .clickable(
+                        remember { MutableInteractionSource() },
+                        indication = null,
+                        onClickLabel = stringResource(Res.string.open_dismiss),
+                        onClick = onDismiss,
+                    )
             )
         },
         second = {
@@ -726,9 +734,9 @@ internal fun StepRow(
     highlighted: Boolean = false,
     large: Boolean = false,
 ) {
-    // A step lights up as it is done or hovered with a file, rather than switching at once.
-    val ground by animateColorAsState(if (highlighted) CgColors.Surface.Raised else Color.Transparent, CgMotion.short())
-    val box by animateColorAsState(if (done) CgColors.Brand.Bone else Color.Transparent, CgMotion.medium())
+    // A step lights up as it is done or hovered with a file, rather than switching at once; read while drawing.
+    val ground = animateColorAsState(if (highlighted) CgColors.Surface.Raised else Color.Transparent, CgMotion.short())
+    val box = animateColorAsState(if (done) CgColors.Brand.Bone else Color.Transparent, CgMotion.medium())
     val edge =
         when {
             done -> CgColors.Brand.Bone
@@ -744,7 +752,7 @@ internal fun StepRow(
     Row(
         modifier
             .fillMaxWidth()
-            .background(ground)
+            .drawBehind { drawRect(ground.value) }
             .clickable(role = Role.Button, onClick = onClick)
             .drawBehind {
                 if (next || highlighted) {
@@ -756,7 +764,9 @@ internal fun StepRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(if (large) CgSize.Touch else 36.dp).background(box).border(CgStroke.Hairline, edge),
+            Modifier.size(if (large) CgSize.Touch else 36.dp)
+                .drawBehind { drawRect(box.value) }
+                .border(CgStroke.Hairline, edge),
             contentAlignment = Alignment.Center,
         ) {
             if (done) {

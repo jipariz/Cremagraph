@@ -38,10 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
@@ -122,6 +122,7 @@ import app.onlyshots.style.StylePicker
 import app.onlyshots.style.StylePickerActions
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -517,15 +518,17 @@ private fun CameraPane(
         // A style that adapts to the video follows how bright the picture is behind the graph, sampled twice a second
         // and smoothed so it does not flicker.
         var luma by remember { mutableStateOf<Float?>(null) }
-        LaunchedEffect(graphStyle.adapt.enabled, rect, granted) {
+        // Keyed on whether to sample, not on where: a drag moves the rect every frame, and restarting the loop then
+        // would sample at frame rate. The loop reads the rect it is at.
+        val sampled by rememberUpdatedState(rect)
+        LaunchedEffect(graphStyle.adapt.enabled, granted) {
             if (!graphStyle.adapt.enabled || !granted) {
                 luma = null
                 return@LaunchedEffect
             }
             while (true) {
-                sampleLuma(rect.x, rect.y, rect.w, rect.h)?.let { now ->
-                    luma = luma?.let { it + (now - it) * 0.5f } ?: now
-                }
+                val at = sampled
+                sampleLuma(at.x, at.y, at.w, at.h)?.let { now -> luma = luma?.let { it + (now - it) * 0.5f } ?: now }
                 delay(500)
             }
         }
@@ -663,9 +666,9 @@ private fun CameraPane(
                             style = CgTheme.type.labelStrong,
                             color = CgColors.Status.Warning,
                             modifier =
-                                Modifier.belowFocusRing(it)
+                                Modifier.belowFocusRing(it, grow = FOCUS_LABEL_GROW)
                                     .clickable(role = Role.Button, onClick = actions::unlockFocus)
-                                    .padding(horizontal = CgSpace.S8, vertical = CgSpace.S12),
+                                    .padding(horizontal = CgSpace.S8, vertical = CgSpace.S12 + FOCUS_LABEL_GROW),
                         )
                     }
                 }
@@ -675,10 +678,10 @@ private fun CameraPane(
             // While filming, the panel under the picture says how long: one clock. The opposite corner from the
             // overlay, which it must never cover: when the graph is dragged across the middle, the chip travels to
             // the other corner rather than jumping there.
-            val corner by animateFloatAsState(if (rect.y < 0.5f) 1f else -1f, CgMotion.settle(), label = "chip")
+            val corner = animateFloatAsState(if (rect.y < 0.5f) 1f else -1f, CgMotion.settle(), label = "chip")
             AnimatedVisibility(
                 state.statusWorthShowing && !state.recording,
-                Modifier.align(BiasAlignment(-1f, corner)).padding(CgSpace.S12),
+                Modifier.matchParentSize().alignedAtStart { corner.value }.padding(CgSpace.S12),
                 enter = CgMotion.reveal,
                 exit = CgMotion.conceal,
             ) {
@@ -739,8 +742,8 @@ private fun shownPadding(frameW: Dp, frameH: Dp, shown: NormRect): PaddingValues
 @Composable
 private fun BoxScope.Viewfinder(area: Rect, frame: Rect) {
     Box(
-        Modifier.matchParentSize().drawBehind {
-            if (area.isEmpty || frame.isEmpty) return@drawBehind
+        Modifier.matchParentSize().drawWithCache {
+            // Built when the size or the area changes, not on every draw.
             val inset = CgSpace.S16.toPx()
             val arm = CgSpace.S16.toPx()
             val l = area.left - frame.left + inset
@@ -748,25 +751,21 @@ private fun BoxScope.Viewfinder(area: Rect, frame: Rect) {
             val r = area.right - frame.left - inset
             val b = area.bottom - frame.top - inset
             val stroke = Stroke(1.5.dp.toPx(), cap = StrokeCap.Square)
-            fun mark(x: Float, y: Float, dx: Float, dy: Float) {
-                drawPath(
-                    Path().apply {
-                        moveTo(x, y + dy * arm)
-                        lineTo(x, y)
-                        lineTo(x + dx * arm, y)
-                    },
-                    CgColors.Line.Hairline,
-                    style = stroke,
-                )
-            }
-            mark(l, t, 1f, 1f)
-            mark(r, t, -1f, 1f)
-            mark(l, b, 1f, -1f)
-            mark(r, b, -1f, -1f)
+            fun mark(x: Float, y: Float, dx: Float, dy: Float) =
+                Path().apply {
+                    moveTo(x, y + dy * arm)
+                    lineTo(x, y)
+                    lineTo(x + dx * arm, y)
+                }
+            val marks = listOf(mark(l, t, 1f, 1f), mark(r, t, -1f, 1f), mark(l, b, 1f, -1f), mark(r, b, -1f, -1f))
             val c = Offset((l + r) / 2f, (t + b) / 2f)
             val half = arm / 2f
-            drawLine(CgColors.Line.Hairline, c - Offset(half, 0f), c + Offset(half, 0f), stroke.width)
-            drawLine(CgColors.Line.Hairline, c - Offset(0f, half), c + Offset(0f, half), stroke.width)
+            onDrawBehind {
+                if (area.isEmpty || frame.isEmpty) return@onDrawBehind
+                for (m in marks) drawPath(m, CgColors.Line.Hairline, style = stroke)
+                drawLine(CgColors.Line.Hairline, c - Offset(half, 0f), c + Offset(half, 0f), stroke.width)
+                drawLine(CgColors.Line.Hairline, c - Offset(0f, half), c + Offset(0f, half), stroke.width)
+            }
         }
     )
 }
@@ -795,6 +794,9 @@ private fun WarningBanner(text: String?) {
 /** A cover screen or a sliver of split screen: the clock over the picture and the button under it, nothing else. */
 @Composable
 private fun BoxScope.TinyControls(state: RecordUiState, actions: RecordActions) {
+    // Read while drawing: the change of colour redraws the chip, it does not recompose it.
+    val ground =
+        animateColorAsState(if (state.recording) CgColors.Status.Record else CgColors.Surface.Raised, CgMotion.medium())
     Text(
         if (state.recording) state.status.text() else stringResource(Res.string.record_ready),
         style = CgTheme.type.label,
@@ -802,13 +804,7 @@ private fun BoxScope.TinyControls(state: RecordUiState, actions: RecordActions) 
         modifier =
             Modifier.align(Alignment.TopCenter)
                 .padding(top = CgSpace.S24)
-                .background(
-                    animateColorAsState(
-                            if (state.recording) CgColors.Status.Record else CgColors.Surface.Raised,
-                            CgMotion.medium(),
-                        )
-                        .value
-                )
+                .drawBehind { drawRect(ground.value) }
                 .padding(horizontal = CgSpace.S14, vertical = CgSpace.S6),
     )
     RecordButton(
@@ -823,13 +819,29 @@ private fun BoxScope.TinyControls(state: RecordUiState, actions: RecordActions) 
     )
 }
 
+/** What the focus label's padding grows by, to a 44 dp target, with its words where they were. */
+private val FOCUS_LABEL_GROW = 2.dp
+
+/**
+ * Where a child of the whole box sits, BiasAlignment's way: at the start, and [vertical] (-1 top, 1 bottom) of the way
+ * down. Read while placing, so an animated bias moves the child without recomposing it.
+ */
+private fun Modifier.alignedAtStart(vertical: () -> Float): Modifier = layout { measurable, constraints ->
+    val child = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+    layout(constraints.maxWidth, constraints.maxHeight) {
+        val center = (constraints.maxHeight - child.height).toFloat() / 2f
+        child.placeRelative(0, (center * (1f + vertical())).roundToInt())
+    }
+}
+
 /**
  * Places a label centred under the focus ring at [ring], or over it when there is no room below, kept inside the
  * picture.
  */
-private fun Modifier.belowFocusRing(ring: Offset): Modifier = layout { measurable, constraints ->
+private fun Modifier.belowFocusRing(ring: Offset, grow: Dp = 0.dp): Modifier = layout { measurable, constraints ->
     val label = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
-    val gap = (FOCUS_RING_RADIUS + 4).dp.roundToPx()
+    // A label padded [grow] more on each side sits [grow] nearer the ring, so its words stay where they were.
+    val gap = (FOCUS_RING_RADIUS + 4).dp.roundToPx() - grow.roundToPx()
     layout(constraints.maxWidth, constraints.maxHeight) {
         val x = (ring.x.toInt() - label.width / 2).coerceIn(0, maxOf(0, constraints.maxWidth - label.width))
         val below = ring.y.toInt() + gap

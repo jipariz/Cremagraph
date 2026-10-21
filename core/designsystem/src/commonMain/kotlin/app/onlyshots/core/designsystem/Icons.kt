@@ -32,9 +32,9 @@ import app.onlyshots.core.resources.ic_stop
 import org.jetbrains.compose.resources.vectorResource
 
 /**
- * The app's icons: IBM Carbon (`carbon:*`, drawn to sit beside IBM Plex), written as vector drawables in
- * :core:resources (`drawable/ic_*.xml`) by design/icons/build.py. They are drawn in white and tinted where they are
- * used; never a character in place of an icon.
+ * The app's own icons (design/icons/GUIDELINES.md: a 24 grid, one 1.5 square-capped stroke, right angles, filled
+ * squares for accents), written as vector drawables in :core:resources (`drawable/ic_*.xml`) by design/icons/build.py.
+ * They are drawn in white and tinted where they are used; never a character in place of an icon.
  */
 object CgIcons {
     /**

@@ -1,10 +1,13 @@
-<!-- carbon:pause-filled (IBM Carbon, Apache 2.0), written by design/icons/build.py. -->
+<!-- OnlyShots' own icon, written by design/icons/build.py: edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="32"
-    android:viewportHeight="32">
+    android:viewportWidth="24"
+    android:viewportHeight="24">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M12 6h-2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2m10 0h-2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2" />
+        android:pathData="M6 5H10V19H6Z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M14 5H18V19H14Z"
+        android:fillColor="#FFFFFFFF" />
 </vector>

@@ -1,10 +1,13 @@
-<!-- carbon:checkmark (IBM Carbon, Apache 2.0), written by design/icons/build.py. -->
+<!-- OnlyShots' own icon, written by design/icons/build.py: edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="32"
-    android:viewportHeight="32">
+    android:viewportWidth="24"
+    android:viewportHeight="24">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="m13 24l-9-9l1.414-1.414L13 21.171L26.586 7.586L28 9z" />
+        android:pathData="M4.5 12.5L9.5 17.5L19.5 7.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="square"
+        android:strokeLineJoin="miter" />
 </vector>

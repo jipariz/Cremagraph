@@ -1,16 +1,22 @@
-<!-- carbon:help (IBM Carbon, Apache 2.0), written by design/icons/build.py. -->
+<!-- OnlyShots' own icon, written by design/icons/build.py: edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="32"
-    android:viewportHeight="32">
+    android:viewportWidth="24"
+    android:viewportHeight="24">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2m0 26a12 12 0 1 1 12-12a12 12 0 0 1-12 12" />
+        android:pathData="M3.75 3.75H20.25V20.25H3.75Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="square"
+        android:strokeLineJoin="miter" />
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M14.5 23.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0z" />
+        android:pathData="M9 9.5V8H15V12H12V14.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="square"
+        android:strokeLineJoin="miter" />
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M17 8h-1.5a4.49 4.49 0 0 0-4.5 4.5v.5h2v-.5a2.5 2.5 0 0 1 2.5-2.5H17a2.5 2.5 0 0 1 0 5h-2v4.5h2V17a4.5 4.5 0 0 0 0-9" />
+        android:pathData="M11.25 16H12.75V17.5H11.25Z"
+        android:fillColor="#FFFFFFFF" />
 </vector>

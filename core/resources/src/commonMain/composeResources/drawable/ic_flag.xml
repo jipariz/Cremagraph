@@ -1,10 +1,16 @@
-<!-- carbon:flag (IBM Carbon, Apache 2.0), written by design/icons/build.py. -->
+<!-- OnlyShots' own icon, written by design/icons/build.py: edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="32"
-    android:viewportHeight="32">
+    android:viewportWidth="24"
+    android:viewportHeight="24">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M6 30H4V2h24l-5.8 9l5.8 9H6Zm0-12h18.33l-4.53-7l4.53-7H6Z" />
+        android:pathData="M6 3V21"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="square"
+        android:strokeLineJoin="miter" />
+    <path
+        android:pathData="M6.75 4H18.75V12H6.75Z"
+        android:fillColor="#FFFFFFFF" />
 </vector>

@@ -1,10 +1,10 @@
-<!-- carbon:caret-down (IBM Carbon, Apache 2.0), written by design/icons/build.py. -->
+<!-- OnlyShots' own icon, written by design/icons/build.py: edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="32"
-    android:viewportHeight="32">
+    android:viewportWidth="24"
+    android:viewportHeight="24">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="m24 12l-8 10l-8-10z" />
+        android:pathData="M7 9.5H17L12 14.5Z"
+        android:fillColor="#FFFFFFFF" />
 </vector>

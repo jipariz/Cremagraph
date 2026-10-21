@@ -348,5 +348,5 @@ All seven milestones done: spike, foundations, record, editor, share, more sourc
 
 Open Sans: SIL Open Font License 1.1 (`core/resources/OPEN_SANS_LICENSE.txt`). IBM Plex Mono and Plex Sans: SIL Open
 Font License 1.1 (`core/resources/IBM_PLEX_LICENSE.txt`).
-Icons: IBM Carbon (`carbon:*`, Apache License 2.0), fetched with better-icons and written as vector drawables by
+Icons: OnlyShots' own (`design/icons/`, rules in `GUIDELINES.md`), written as vector drawables by
 `design/icons/build.py`.

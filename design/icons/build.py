@@ -1,110 +1,127 @@
-"""The app's icons: IBM Carbon (carbon:*, made to sit beside IBM Plex), fetched with better-icons and written as
-Compose vector drawables (core/resources/.../drawable/ic_*.xml), drawn white and tinted where they are used.
+"""OnlyShots' own icons ("Instrument" icons), drawn here as geometry and written as Compose vector drawables
+(core/resources/.../drawable/ic_*.xml), white and tinted where they are used. Also writes design/icons/svg/*.svg and a
+contact sheet, design/icons/sheet.html.
 
-    python3 design/icons/build.py            # fetch the SVGs (design/icons/svg/) and write the drawables
-    python3 design/icons/build.py --offline  # rebuild the drawables from the SVGs already here
+    python3 design/icons/build.py
 
-Icons: Carbon Design System, IBM, Apache License 2.0 (https://github.com/carbon-design-system/carbon).
+The rules (design/icons/GUIDELINES.md): a 24 grid with a 2-unit margin (live area 20 × 20); one stroke, 1.5, square
+caps and mitred joins; straight lines and right angles, diagonals at 45°; accents as filled squares, the logo's pen
+head; a circle only where the meaning is round (the record dot, a help ring). Nothing rounded off.
 """
 import os
-import re
-import subprocess
-import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SVG = os.path.join(HERE, "svg")
 OUT = os.path.join(HERE, "..", "..", "core", "resources", "src", "commonMain", "composeResources", "drawable")
+SVG = os.path.join(HERE, "svg")
+W = 1.5  # the one stroke
 
-# drawable name -> Carbon id
+
+def stroke(d):
+    return ("stroke", d)
+
+
+def fill(d):
+    return ("fill", d)
+
+
+def rect(x, y, w, h):
+    return f"M{x:g} {y:g}H{x + w:g}V{y + h:g}H{x:g}Z"
+
+
+def circle(cx, cy, r):
+    return f"M{cx - r:g} {cy:g}A{r:g} {r:g} 0 1 1 {cx + r:g} {cy:g}A{r:g} {r:g} 0 1 1 {cx - r:g} {cy:g}Z"
+
+
 ICONS = {
-    "ic_chevron_left": "chevron-left",
-    "ic_chevron_right": "chevron-right",
-    "ic_chevron_down": "chevron-down",
-    "ic_caret_down": "caret-down",
-    "ic_plus": "add",
-    "ic_minus": "subtract",
-    "ic_contrast": "contrast",
-    "ic_frame": "crop",
-    "ic_flag": "flag",
-    "ic_check": "checkmark",
-    "ic_arrow_right": "arrow-right",
-    "ic_play": "play-filled-alt",
-    "ic_pause": "pause-filled",
-    "ic_stop": "stop-filled-alt",
-    "ic_edit": "edit",
-    "ic_bluetooth": "bluetooth",
-    "ic_launch": "launch",
-    "ic_close": "close",
-    "ic_shield": "security",
-    "ic_machine": "cafe",
-    "ic_film": "video",
-    "ic_settings": "settings",
-    "ic_record": "recording",
-    "ic_help": "help",
-    "ic_lock": "locked",
+    # Direction: chevrons on 45°, 7 units across.
+    "ic_chevron_left": [stroke("M14.5 5L7.5 12L14.5 19")],
+    "ic_chevron_right": [stroke("M9.5 5L16.5 12L9.5 19")],
+    "ic_chevron_down": [stroke("M5 9.5L12 16.5L19 9.5")],
+    "ic_caret_down": [fill("M7 9.5H17L12 14.5Z")],
+    "ic_arrow_right": [stroke("M4 12H19"), stroke("M13.5 6.5L19 12L13.5 17.5")],
+    "ic_launch": [stroke("M10 5H5V19H19V14"), stroke("M13 5H19V11"), stroke("M19 5L11 13")],
+    # Amounts.
+    "ic_plus": [stroke("M12 5V19"), stroke("M5 12H19")],
+    "ic_minus": [stroke("M5 12H19")],
+    # How much of the graph's ground shows: a square, half filled.
+    "ic_contrast": [stroke(rect(4.75, 4.75, 14.5, 14.5)), fill(rect(12, 4.75, 7.25, 14.5))],
+    # The video's frame: two crop corners.
+    "ic_frame": [stroke("M7 3V17H21"), stroke("M3 7H17V21")],
+    # The shot's start, placed by hand: a pole and a square flag.
+    "ic_flag": [stroke("M6 3V21"), fill(rect(6.75, 4, 12, 8))],
+    "ic_check": [stroke("M4.5 12.5L9.5 17.5L19.5 7.5")],
+    "ic_close": [stroke("M6 6L18 18"), stroke("M18 6L6 18")],
+    # Playback: solid shapes, so they read at a glance over video.
+    "ic_play": [fill("M7 4.5V19.5L19 12Z")],
+    "ic_pause": [fill(rect(6, 5, 4, 14)), fill(rect(14, 5, 4, 14))],
+    "ic_stop": [fill(rect(6, 6, 12, 12))],
+    # A name that can be changed: a square-ended pencil on 45°, its tip a filled square corner.
+    "ic_edit": [stroke("M15.5 4.5L19.5 8.5L9 19H5V15Z"), stroke("M13 7L17 11")],
+    # Bluetooth's rune, in straight strokes.
+    "ic_bluetooth": [stroke("M7 7.5L16.5 16.5L12 21V3L16.5 7.5L7 16.5")],
+    # Nothing leaves the device: an angular shield with a tick.
+    "ic_shield": [stroke("M12 3L19.5 6V12.5L12 21L4.5 12.5V6Z"), stroke("M8.5 12L11 14.5L15.5 10")],
+    # An espresso machine: the body, the group head over the cup.
+    "ic_machine": [stroke("M4.75 3.75H19.25V9.75H4.75Z"), stroke("M4.75 9.75V20.25H19.25"), fill(rect(10, 9.75, 4, 2.5)),
+                   stroke("M9.5 14.5V18.5H14.5V14.5")],
+    # A video: the camera body and its lens.
+    "ic_film": [stroke(rect(2.75, 6.75, 13, 10.5)), fill("M17.5 12L21.5 8V16Z")],
+    # Settings as an instrument's sliders: two rails, two square knobs.
+    "ic_settings": [stroke("M3 8H21"), stroke("M3 16H21"), fill(rect(13, 5, 6, 6)), fill(rect(5, 13, 6, 6))],
+    # Recording: the one round thing, the record dot, in its ring.
+    "ic_record": [stroke(circle(12, 12, 8.25)), fill(circle(12, 12, 4))],
+    # About OnlyShots: a question in a square, its dot a square.
+    "ic_help": [stroke(rect(3.75, 3.75, 16.5, 16.5)), stroke("M9 9.5V8H15V12H12V14.5"), fill(rect(11.25, 16, 1.5, 1.5))],
+    # A shot start the recording fixed: a squared padlock.
+    "ic_lock": [stroke("M8 10.5V6H16V10.5"), fill(rect(5, 10.5, 14, 10))],
 }
 
 
-def fetch(carbon_id):
-    path = os.path.join(SVG, carbon_id + ".svg")
-    if "--offline" not in sys.argv:
-        svg = subprocess.run(["npx", "-y", "better-icons", "get", "carbon:" + carbon_id], capture_output=True,
-                             text=True, check=True).stdout.strip()
-        if not svg.startswith("<svg"):
-            raise SystemExit(f"carbon:{carbon_id}: {svg[:200]}")
-        open(path, "w").write(svg + "\n")
-    return open(path).read()
-
-
-def shapes(svg):
-    """The SVG's drawn shapes as path data: paths, rects and circles; transparent boxes are left out."""
-    out = []
-    for tag, attrs in re.findall(r"<(path|rect|circle|polygon)\b([^>]*)/?>", svg):
-        a = dict(re.findall(r'([\w:-]+)="([^"]*)"', attrs))
-        if a.get("fill") == "none" or "fill:none" in a.get("style", "").replace(" ", ""):
-            continue
-        if tag == "path":
-            d = a["d"]
-        elif tag == "rect":
-            x, y = float(a.get("x", 0)), float(a.get("y", 0))
-            w, h = float(a["width"]), float(a["height"])
-            d = f"M{x:g} {y:g}h{w:g}v{h:g}h{-w:g}z"
-        elif tag == "circle":
-            cx, cy, r = float(a["cx"]), float(a["cy"]), float(a["r"])
-            d = f"M{cx - r:g} {cy:g}a{r:g} {r:g} 0 1 0 {2 * r:g} 0a{r:g} {r:g} 0 1 0 {-2 * r:g} 0z"
+def svg(shapes):
+    parts = []
+    for kind, d in shapes:
+        if kind == "stroke":
+            parts.append(f'<path d="{d}" fill="none" stroke="currentColor" stroke-width="{W}" '
+                         'stroke-linecap="square" stroke-linejoin="miter"/>')
         else:
-            d = "M" + a["points"].strip() + "z"
-        transform = a.get("transform")
-        out.append((d, a.get("fill-rule") == "evenodd", transform))
-    return out
+            parts.append(f'<path d="{d}" fill="currentColor"/>')
+    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">{"".join(parts)}</svg>'
 
 
-def drawable(name, carbon_id, svg):
-    vb = [float(v) for v in re.search(r'viewBox="([^"]+)"', svg).group(1).split()]
-    body = []
-    for d, evenodd, transform in shapes(svg):
-        rule = '\n        android:fillType="evenOdd"' if evenodd else ""
-        path = (f'    <path\n        android:fillColor="#FFFFFFFF"{rule}\n        android:pathData="{d}" />')
-        m = re.match(r"translate\(([-\d.]+)[ ,]+([-\d.]+)\)", transform or "")
-        if m:
-            path = (f'    <group android:translateX="{m.group(1)}" android:translateY="{m.group(2)}">\n'
-                    + path.replace("\n", "\n    ") + "\n    </group>")
-        elif transform:
-            raise SystemExit(f"carbon:{carbon_id}: unsupported transform {transform}")
-        body.append(path)
-    return (f"<!-- carbon:{carbon_id} (IBM Carbon, Apache 2.0), written by design/icons/build.py. -->\n"
+def vector(name, shapes):
+    paths = []
+    for kind, d in shapes:
+        if kind == "stroke":
+            paths.append(f'    <path\n        android:pathData="{d}"\n        android:strokeColor="#FFFFFFFF"\n'
+                         f'        android:strokeWidth="{W}"\n        android:strokeLineCap="square"\n'
+                         '        android:strokeLineJoin="miter" />')
+        else:
+            paths.append(f'    <path\n        android:pathData="{d}"\n        android:fillColor="#FFFFFFFF" />')
+    return ("<!-- OnlyShots' own icon, written by design/icons/build.py: edit that, not this. -->\n"
             '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
             '    android:width="24dp"\n    android:height="24dp"\n'
-            f'    android:viewportWidth="{vb[2]:g}"\n    android:viewportHeight="{vb[3]:g}">\n'
-            + "\n".join(body) + "\n</vector>\n")
+            '    android:viewportWidth="24"\n    android:viewportHeight="24">\n' + "\n".join(paths) + "\n</vector>\n")
 
 
 def main():
     os.makedirs(SVG, exist_ok=True)
-    for name, carbon_id in ICONS.items():
-        svg = fetch(carbon_id)
-        open(os.path.join(OUT, name + ".xml"), "w").write(drawable(name, carbon_id, svg))
-        print(name, "<-", "carbon:" + carbon_id)
+    for f in os.listdir(SVG):
+        os.remove(os.path.join(SVG, f))
+    cells = []
+    for name, shapes in ICONS.items():
+        open(os.path.join(OUT, name + ".xml"), "w").write(vector(name, shapes))
+        s = svg(shapes)
+        open(os.path.join(SVG, name[3:] + ".svg"), "w").write(s + "\n")
+        big = s.replace('viewBox="0 0 24 24"', 'viewBox="0 0 24 24" width="48" height="48"')
+        small = s.replace('viewBox="0 0 24 24"', 'viewBox="0 0 24 24" width="16" height="16"')
+        cells.append(f"<div class=c>{big}<div class=s>{small}{small.replace('16', '24', 2)}</div>"
+                     f"<span>{name[3:]}</span></div>")
+    open(os.path.join(HERE, "sheet.html"), "w").write(
+        "<html><body style='margin:0;padding:12px;background:#0b0b0b;color:#e8e6e1;font:10px monospace'>"
+        "<style>.c{display:inline-flex;flex-direction:column;align-items:center;gap:6px;width:120px;padding:10px 0;"
+        "border:1px solid #2a2a28;margin:0 -1px -1px 0}.s{display:flex;gap:10px;align-items:center}svg{color:#e8e6e1}"
+        "</style>" + "".join(cells) + "</body></html>")
+    print(len(ICONS), "icons")
 
 
 if __name__ == "__main__":

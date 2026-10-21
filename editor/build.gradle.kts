@@ -11,7 +11,6 @@ kotlin {
             api(projects.feature.edit)
             api(projects.feature.style)
             implementation(projects.storage)
-            implementation(libs.sqldelight.runtime)
         }
     }
 }

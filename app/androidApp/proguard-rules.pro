@@ -23,6 +23,3 @@
 -keep class com.juul.kable.** { *; }
 -dontwarn com.juul.kable.**
 
-# SQLDelight's driver loads the framework SQLite classes by name.
--keep class app.cashapp.sqldelight.** { *; }
--dontwarn app.cash.sqldelight.**

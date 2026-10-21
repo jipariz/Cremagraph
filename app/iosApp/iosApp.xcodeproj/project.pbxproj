@@ -293,7 +293,6 @@
 					"$(inherited)",
 					"-framework",
 					OnlyShotsApp,
-					"-lsqlite3",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.parez.onlyshots;
 				SDKROOT = iphoneos;
@@ -322,7 +321,6 @@
 					"$(inherited)",
 					"-framework",
 					OnlyShotsApp,
-					"-lsqlite3",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.parez.onlyshots;
 				SDKROOT = iphoneos;

@@ -1,16 +1,13 @@
 package app.onlyshots.editor
 
-import app.cash.sqldelight.db.SqlDriver
 import app.onlyshots.edit.EditViewModel
 import app.onlyshots.export.ExportManager
 import app.onlyshots.open.OpenViewModel
 import app.onlyshots.storage.AppSettingsRepo
 import app.onlyshots.storage.Library
-import app.onlyshots.storage.LibraryIndex
 import app.onlyshots.storage.LibraryStore
 import app.onlyshots.storage.SettingsStore
 import app.onlyshots.storage.ShareTempFiles
-import app.onlyshots.storage.SqlLibraryIndex
 import app.onlyshots.storage.VideoImport
 import app.onlyshots.style.StyleEditorViewModel
 import app.onlyshots.style.StyleLibrary
@@ -30,16 +27,14 @@ const val CACHE_DIR = "cacheDir"
 const val LIBRARY_DIR = "libraryDir"
 
 /**
- * What the editor needs, on every platform: the library and its index, the settings, the styles, the export manager,
- * and the open, edit and style-editor view models. A host adds its platform module (file system, directories, exporter,
- * probe, share, gallery) and a `ShotHistory` (a machine's shots, or `ShotHistory.None`).
+ * What the editor needs, on every platform: the library, the settings, the styles, the export manager, and the open,
+ * edit and style-editor view models. A host adds its platform module (file system, directories, exporter, probe, share,
+ * gallery) and a `ShotHistory` (a machine's shots, or `ShotHistory.None`).
  */
 val editorModule = module {
     single { LibraryStore(get(), get<Path>(named(LIBRARY_DIR))) }
-    // The SQL index where the platform has a database; the web's session-only library goes without.
-    single<LibraryIndex> { getOrNull<SqlDriver>()?.let(::SqlLibraryIndex) ?: LibraryIndex.None }
     single<VideoImport> { VideoImport.Copy(get(), get()) }
-    single { Library(get(), get(), get()) }
+    single { Library(get()) }
     single { SettingsStore(get(), get<Path>(named(LIBRARY_DIR)) / "settings.json") }
     single { ShareTempFiles(get(), get<Path>(named(CACHE_DIR)) / "share") }
     single { AppSettingsRepo(get()) }

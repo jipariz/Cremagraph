@@ -31,8 +31,6 @@ targets:
           - $(inherited)
           - -framework
           - OnlyShotsApp
-          # The native SQLDelight driver links against the system SQLite.
-          - -lsqlite3
         ENABLE_USER_SCRIPT_SANDBOXING: NO
     preBuildScripts:
       - name: Build the Kotlin framework

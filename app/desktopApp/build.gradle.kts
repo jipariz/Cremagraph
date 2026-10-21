@@ -38,9 +38,9 @@ compose.desktop {
             packageName = "OnlyShots"
             description = "Your espresso shot, with its graph: the OnlyShots editor"
             vendor = "OnlyShots"
-            // The packaged app carries a trimmed Java runtime: these are what suggestRuntimeModules finds (java.sql for
-            // the library's SQLite index; the rest for FFmpeg's JavaCPP and coroutines).
-            modules("java.instrument", "java.management", "java.sql", "jdk.unsupported")
+            // The packaged app carries a trimmed Java runtime: these are what suggestRuntimeModules finds (FFmpeg's
+            // JavaCPP and coroutines).
+            modules("java.instrument", "java.management", "jdk.unsupported")
             macOS { iconFile.set(project.file("icons/onlyshots.icns")) }
             windows { iconFile.set(project.file("icons/onlyshots.ico")) }
             linux { iconFile.set(project.file("icons/onlyshots.png")) }

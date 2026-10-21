@@ -15,7 +15,6 @@ import app.onlyshots.platform.PlatformShare
 import app.onlyshots.platform.VideoGallery
 import app.onlyshots.storage.AppSettingsRepo
 import app.onlyshots.storage.Library
-import app.onlyshots.storage.LibraryIndex
 import app.onlyshots.storage.LibraryStore
 import app.onlyshots.storage.SettingsStore
 import app.onlyshots.storage.ShareTempFiles
@@ -92,7 +91,7 @@ private fun pump(onsetS: Double): MonoPcm {
 class EditViewModelAttachTest {
     private val fs = FakeFileSystem()
     private val store = LibraryStore(fs, "/library".toPath())
-    private val library = Library(store, LibraryIndex.None, fs)
+    private val library = Library(store)
     private val shotStarted = Instant.parse("2026-10-18T15:42:59Z")
 
     /**

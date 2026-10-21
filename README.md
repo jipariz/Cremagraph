@@ -48,7 +48,7 @@ client-server style. Apps live in `app/`. Shared libraries live at root.
 | `:overlay:compose` | Scene drawn with Compose: `drawOverlay`, `ShotOverlay`, `OverlayFrameRenderer` |
 | `:sources` | `ShotSource`. Network machines (WebSocket), Bluetooth scales (Kable), scan, fake replay |
 | `:video` | Exporters (Media3, AVFoundation, FFmpeg, browser), probes, players, pump-start finder |
-| `:storage` | Sidecars, SQLDelight index, settings, share temp files |
+| `:storage` | Sidecars, settings, share temp files |
 | `:camera` | `CameraController`, pre-roll buffer |
 
 Convention plugins in `build-logic/`: `onlyshots.kmp.library`, `onlyshots.kmp.wasm` (wasm + js),
@@ -86,8 +86,7 @@ Screen locks only while take runs. Editor's **⤢ frame** picks format and moves
 **Recording.** Runs from arm. Pre-roll is in file. `trimInUs` cuts idle head. While armed, file restarts every 15 s.
 Late shot gets old tail joined in front (`Mp4Join` on Android; on iOS old writer keeps going).
 
-**Storage.** Sidecar JSON per video = truth. SQLDelight index = cache, rebuilt at start (`Library.reconcile()`).
-Disagree? Sidecar wins. Web has no database.
+**Storage.** Sidecar JSON per video, beside the video = only truth. No database: nothing lists the library.
 
 **Layout.** `windowLayout(...)` picks `Phone`, `Wide`, `Stacked`, `Tiny`. Every adaptive branch goes through it.
 Foldables follow "OnlyShots Foldables" canvas: nothing on fold; picture one pane, controls other.

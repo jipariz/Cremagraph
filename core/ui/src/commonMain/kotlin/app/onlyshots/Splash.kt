@@ -134,7 +134,7 @@ fun SplashHost(splash: SplashState?, content: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             content()
             if (!done) {
-                if (reduced) ReducedOverlay(fadeIn, fadeOut, splash.markBounds)
+                if (reduced) ReducedOverlay({ fadeIn }, { fadeOut }, splash.markBounds)
                 else Overlay({ t }, tl, splash.markBounds, target.bounds)
             }
         }
@@ -222,13 +222,16 @@ private fun Overlay(t: () -> Float, tl: SplashTimeline, held: Rect?, landing: Re
     }
 }
 
-/** Reduced motion: the finished mark fades in, holds, and cross-fades to the app. Nothing moves. */
+/**
+ * Reduced motion: the finished mark fades in, holds, and cross-fades to the app. Nothing moves. The fades are read only
+ * where they are drawn, so they redraw without recomposing.
+ */
 @Composable
-private fun ReducedOverlay(fadeIn: Float, fadeOut: Float, held: Rect?) {
+private fun ReducedOverlay(fadeIn: () -> Float, fadeOut: () -> Float, held: Rect?) {
     val geometry = rememberSplashGeometry()
     val density = LocalDensity.current
     BoxWithConstraints(
-        Modifier.fillMaxSize().graphicsLayer { alpha = 1f - fadeOut }.background(CgColors.Surface.Base)
+        Modifier.fillMaxSize().graphicsLayer { alpha = 1f - fadeOut() }.background(CgColors.Surface.Base)
     ) {
         val markPx = with(density) { SplashMarkSize.toPx() }
         val rect =
@@ -241,7 +244,7 @@ private fun ReducedOverlay(fadeIn: Float, fadeOut: Float, held: Rect?) {
             Modifier.offset { IntOffset(rect.left.roundToInt(), rect.top.roundToInt()) }
                 .size(with(density) { rect.width.toDp() })
         ) {
-            drawSplashMark(geometry, Splash.finished, fadeIn)
+            drawSplashMark(geometry, Splash.finished, fadeIn())
         }
     }
 }

@@ -7,26 +7,28 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.InfiniteRepeatableSpec
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import kotlinx.coroutines.delay
 
 /**
  * How things move, the Instrument way: like hardware. Things travel fast and stop dead (one curve, no springs, no
  * overshoot, no scale); a value that changes ticks over like a readout ([tick]) or just changes ([cut]); panels, sheets
- * and banners slide, they don't fade; indicators blink in steps ([blink]), they don't breathe. Fades are kept for
- * overlays only (a scrim, the graph over the camera). Every animated value starts at its target, so screenshots show
- * the settled state.
+ * and banners slide, they don't fade; indicators blink in steps ([rememberBlink]), they don't breathe. Fades are kept
+ * for overlays only (a scrim, the graph over the camera). Every animated value starts at its target, so screenshots
+ * show the settled state.
  */
 object CgMotion {
     /** Colour, a knob, a key: small things that change in place. */
@@ -84,17 +86,20 @@ object CgMotion {
 
     /**
      * An indicator's light, blinking in steps rather than breathing: full for the first half of [periodMs], [dim] for
-     * the second.
+     * the second, starting lit. Read it where it is drawn (`graphicsLayer`, `drawBehind`). Two values a period need no
+     * animation: a timed loop flips it, so nothing asks for a frame between the flips.
      */
-    fun blink(periodMs: Int, dim: Float = 0.2f): InfiniteRepeatableSpec<Float> =
-        infiniteRepeatable(
-            keyframes {
-                durationMillis = periodMs
-                1f at 0
-                1f at periodMs / 2 - 1
-                dim at periodMs / 2
-                dim at periodMs - 1
-            },
-            RepeatMode.Restart,
-        )
+    @Composable
+    fun rememberBlink(periodMs: Int, dim: Float = 0.2f): State<Float> {
+        val light = remember { mutableFloatStateOf(1f) }
+        LaunchedEffect(periodMs, dim) {
+            while (true) {
+                light.floatValue = 1f
+                delay(periodMs / 2L)
+                light.floatValue = dim
+                delay(periodMs - periodMs / 2L)
+            }
+        }
+        return light
+    }
 }

@@ -2,8 +2,6 @@ package app.onlyshots.core.designsystem.component
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -158,14 +156,7 @@ fun RecordButton(
     // Read while drawing, so the blinking redraws the frame without recomposing the button.
     val frameAlpha: () -> Float =
         if (state == RecordButtonState.Armed) {
-            val t = rememberInfiniteTransition(label = "armed")
-            val pulse =
-                t.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 0.2f,
-                    animationSpec = CgMotion.blink(1000, dim = 0.2f),
-                    label = "frame",
-                )
+            val pulse = CgMotion.rememberBlink(1000, dim = 0.2f)
             pulse::value
         } else {
             NoPulse

@@ -3,9 +3,7 @@ package app.onlyshots.core.designsystem.component
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -163,9 +161,7 @@ fun SectionHeader(
 private fun SearchingNote(text: String, color: Color) {
     val still = LocalInspectionMode.current
     // Read only where it is drawn: the light changes on its beat, the composition need not.
-    val light =
-        rememberInfiniteTransition(label = "searching")
-            .animateFloat(initialValue = 1f, targetValue = 1f, animationSpec = CgMotion.blink(800), label = "light")
+    val light = CgMotion.rememberBlink(800)
     Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S6), verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier.size(14.dp).drawBehind {

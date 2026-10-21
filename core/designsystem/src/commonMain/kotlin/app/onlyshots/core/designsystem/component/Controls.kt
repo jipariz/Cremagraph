@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -69,6 +70,7 @@ import app.onlyshots.core.resources.core_more
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -303,7 +305,12 @@ fun CgSlider(
     // A drag follows the finger exactly; a tap (or a value set from elsewhere) glides the thumb there.
     var dragging by remember { mutableStateOf(false) }
     val shown = remember { Animatable(f) }
-    LaunchedEffect(f) { if (dragging) shown.snapTo(f) else shown.animateTo(f, CgMotion.settle()) }
+    // One collector follows the value, rather than an effect relaunched on every frame of a drag.
+    val target by rememberUpdatedState(f)
+    LaunchedEffect(shown) {
+        snapshotFlow { target }
+            .collectLatest { to -> if (dragging) shown.snapTo(to) else shown.animateTo(to, CgMotion.settle()) }
+    }
     fun at(x: Float, width: Float) = snapped(range.start + (x / width).coerceIn(0f, 1f) * span)
     // The gestures outlive a recomposition: they call whatever callback the caller passes now, not the first one.
     val change by rememberUpdatedState(onValueChange)

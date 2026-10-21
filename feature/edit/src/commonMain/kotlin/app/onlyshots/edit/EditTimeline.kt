@@ -33,10 +33,12 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -136,6 +138,16 @@ fun EditTimeline(
     val pump by rememberUpdatedState(pumpUs)
     // Drawn every frame of playback: the header's styles made once, the playhead's triangle refilled in place.
     val headerStyles = remember(type) { HeaderStyles(type) }
+    // The shimmer's light, made once per density and moved where it is drawn, rather than made again every frame.
+    val density = LocalDensity.current
+    val sweepBrush =
+        remember(density) {
+            Brush.horizontalGradient(
+                listOf(Color.Transparent, CgColors.Text.Primary.copy(alpha = 0.12f), Color.Transparent),
+                startX = 0f,
+                endX = with(density) { SHIMMER_BAND.dp.toPx() },
+            )
+        }
     val playheadTri = remember { Path() }
     val description = stringResource(Res.string.edit_timeline_description)
     val words =
@@ -287,15 +299,15 @@ fun EditTimeline(
             )
         if (compact) {
             translate(top = -COMPACT_SHIFT.dp.toPx()) {
-                strip(item, v, pad, thumbnails, sweep?.value)
+                strip(item, v, pad, thumbnails, sweep?.value, sweepBrush)
                 flag(item, v)
                 playheadMark(v, playheadTri)
             }
         } else {
             header(text, headerStyles, words, v)
             overview(item, v, pad)
-            ruler(text, type, v, pad)
-            strip(item, v, pad, thumbnails, sweep?.value)
+            ruler(text, headerStyles.ruler, v, pad)
+            strip(item, v, pad, thumbnails, sweep?.value, sweepBrush)
             wave(v, pad, waveform, pumpUs, item.durationUs)
             flag(item, v)
             playheadMark(v, playheadTri)
@@ -312,6 +324,8 @@ private class HeaderStyles(type: CgTypography) {
     val dim = style.copy(color = CgColors.Text.Dim)
     val warning = style.copy(color = CgColors.Status.Warning)
     val clock = style.copy(color = CgColors.Text.Primary, fontWeight = FontWeight.SemiBold)
+    /** The ruler's labels: 10 sp, the smallest the app sets. */
+    val ruler = type.micro.copy(color = CgColors.Text.Dim)
 }
 
 private fun DrawScope.header(
@@ -370,14 +384,13 @@ private fun DrawScope.overview(item: VideoItem, v: TimelineView, pad: Float) {
 
 private fun DrawScope.ruler(
     text: TextMeasurer,
-    type: CgTypography,
+    style: TextStyle,
     v: TimelineView,
     pad: Float,
 ) {
     val step = TimelineMath.rulerStep(v.scale, 60.dp.toPx())
     val top = RULER_TOP.dp.toPx()
-    // 10 sp, the smallest the app sets; marks are at least 60 dp apart, so the labels never touch.
-    val style = type.micro.copy(color = CgColors.Text.Dim)
+    // Marks are at least 60 dp apart, so the labels never touch.
     val stepUs = (step * 1e6f).toLong()
     var t = (v.us(pad) / stepUs) * stepUs
     val end = v.us(size.width - pad)
@@ -407,6 +420,8 @@ private fun DrawScope.strip(
     pad: Float,
     thumbnails: List<ImageBitmap>,
     sweep: Float?,
+    /** The light, from 0 to its band's width: moved to where the sweep is. */
+    sweepBrush: Brush,
 ) {
     val top = STRIP.dp.toPx()
     val h = STRIP_H.dp.toPx()
@@ -421,15 +436,7 @@ private fun DrawScope.strip(
             if (to > from) {
                 val band = SHIMMER_BAND.dp.toPx()
                 val at = pad - band + sweep * (size.width - 2 * pad + band)
-                drawRect(
-                    Brush.horizontalGradient(
-                        listOf(Color.Transparent, CgColors.Text.Primary.copy(alpha = 0.12f), Color.Transparent),
-                        startX = at,
-                        endX = at + band,
-                    ),
-                    Offset(from, top),
-                    Size(to - from, h),
-                )
+                translate(left = at) { drawRect(sweepBrush, Offset(from - at, top), Size(to - from, h)) }
             }
         }
         if (thumbnails.isNotEmpty()) {

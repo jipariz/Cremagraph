@@ -20,6 +20,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -135,6 +136,12 @@ fun ReadingTile(
             .padding(horizontal = 10.dp, vertical = CgSpace.S6)
     ) {
         Text(label.caps(), style = CgTheme.type.data, color = CgColors.Text.Secondary, maxLines = 1)
+        // Made once, not on every reading: a large tile's number takes the card title's spacing.
+        val type = CgTheme.type
+        val style =
+            remember(large, type) {
+                if (large) type.pivot.copy(letterSpacing = type.cardTitle.letterSpacing) else type.cardTitle
+            }
         // The first reading ticks in over the dash, like a counter; after that the number just changes (ten times a
         // second, a slide on each would blur it).
         AnimatedContent(
@@ -143,9 +150,6 @@ fun ReadingTile(
             transitionSpec = { tick() },
             label = "reading",
         ) { shown ->
-            val style =
-                if (large) CgTheme.type.pivot.copy(letterSpacing = CgTheme.type.cardTitle.letterSpacing)
-                else CgTheme.type.cardTitle
             Text(
                 buildAnnotatedString {
                     append(shown)

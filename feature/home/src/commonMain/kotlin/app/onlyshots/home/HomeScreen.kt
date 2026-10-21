@@ -51,11 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.PRIVACY_URL
-import app.onlyshots.SUPPORT_URL
 import app.onlyshots.SharedKeys
 import app.onlyshots.StopRuleChoice
 import app.onlyshots.core.designsystem.CgColors
-import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
@@ -68,7 +66,6 @@ import app.onlyshots.core.designsystem.component.CgStepper
 import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.ConnectScaleCard
 import app.onlyshots.core.designsystem.component.HeaderBack
-import app.onlyshots.core.designsystem.component.IconCircleButton
 import app.onlyshots.core.designsystem.component.MachineRow
 import app.onlyshots.core.designsystem.component.ReadingTile
 import app.onlyshots.core.designsystem.component.RecordAction
@@ -89,7 +86,6 @@ import app.onlyshots.core.model.stepLabel
 import app.onlyshots.core.model.stepped
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.core_version
-import app.onlyshots.core.resources.home_about
 import app.onlyshots.core.resources.home_about_text
 import app.onlyshots.core.resources.home_add_by_address
 import app.onlyshots.core.resources.home_add_by_address_subtitle
@@ -114,10 +110,8 @@ import app.onlyshots.core.resources.home_rule_start
 import app.onlyshots.core.resources.home_rule_stop
 import app.onlyshots.core.resources.home_scale_detail
 import app.onlyshots.core.resources.home_scales_title
-import app.onlyshots.core.resources.home_support
 import app.onlyshots.core.resources.home_take_camera_only
 import app.onlyshots.core.resources.home_take_machine
-import app.onlyshots.core.resources.home_take_sample
 import app.onlyshots.core.resources.home_title
 import app.onlyshots.core.resources.home_try_sample
 import app.onlyshots.core.resources.home_turn_on_bluetooth
@@ -144,17 +138,16 @@ fun HomeScreen(
     onOpenCamera: () -> Unit,
     onTrySample: () -> Unit = onOpenCamera,
     onBack: () -> Unit = {},
-    onPrivacy: (() -> Unit)? = null,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val take by viewModel.take.collectAsStateWithLifecycle()
-    var help by remember { mutableStateOf(false) }
     val askBluetooth = rememberBluetoothPermission(viewModel::onBluetoothAnswer)
     // Scales are searched for all the time, so Bluetooth is asked for as Home first opens; already allowed, this
     // answers at once without a prompt. Refused, the "connect a scale" card asks again.
     LaunchedEffect(Unit) { if (!viewModel.askedForBluetooth) askBluetooth() }
     LifecycleStartEffect(viewModel) {
+        viewModel.endSample()
         viewModel.startSearching()
         onStopOrDispose { viewModel.stopSearching() }
     }
@@ -170,24 +163,10 @@ fun HomeScreen(
             viewModel.useSample()
             onTrySample()
         },
-        onHelp = { help = true },
         onBack = onBack,
         take = take,
         onRecording = viewModel::updateRecording,
     )
-    if (help) {
-        CgSheet(title = stringResource(Res.string.home_about), onDismiss = { help = false }) {
-            HelpContent(
-                onPrivacy =
-                    onPrivacy?.let { open ->
-                        {
-                            help = false
-                            open()
-                        }
-                    }
-            )
-        }
-    }
     if (state.addressSheet) {
         AddressSheet(
             address = state.address,
@@ -211,7 +190,6 @@ fun HomeBody(
     take: NextTake = NextTake(),
     onRecording: ((RecordingSettings) -> RecordingSettings) -> Unit = {},
     onSample: () -> Unit = {},
-    onHelp: () -> Unit = {},
     onBack: () -> Unit = {},
 ) {
     val layout = LocalWindowLayout.current
@@ -223,7 +201,7 @@ fun HomeBody(
                 Modifier.fillMaxSize().safeDrawingPadding(),
                 main = {
                     Column(Modifier.fillMaxSize()) {
-                        Header(onBack, onHelp)
+                        Header(onBack)
                         Column(
                             Modifier.weight(1f)
                                 .fillMaxWidth()
@@ -249,7 +227,7 @@ fun HomeBody(
     Box(modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding(), Alignment.TopCenter) {
         // The design is a phone column; on a tablet it stays one, centred.
         Column(Modifier.widthIn(max = 480.dp).fillMaxSize()) {
-            Header(onBack, onHelp)
+            Header(onBack)
             Column(
                 Modifier.weight(1f)
                     .fillMaxWidth()
@@ -271,15 +249,15 @@ fun HomeBody(
                     enabled = action.enabled,
                     onClick = onOpenCamera,
                 )
-                SampleLink(state, onSample)
+                SampleLink(onSample)
             }
         }
     }
 }
 
 @Composable
-/** The same header as the phones' "edit a video": back to Start, the flow's name, and the ? sheet. */
-private fun Header(onBack: () -> Unit, onHelp: () -> Unit) {
+/** The same header as the phones' "edit a video": back to Start and the flow's name. Help is on Start. */
+private fun Header(onBack: () -> Unit) {
     HeaderBack(
         stringResource(Res.string.home_title),
         onBack = onBack,
@@ -287,7 +265,6 @@ private fun Header(onBack: () -> Unit, onHelp: () -> Unit) {
         modifier =
             Modifier.shareBounds(SharedKeys.START_RECORD, clip = RoundedCornerShape(12.dp))
                 .padding(vertical = CgSpace.S8),
-        action = { IconCircleButton(CgIcons.Help, stringResource(Res.string.home_about), onClick = onHelp) },
     )
 }
 
@@ -445,10 +422,7 @@ private fun NextTakePane(
                     SectionLabel(stringResource(Res.string.home_next_take))
                     Text(
                         buildAnnotatedString {
-                            append(
-                                if (state.sample) stringResource(Res.string.home_take_sample)
-                                else state.saved?.name?.text() ?: stringResource(Res.string.home_take_camera_only)
-                            )
+                            append(state.saved?.name?.text() ?: stringResource(Res.string.home_take_camera_only))
                             state.saved?.let {
                                 withStyle(SpanStyle(color = CgColors.Text.Dim)) {
                                     append(" · ")
@@ -516,7 +490,7 @@ private fun NextTakePane(
                 enabled = action.enabled,
                 onClick = onOpenCamera,
             )
-            SampleLink(state, onSample, Modifier.align(Alignment.CenterHorizontally))
+            SampleLink(onSample, Modifier.align(Alignment.CenterHorizontally))
         }
     }
 }
@@ -613,23 +587,16 @@ private fun ReadingKind.color(): Color =
 
 /**
  * Under the record button: a recorded shot to try the app with when there is no machine at hand (and for App Review,
- * which has none). Gone while the sample is already the source.
+ * which has none).
  */
 @Composable
-private fun SampleLink(state: HomeUiState, onSample: () -> Unit, modifier: Modifier = Modifier) {
-    AnimatedVisibility(
-        !state.sample,
-        modifier,
-        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
-        exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
-    ) {
-        FooterLink(stringResource(Res.string.home_try_sample), onClick = onSample)
-    }
+private fun SampleLink(onSample: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier) { FooterLink(stringResource(Res.string.home_try_sample), onClick = onSample) }
 }
 
 /**
- * Behind Home's ? button: the machines and scales OnlyShots knows, how they are found, and the privacy policy and where
- * to get help (guidelines 5.1.1 and 1.5). Stateless, so the screenshot tests can draw it outside its sheet.
+ * Behind Start's ? button: the machines and scales OnlyShots knows, how they are found, and the privacy policy and
+ * where to get help (guidelines 5.1.1 and 1.5). Stateless, so the screenshot tests can draw it outside its sheet.
  */
 @Composable
 fun HelpContent(modifier: Modifier = Modifier, onPrivacy: (() -> Unit)? = null, version: String = AppVersion.NAME) {
@@ -646,11 +613,9 @@ fun HelpContent(modifier: Modifier = Modifier, onPrivacy: (() -> Unit)? = null, 
             SCALE_BRANDS,
             stringResource(Res.string.home_help_scales_note),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S16)) {
-            // The app's own privacy screen where the host has one; the published page otherwise.
-            FooterLink(stringResource(Res.string.home_privacy)) { onPrivacy?.invoke() ?: uri.openUri(PRIVACY_URL) }
-            FooterLink(stringResource(Res.string.home_support)) { uri.openUri(SUPPORT_URL) }
-        }
+        // The app's own privacy screen where the host has one; the published page otherwise. Either ends with where to
+        // get help, so one link serves both.
+        FooterLink(stringResource(Res.string.home_privacy)) { onPrivacy?.invoke() ?: uri.openUri(PRIVACY_URL) }
         Text(stringResource(Res.string.core_version, version), style = CgTheme.type.caption, color = CgColors.Text.Dim)
     }
 }

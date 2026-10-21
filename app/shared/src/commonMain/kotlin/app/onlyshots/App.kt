@@ -88,7 +88,6 @@ private fun Graph(nav: NavBackStack<NavKey>) {
                         onOpenCamera = { nav.go(RecordRoute()) },
                         onTrySample = { nav.go(RecordRoute(sample = true)) },
                         onBack = { nav.back() },
-                        onPrivacy = { nav.go(PrivacyRoute) },
                     )
                 }
                 entry<PrivacyRoute>(metadata = ModalMotion) { PrivacyScreen(onBack = { nav.back() }) }

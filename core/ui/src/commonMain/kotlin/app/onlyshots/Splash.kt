@@ -46,7 +46,7 @@ val SplashMarkSize = 146.dp
 
 /**
  * One cold start's splash (design/splash/SPEC.md). [held]: the finished mark is already on screen, drawn by the
- * platform's own launch screen (Android's system splash, iOS's launch screen), so only the tick and the hand-off are
+ * platform's own launch screen (Android's system splash, iOS's launch screen), so only the pulse and the hand-off are
  * left, and they wait for [release]. [markBounds]: where that mark is, in the window, when the platform says.
  */
 class SplashState(val held: Boolean, val timeline: SplashTimeline = SplashTimeline.app) {
@@ -73,9 +73,9 @@ object SplashOnce {
 }
 
 /**
- * The app under its splash. The app is composed from the first frame, underneath; over it the mark plots the shot
+ * The app under its splash. The app is composed from the first frame, underneath; over it the mark plays the shot
  * (unless [splash] is [SplashState.held]), always to the end of the draw, holds there until the platform's splash has
- * gone ([SplashState.release]), ticks once, then flies into the first screen's own mark ([SplashTarget]) or, without
+ * gone ([SplashState.release]), pulses once, then flies into the first screen's own mark ([SplashTarget]) or, without
  * one, eases back and fades.
  */
 @Composable
@@ -117,7 +117,7 @@ fun SplashHost(splash: SplashState?, content: @Composable () -> Unit) {
             // The draw always plays to its end; then the finished mark waits, if it has to, for the platform's splash.
             advance(tl.drawn)
             waitUntil { splash.released }
-            advance(tl.tick.start)
+            advance(tl.pulse.start)
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             advance(tl.exit.endInclusive)
         }

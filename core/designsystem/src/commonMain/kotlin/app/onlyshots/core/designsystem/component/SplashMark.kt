@@ -24,32 +24,34 @@ import kotlin.math.pow
 import kotlin.math.sin
 
 /*
- * The splash: the logo plotting the shot (design/splash/SPEC.md, prototype splash.html, timeline motion.py). The signal
- * tile wipes in from its left edge, the pen head lands on it and plots the shot's trace across it, the stem drops, the
- * head ticks to mark "now". Everything is the logo kit's regular geometry on its 256 grid (design/logo/src/build.py):
- * the tile drawn solid, the cut drawn over it in ink, so on ink the finished frame is the mark itself.
+ * The splash: the logo playing the shot (design/splash/SPEC.md, prototype splash.html, timeline motion.py). The signal
+ * tile wipes in from its left edge; the pen, the head on its stem, stands up at the edge as a playhead and sweeps through
+ * the shot, the head riding the trace drawn behind it; at the plateau's end the head pulses once, a ring going out from
+ * it. Everything is the logo kit's regular geometry on its 256 grid (design/logo/src/build.py): the tile drawn solid,
+ * the cut drawn over it in ink, so on ink the finished frame is the mark itself.
  */
 
 /**
  * When each part of the splash moves, in ms (motion.py's APP and ANDROID). [app] is the whole sequence; [android] the
- * system splash's compressed draw, after which the app plays the tick and the hand-off.
+ * system splash's compressed sweep, after which the app plays the pulse and the hand-off.
  */
 data class SplashTimeline(
     val wipe: ClosedFloatingPointRange<Float>,
+    /** The playhead stands up at the tile's left edge. */
     val land: ClosedFloatingPointRange<Float>,
+    /** It sweeps through the shot. */
     val draw: ClosedFloatingPointRange<Float>,
-    val stem: ClosedFloatingPointRange<Float>,
-    val tick: ClosedFloatingPointRange<Float>,
+    val pulse: ClosedFloatingPointRange<Float>,
     val exit: ClosedFloatingPointRange<Float>,
 ) {
-    /** Where the mark is finished: the draw and the stem done, before the tick. */
+    /** Where the mark is finished: the sweep at the pen, before the pulse. */
     val drawn: Float
-        get() = stem.endInclusive
+        get() = draw.endInclusive
 
     companion object {
-        val app = SplashTimeline(0f..260f, 220f..340f, 300f..1000f, 1000f..1120f, 1120f..1400f, 1400f..1750f)
-        /** Android 12+ draws up to the stem in its system splash, which may animate for at most a second. */
-        val android = SplashTimeline(0f..200f, 180f..260f, 240f..880f, 880f..1000f, 1000f..1280f, 1280f..1630f)
+        val app = SplashTimeline(0f..260f, 220f..380f, 380f..1100f, 1100f..1400f, 1400f..1750f)
+        /** Android 12+ sweeps in its system splash, which may animate for at most a second. */
+        val android = SplashTimeline(0f..200f, 180f..300f, 300f..1000f, 1000f..1300f, 1300f..1650f)
     }
 }
 
@@ -57,15 +59,20 @@ data class SplashTimeline(
 data class SplashPose(
     /** How much of the tile has wiped in from its left edge, 0 to 1. */
     val wipe: Float,
-    /** How much of the trace is plotted, 0 to 1. */
+    /** How much of the trace is plotted behind the playhead, 0 to 1. */
     val draw: Float,
-    /** How far the stem has dropped from the head, 0 to 1. */
+    /** How far the stem stands down from the head to its foot, 0 to 1. */
     val stem: Float,
     /** The head's centre. */
     val head: Offset,
-    /** The head's size against its rest: the landing grows it from 0, the tick swells it to 1.2. */
+    /** The head's size against its rest: the landing grows it from 0, the pulse swells it to 1.25. */
     val headScale: Float,
+    /** The pulse's square ring around the head: its side, and how strong it still is (0 for none). */
+    val ring: Float = HEAD_SIDE,
+    val ringAlpha: Float = 0f,
 )
+
+private const val HEAD_SIDE = 32f
 
 object Splash {
     const val T0 = 32f
@@ -86,7 +93,11 @@ object Splash {
     private val wipeEase = CubicBezierEasing(.33f, 1f, .68f, 1f)
     private val landEase = CubicBezierEasing(.34f, 1.6f, .64f, 1f)
     private val drawEase = CubicBezierEasing(.37f, 0f, .63f, 1f)
-    private val stemEase = CubicBezierEasing(.33f, 1f, .68f, 1f)
+    private val ringEase = CubicBezierEasing(.33f, 1f, .68f, 1f)
+
+    /** How far the pulse's ring grows past the head, and how much the head swells. */
+    const val RING = 40f
+    const val BUMP = 0.25f
 
     /**
      * The centreline as points (motion.py's PATH: build.centreline with 400 steps, then on to the pen), plain numbers
@@ -127,18 +138,23 @@ object Splash {
     fun pose(t: Float, timeline: SplashTimeline = SplashTimeline.app): SplashPose {
         val tl = timeline
         val draw = drawEase.transform(seg(t, tl.draw))
-        val tick = seg(t, tl.tick)
-        val bump = if (tick > 0f && tick < 1f) sin(PI.toFloat() * min(1f, tick / 0.6f)) * 0.2f else 0f
+        val land = landEase.transform(seg(t, tl.land))
+        val pulse = seg(t, tl.pulse)
+        val pulsing = pulse > 0f && pulse < 1f
+        val bump = if (pulsing) sin(PI.toFloat() * min(1f, pulse * 1.6f)) * BUMP else 0f
+        val ring = ringEase.transform(pulse)
         return SplashPose(
             wipe = wipeEase.transform(seg(t, tl.wipe)),
             draw = draw,
-            stem = stemEase.transform(seg(t, tl.stem)),
+            stem = min(1f, land),
             head = pointAt(traceLength * draw + HEAD / 2),
-            headScale = landEase.transform(seg(t, tl.land)) * (1f + bump),
+            headScale = land * (1f + bump),
+            ring = HEAD + RING * ring,
+            ringAlpha = if (pulsing) 0.85f * (1f - ring) else 0f,
         )
     }
 
-    /** The finished mark: the tile whole, the trace plotted, the stem down, the head at rest on the pen. */
+    /** The finished mark: the tile whole, the trace plotted, the playhead at rest on the pen. */
     val finished: SplashPose = SplashPose(1f, 1f, 1f, Offset(PEN_X, PEN_Y), 1f)
 
     internal fun seg(t: Float, r: ClosedFloatingPointRange<Float>) =
@@ -200,11 +216,12 @@ private fun DrawScope.drawGrid(g: SplashGeometry, pose: SplashPose, alpha: Float
         )
     }
     if (pose.stem > 0f) {
-        val top = Splash.PEN_Y + Splash.HEAD / 2
+        // The playhead's stem stands under the head wherever it is, down to the stem's foot.
+        val top = pose.head.y + Splash.HEAD / 2
         drawRect(
             ink,
-            Offset(Splash.PEN_X - Splash.STEM / 2, top),
-            Size(Splash.STEM, (Splash.STEM_END - top) * pose.stem),
+            Offset(pose.head.x - Splash.STEM / 2, top),
+            Size(Splash.STEM, max(0f, Splash.STEM_END - top) * pose.stem),
             alpha = alpha,
         )
     }
@@ -214,4 +231,16 @@ private fun DrawScope.drawGrid(g: SplashGeometry, pose: SplashPose, alpha: Float
         val x = max(pose.head.x, Splash.T0 + h / 2)
         drawRect(ink, Offset(x - h / 2, pose.head.y - h / 2), Size(h, h), alpha = alpha)
     }
+    if (pose.ringAlpha > 0f) {
+        val r = pose.ring
+        drawRect(
+            ink,
+            Offset(pose.head.x - r / 2, pose.head.y - r / 2),
+            Size(r, r),
+            alpha = alpha * pose.ringAlpha,
+            style = Stroke(RING_WIDTH),
+        )
+    }
 }
+
+private const val RING_WIDTH = 5f

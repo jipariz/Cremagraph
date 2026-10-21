@@ -16,8 +16,8 @@ import uk.co.fractalmotion.mugshot.annotations.Mugshot
 import uk.co.fractalmotion.mugshot.annotations.MugshotShrink
 
 /**
- * The splash's key frames, as design/splash/filmstrip.png has them: the tile's wipe, the landing, the plot, the plotted
- * mark and the tick.
+ * The splash's key frames, as design/splash/filmstrip.png has them: the tile's wipe, the playhead standing up, the
+ * sweep, the swept mark and the pulse.
  */
 @Composable
 private fun Frame(t: Float) =
@@ -27,10 +27,10 @@ private fun Frame(t: Float) =
 
 @Mugshot @MugshotShrink @Preview @Composable internal fun SplashTileWipe() = Frame(120f)
 
-@Mugshot @MugshotShrink @Preview @Composable internal fun SplashPenLands() = Frame(300f)
+@Mugshot @MugshotShrink @Preview @Composable internal fun SplashPlayheadUp() = Frame(300f)
 
-@Mugshot @MugshotShrink @Preview @Composable internal fun SplashPlotting() = Frame(760f)
+@Mugshot @MugshotShrink @Preview @Composable internal fun SplashSweep() = Frame(760f)
 
-@Mugshot @MugshotShrink @Preview @Composable internal fun SplashPlotted() = Frame(1000f)
+@Mugshot @MugshotShrink @Preview @Composable internal fun SplashSwept() = Frame(1100f)
 
-@Mugshot @MugshotShrink @Preview @Composable internal fun SplashTick() = Frame(1220f)
+@Mugshot @MugshotShrink @Preview @Composable internal fun SplashPulse() = Frame(1200f)

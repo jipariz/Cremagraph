@@ -2,8 +2,10 @@
 
 The mark is the logo kit's Signal tile (design/logo/src/build.py, regular weight) on ink. At rest the frame equals the
 logo exactly: the solid tile with the trace, head and stem cut out of it, ink showing through. While it plays, the
-tile is drawn solid and the cut is drawn over it in ink: the trace as a butt-capped stroke along the logo's centreline,
-the head as a square riding just ahead of the trace's tip, the stem as a bar growing down from the head.
+tile is drawn solid and the cut is drawn over it in ink. The pen (the head on its stem) is a playhead: it stands up at
+the tile's left edge and sweeps through the shot, the head riding the trace, which is drawn behind it as a butt-capped
+stroke along the logo's centreline. At the plateau's end the head pulses once, a ring going out from it, and the mark
+hands off to the app.
 """
 import math
 import os
@@ -20,16 +22,18 @@ PEN_X, PEN_Y, STEM_END = build.PEN_X, build.PEN_Y, build.STEM_END
 HEAD_LEAD = HEAD / 2                       # the head's centre runs this far ahead of the trace's tip
 
 # ── timelines (ms) ─────────────────────────────────────────────────────────────────────────────────────────────
-APP = dict(wipe=(0, 260), land=(220, 340), draw=(300, 1000), stem=(1000, 1120), tick=(1120, 1400),
-           handoff=(1400, 1750), screen_in=1520, total=1750)
-ANDROID = dict(wipe=(0, 200), land=(180, 260), draw=(240, 880), stem=(880, 1000), total=1000)
+APP = dict(wipe=(0, 260), land=(220, 380), draw=(380, 1100), pulse=(1100, 1400), handoff=(1400, 1750),
+           screen_in=1520, total=1750)
+ANDROID = dict(wipe=(0, 200), land=(180, 300), draw=(300, 1000), total=1000)
 WEB_LOOP = dict(draw=720, hold=200, refill=250)
+RING = 40                                   # how far the pulse's ring grows past the head
+BUMP = 0.25                                 # how much the head swells in the pulse
 
 # Easings, as CSS cubic-bezier control points (also Compose CubicBezierEasing / Android PathInterpolator).
 EASE = dict(wipe=(.33, 1, .68, 1),          # out-cubic
             land=(.34, 1.6, .64, 1),        # out-back 1.6
             draw=(.37, 0, .63, 1),          # in-out sine
-            stem=(.33, 1, .68, 1),          # out-cubic
+            ring=(.33, 1, .68, 1),          # out-cubic
             handoff=(.65, 0, .35, 1))       # in-out cubic
 
 
@@ -99,12 +103,13 @@ def state(t, p=APP):
     wipe = E['wipe'](seg(t, p['wipe']))
     land = E['land'](seg(t, p['land']))
     draw = E['draw'](seg(t, p['draw']))
-    stem = E['stem'](seg(t, p['stem']))
-    tick = seg(t, p['tick']) if 'tick' in p else 0.0
+    pulse = seg(t, p['pulse']) if 'pulse' in p else 0.0
     s = TRACE_LEN * draw
     head = point_at(s + HEAD_LEAD)
-    bump = math.sin(math.pi * min(1.0, tick / 0.6)) * 0.2 if 0 < tick < 1 else 0.0
-    return dict(wipe=wipe, land=land, draw=draw, stem=stem, s=s, head=head, head_scale=land * (1 + bump))
+    bump = math.sin(math.pi * min(1.0, pulse * 1.6)) * BUMP if 0 < pulse < 1 else 0.0
+    ring = E['ring'](pulse)
+    return dict(wipe=wipe, land=land, draw=draw, stem=min(1.0, land), s=s, head=head, head_scale=land * (1 + bump),
+                ring=HEAD + RING * ring, ring_alpha=0.85 * (1 - ring) if 0 < pulse < 1 else 0.0)
 
 
 def frame_svg(t, p=APP, view='-40 -40 336 336', ground=True):
@@ -114,7 +119,7 @@ def frame_svg(t, p=APP, view='-40 -40 336 336', ground=True):
     if ground:
         vb = [float(v) for v in view.split()]
         body += f'<rect x="{vb[0]}" y="{vb[1]}" width="{vb[2]}" height="{vb[3]}" fill="{INK}"/>'
-    if st['wipe'] >= 1 and st['draw'] >= 1 and st['stem'] >= 1 and st['head_scale'] == 1:
+    if st['wipe'] >= 1 and st['draw'] >= 1 and st['head_scale'] == 1 and st['ring_alpha'] == 0:
         # At rest: the logo itself, one outline.
         return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{view}">{body}<path fill="{SIGNAL}" d="{build.tile_path("regular")}"/></svg>'
     w = (T1 - T0) * st['wipe']
@@ -124,12 +129,17 @@ def frame_svg(t, p=APP, view='-40 -40 336 336', ground=True):
         pts = upto(st['s'])
         d = 'M' + 'L'.join(f'{x:.2f} {y:.2f}' for x, y in pts)
         body += f'<path d="{d}" fill="none" stroke="{INK}" stroke-width="{TRACE_W}" stroke-linecap="butt" stroke-linejoin="round"/>'
+    hx, hy = st['head']
     if st['stem'] > 0:
-        top = PEN_Y + HEAD / 2
-        body += f'<rect x="{PEN_X - STEM_W / 2}" y="{top}" width="{STEM_W}" height="{(STEM_END - top) * st["stem"]:.2f}" fill="{INK}"/>'
+        # The playhead's stem stands under the head wherever it is, down to the stem's foot.
+        top = hy + HEAD / 2
+        body += f'<rect x="{hx - STEM_W / 2:.2f}" y="{top:.2f}" width="{STEM_W}" height="{max(0.0, STEM_END - top) * st["stem"]:.2f}" fill="{INK}"/>'
     hs = HEAD * st['head_scale']
     if hs > 0.2:
-        hx, hy = st['head']
-        hx = max(hx, T0 + hs / 2)             # the landing overshoot never pokes out of the tile's edge
-        body += f'<rect x="{hx - hs / 2:.2f}" y="{hy - hs / 2:.2f}" width="{hs:.2f}" height="{hs:.2f}" fill="{INK}"/>'
+        x = max(hx, T0 + hs / 2)             # the landing overshoot never pokes out of the tile's edge
+        body += f'<rect x="{x - hs / 2:.2f}" y="{hy - hs / 2:.2f}" width="{hs:.2f}" height="{hs:.2f}" fill="{INK}"/>'
+    if st['ring_alpha'] > 0:
+        r = st['ring']
+        body += (f'<rect x="{hx - r / 2:.2f}" y="{hy - r / 2:.2f}" width="{r:.2f}" height="{r:.2f}" fill="none" '
+                 f'stroke="{INK}" stroke-width="5" opacity="{st["ring_alpha"]:.3f}"/>')
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{view}">{body}</svg>'

@@ -59,7 +59,7 @@
 
   <div class="panel">
     <h1>SPLASH · SIGNAL TILE</h1>
-    <p class="lede">The tile cuts in, the pen lands on its edge and plots the shot's trace across it, the stem drops, the head ticks once, and the mark hands off into the first screen's header mark. See SPEC.md for the numbers.</p>
+    <p class="lede">The tile cuts in, the pen stands up at its edge as a playhead and sweeps through the shot, the trace drawn behind it; the head pulses once, a ring going out from it, and the mark hands off into the first screen's header mark. See SPEC.md for the numbers.</p>
 
     <div class="group">
       <label>PLAY</label>
@@ -92,13 +92,12 @@
     <table>
       <tr><th>MS</th><th>WHAT MOVES</th></tr>
       <tr><td>0–260</td><td>Tile wipes in from the left (out-cubic).</td></tr>
-      <tr><td>220–340</td><td>Pen head lands on the tile's left edge (out-back 1.6).</td></tr>
-      <tr><td>300–1000</td><td>Trace is plotted to the head's left edge; the head rides just ahead of its tip (in-out sine).</td></tr>
-      <tr><td>1000–1120</td><td>Stem drops from the head (out-cubic).</td></tr>
-      <tr><td>1120–1400</td><td>Tick: the head swells to 1.2× and back in the first 60 % (sine bump); optional haptic.</td></tr>
+      <tr><td>220–380</td><td>The playhead (head and stem) stands up at the tile's left edge (out-back 1.6).</td></tr>
+      <tr><td>380–1100</td><td>It sweeps through the shot: the head rides the trace, the stem under it, the trace drawn behind (in-out sine).</td></tr>
+      <tr><td>1100–1400</td><td>Pulse: the head swells to 1.25× and back, a square ring going out from it and fading (out-cubic); optional haptic.</td></tr>
       <tr><td>1400–1750</td><td>Hand-off into the 32 dp header mark; the screen fades in from 1520 (in-out cubic).</td></tr>
     </table>
-    <p class="note">Android plays 0–1000 in the system splash on its own compressed timeline (wipe 0–200, land 180–260, draw 240–880, stem 880–1000); the app carries on with the tick and the hand-off. iOS starts from the finished mark (launch image) and plays only the tick and the hand-off. Desktop plays the full sequence and fades out (no header mark). The web loops the draw until the app is ready.</p>
+    <p class="note">Android plays 0–1000 in the system splash on its own compressed timeline (wipe 0–200, the playhead up 180–300, sweep 300–1000); the app carries on with the pulse and the hand-off. iOS starts from the finished mark (launch image) and plays only the pulse and the hand-off. Desktop plays the full sequence and fades out (no header mark). The web loops the sweep until the app is ready.</p>
   </div>
 </main>
 
@@ -109,8 +108,8 @@
   const PEN_X = 172, PEN_Y = 100, FLAT_Y = 166, RISE = [80, 140], STEM_END = T1 - 28;
   const TRACE_END = PEN_X - HEAD / 2, LEAD = HEAD / 2;
   const P = {
-    app: { wipe: [0, 260], land: [220, 340], draw: [300, 1000], stem: [1000, 1120], tick: [1120, 1400], hand: [1400, 1750], screen: 1520, total: 1750 },
-    android: { wipe: [0, 200], land: [180, 260], draw: [240, 880], stem: [880, 1000], tick: [1000, 1280], hand: [1280, 1630], screen: 1400, total: 1630 },
+    app: { wipe: [0, 260], land: [220, 380], draw: [380, 1100], pulse: [1100, 1400], hand: [1400, 1750], screen: 1520, total: 1750 },
+    android: { wipe: [0, 200], land: [180, 300], draw: [300, 1000], pulse: [1000, 1300], hand: [1300, 1650], screen: 1420, total: 1650 },
   };
   const bez = (x1, y1, x2, y2) => x => {
     if (x <= 0) return 0; if (x >= 1) return 1;
@@ -118,7 +117,7 @@
     let lo = 0, hi = 1; for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (at(m, x1, x2) < x) lo = m; else hi = m; }
     return at((lo + hi) / 2, y1, y2);
   };
-  const E = { wipe: bez(.33, 1, .68, 1), land: bez(.34, 1.6, .64, 1), draw: bez(.37, 0, .63, 1), stem: bez(.33, 1, .68, 1), hand: bez(.65, 0, .35, 1) };
+  const E = { wipe: bez(.33, 1, .68, 1), land: bez(.34, 1.6, .64, 1), draw: bez(.37, 0, .63, 1), ring: bez(.33, 1, .68, 1), hand: bez(.65, 0, .35, 1) };
   const seg = (t, [a, b]) => Math.max(0, Math.min(1, (t - a) / (b - a)));
 
   // The logo's centreline, densely sampled, plus the head's lead.
@@ -142,21 +141,25 @@
     const w = (T1 - T0) * st.wipe;
     if (w > 0) b += `<rect x="${T0}" y="${T0}" width="${w.toFixed(2)}" height="${T1 - T0}" fill="${SIGNAL}"/>`;
     if (st.s > 0.5) b += `<path d="M${upto(st.s).map(p => p[0].toFixed(2) + ' ' + p[1].toFixed(2)).join('L')}" fill="none" stroke="${INK}" stroke-width="${TRACE_W}" stroke-linejoin="round"/>`;
-    if (st.stem > 0) { const top = PEN_Y + HEAD / 2; b += `<rect x="${PEN_X - STEM_W / 2}" y="${top}" width="${STEM_W}" height="${((STEM_END - top) * st.stem).toFixed(2)}" fill="${INK}"/>`; }
+    const [hx, hy] = st.head;
+    // The playhead's stem stands under the head wherever it is, down to the stem's foot.
+    if (st.stem > 0) { const top = hy + HEAD / 2; b += `<rect x="${(hx - STEM_W / 2).toFixed(2)}" y="${top.toFixed(2)}" width="${STEM_W}" height="${(Math.max(0, STEM_END - top) * st.stem).toFixed(2)}" fill="${INK}"/>`; }
     const hs = HEAD * st.headScale;
-    if (hs > 0.2) { let [hx, hy] = st.head; hx = Math.max(hx, T0 + hs / 2); b += `<rect x="${(hx - hs / 2).toFixed(2)}" y="${(hy - hs / 2).toFixed(2)}" width="${hs.toFixed(2)}" height="${hs.toFixed(2)}" fill="${INK}"/>`; }
+    if (hs > 0.2) { const x = Math.max(hx, T0 + hs / 2); b += `<rect x="${(x - hs / 2).toFixed(2)}" y="${(hy - hs / 2).toFixed(2)}" width="${hs.toFixed(2)}" height="${hs.toFixed(2)}" fill="${INK}"/>`; }
+    if (st.ringAlpha > 0) { const r = st.ring; b += `<rect x="${(hx - r / 2).toFixed(2)}" y="${(hy - r / 2).toFixed(2)}" width="${r.toFixed(2)}" height="${r.toFixed(2)}" fill="none" stroke="${INK}" stroke-width="5" opacity="${st.ringAlpha.toFixed(3)}"/>`; }
     svg.innerHTML = b;
   }
-  const DONE = { wipe: 1, s: TRACE_LEN, stem: 1, head: [PEN_X, PEN_Y], headScale: 1 };
+  const DONE = { wipe: 1, s: TRACE_LEN, stem: 1, head: [PEN_X, PEN_Y], headScale: 1, ring: HEAD, ringAlpha: 0 };
 
   function stateAt(t, p, from) {
-    if (from === 'finished') {          // iOS: the launch image is the finished mark; only the tick plays
-      t = Math.max(t, p.stem[1]);
+    if (from === 'finished') {          // iOS: the launch image is the finished mark; only the pulse plays
+      t = Math.max(t, p.draw[1]);
     }
-    const land = E.land(seg(t, p.land)), d = E.draw(seg(t, p.draw)), tick = seg(t, p.tick);
+    const land = E.land(seg(t, p.land)), d = E.draw(seg(t, p.draw)), k = seg(t, p.pulse), pulsing = k > 0 && k < 1;
     const s = TRACE_LEN * d;
-    const bump = tick > 0 && tick < 1 ? Math.sin(Math.PI * Math.min(1, tick / 0.6)) * 0.2 : 0;
-    return { wipe: E.wipe(seg(t, p.wipe)), s, stem: E.stem(seg(t, p.stem)), head: at(s + LEAD), headScale: land * (1 + bump) };
+    const bump = pulsing ? Math.sin(Math.PI * Math.min(1, k * 1.6)) * 0.25 : 0;
+    return { wipe: E.wipe(seg(t, p.wipe)), s, stem: Math.min(1, land), head: at(s + LEAD), headScale: land * (1 + bump),
+             ring: HEAD + 40 * E.ring(k), ringAlpha: pulsing ? 0.85 * (1 - E.ring(k)) : 0 };
   }
 
   const stage = document.getElementById('stage'), screen = document.getElementById('screen'), spot = document.getElementById('spot');
@@ -177,10 +180,10 @@
       draw(stage, DONE); place(0, Math.min(1, t / 200) * (1 - seg(t, [1450, 1750])));
       screen.style.opacity = seg(t, [1450, 1750]); return;
     }
-    if (mode === 'web') {                            // loop the draw: 720 draw, 200 hold, 250 refill
-      const cyc = 1170, k = t % cyc, p = { wipe: [-1, 0], land: [-1, 0], draw: [0, 720], stem: [720, 800], tick: [9e9, 9e9 + 1] };
+    if (mode === 'web') {                            // loop the sweep: 720 sweep, 200 hold, 250 back
+      const cyc = 1170, k = t % cyc, p = { wipe: [-1, 0], land: [-1, 0], draw: [0, 720], pulse: [9e9, 9e9 + 1] };
       const st = stateAt(k, p);
-      if (k > 920) { const r = seg(k, [920, 1170]); st.s = TRACE_LEN * (1 - r); st.stem = 1 - r; st.head = at(st.s + LEAD); }
+      if (k > 920) { const r = E.draw(seg(k, [920, 1170])); st.s = TRACE_LEN * (1 - r); st.head = at(st.s + LEAD); }
       draw(stage, st); place(0); screen.style.opacity = 0; return;
     }
     const p = mode === 'android' ? P.android : P.app;
@@ -198,7 +201,7 @@
     scrub.value = Math.min(t, 1750); render();
     if (playing) requestAnimationFrame(tick);
   }
-  document.getElementById('play').onclick = () => { t = mode === 'ios' ? P.app.stem[1] : 0; playing = true; last = performance.now(); requestAnimationFrame(tick); };
+  document.getElementById('play').onclick = () => { t = mode === 'ios' ? P.app.draw[1] : 0; playing = true; last = performance.now(); requestAnimationFrame(tick); };
   document.getElementById('slow').onclick = e => { slow = !slow; e.target.setAttribute('aria-pressed', slow); };
   document.getElementById('reduced').onclick = e => { reduced = !reduced; e.target.setAttribute('aria-pressed', reduced); render(); };
   document.getElementById('maskBtn').onclick = e => { const on = e.target.getAttribute('aria-pressed') !== 'true'; e.target.setAttribute('aria-pressed', on); document.getElementById('mask').classList.toggle('on', on); };

@@ -1,7 +1,7 @@
-"""Writes Android's system splash icon (res/drawable/splash_icon.xml): an animated vector of the Signal tile plotting
-its trace, on the compressed Android timeline of SPEC.md (wipe 0-200 ms, land 180-260, draw 240-880, stem 880-1000).
-The system shows it for at most a second; the app carries on with the tick and the hand-off. Also writes
-splash_icon_still.xml, the finished mark for the backport (Android 11 and lower).
+"""Writes Android's system splash icon (res/drawable/splash_icon.xml): an animated vector of the Signal tile with the
+pen sweeping through its trace as a playhead, on the compressed Android timeline of SPEC.md (wipe 0-200 ms, the
+playhead stands up 180-300, sweep 300-1000). The system shows it for at most a second; the app carries on with the
+pulse and the hand-off. Also writes splash_icon_still.xml, the finished mark for the backport (Android 11 and lower).
 
     python3 design/splash/avd.py      # writes into app/androidApp/src/main/res/drawable
 """
@@ -33,20 +33,32 @@ def anim(prop, frm, to, ab, interpolator):
             f'android:valueType="floatType" android:startOffset="{a}" android:duration="{b - a}">{interpolator}</objectAnimator>')
 
 
-def ride(axis):
-    """The head's centre over the draw, as keyframes: it runs just ahead of the trace's tip."""
+STEM_LEN = M.STEM_END - (M.PEN_Y + M.HEAD / 2)   # the stem at rest; it is shorter where the head rides lower
+
+
+def head_at(f):
+    """The head's centre a fraction f into the sweep: it runs just ahead of the trace's tip."""
+    x, y = M.point_at(M.TRACE_LEN * M.E['draw'](f) + M.HEAD_LEAD)
+    return max(x, M.T0 + M.HEAD / 2), y
+
+
+def keyed(name, value):
+    """A property over the sweep, as keyframes."""
     a, b = ANDROID['draw']
-    frames = []
     n = 40
-    for i in range(n + 1):
-        f = i / n
-        x, y = M.point_at(M.TRACE_LEN * M.E['draw'](f) + M.HEAD_LEAD)
-        x = max(x, M.T0 + M.HEAD / 2)
-        frames.append(f'<keyframe android:fraction="{f:.4f}" android:value="{(x if axis == 0 else y):.3f}"/>')
-    name = 'translateX' if axis == 0 else 'translateY'
+    frames = ''.join(f'<keyframe android:fraction="{i / n:.4f}" android:value="{value(i / n):.3f}"/>' for i in range(n + 1))
     return (f'<objectAnimator android:startOffset="{a}" android:duration="{b - a}">'
-            f'<propertyValuesHolder android:propertyName="{name}" android:valueType="floatType">{"".join(frames)}'
+            f'<propertyValuesHolder android:propertyName="{name}" android:valueType="floatType">{frames}'
             f'</propertyValuesHolder></objectAnimator>')
+
+
+def ride(axis):
+    return keyed('translateX' if axis == 0 else 'translateY', lambda f: head_at(f)[axis])
+
+
+def stem_scale(f):
+    """The stem from the head's bottom edge to its foot, against its length at rest."""
+    return (M.STEM_END - (head_at(f)[1] + M.HEAD / 2)) / STEM_LEN
 
 
 def target(name, animators):
@@ -56,7 +68,6 @@ def target(name, animators):
 
 T0, T1 = M.T0, M.T1
 h0x, h0y = M.point_at(M.HEAD_LEAD)
-stem_top = M.PEN_Y + M.HEAD / 2
 groups = [
     # The tile, wiped in from its left edge.
     f'<group android:name="tile" android:pivotX="{T0}" android:scaleX="0">'
@@ -64,9 +75,11 @@ groups = [
     # The trace, plotted along the logo's centreline.
     f'<path android:name="trace" android:strokeColor="{INK}" android:strokeWidth="{M.TRACE_W}" android:strokeLineCap="butt" '
     f'android:strokeLineJoin="round" android:trimPathEnd="0" android:pathData="{M.CURVE_D}"/>',
-    # The stem, dropped from the head once it arrives.
-    f'<group android:name="stem" android:translateX="{M.PEN_X}" android:translateY="{stem_top}" android:scaleY="0">'
-    f'<path android:fillColor="{INK}" android:pathData="M{-M.STEM_W / 2},0 H{M.STEM_W / 2} V{M.STEM_END - stem_top} H{-M.STEM_W / 2} Z"/></group>',
+    # The playhead: its stem stands under the head wherever it is, down to the stem's foot.
+    f'<group android:name="stemAt" android:translateX="{max(h0x, T0 + M.HEAD / 2):.3f}" android:translateY="{h0y + M.HEAD / 2:.3f}">'
+    f'<group android:name="stem" android:scaleY="0">'
+    f'<path android:fillColor="{INK}" android:pathData="M{-M.STEM_W / 2},0 H{M.STEM_W / 2} V{STEM_LEN} H{-M.STEM_W / 2} Z"/>'
+    f'</group></group>',
     # The head: lands on the edge, then rides ahead of the tip.
     f'<group android:name="headAt" android:translateX="{max(h0x, T0 + M.HEAD / 2):.3f}" android:translateY="{h0y:.3f}">'
     f'<group android:name="head" android:scaleX="0" android:scaleY="0">'
@@ -76,14 +89,15 @@ groups = [
 targets = [
     target('tile', [anim('scaleX', 0, 1, ANDROID['wipe'], I['wipe'])]),
     target('trace', [anim('trimPathEnd', 0, 1, ANDROID['draw'], I['draw'])]),
-    target('stem', [anim('scaleY', 0, 1, ANDROID['stem'], I['stem'])]),
+    target('stemAt', [ride(0), keyed('translateY', lambda f: head_at(f)[1] + M.HEAD / 2)]),
+    target('stem', [anim('scaleY', 0, f'{stem_scale(0):.4f}', ANDROID['land'], I['land']), keyed('scaleY', stem_scale)]),
     target('headAt', [ride(0), ride(1)]),
     target('head', [anim('scaleX', 0, 1, ANDROID['land'], I['land']), anim('scaleY', 0, 1, ANDROID['land'], I['land'])]),
 ]
 
 xml = f'''<?xml version="1.0" encoding="utf-8"?>
-<!-- Generated by design/splash/avd.py: edit that, not this. The Signal tile plotting its trace for the system splash
-     (design/splash/SPEC.md, Android profile, {DURATION} ms). -->
+<!-- Generated by design/splash/avd.py: edit that, not this. The Signal tile's pen sweeping its trace as a playhead,
+     for the system splash (design/splash/SPEC.md, Android profile, {DURATION} ms). -->
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt">
     <aapt:attr name="android:drawable">
         <vector android:width="240dp" android:height="240dp" android:viewportWidth="{VIEW}" android:viewportHeight="{VIEW}">

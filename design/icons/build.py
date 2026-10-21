@@ -6,7 +6,7 @@ contact sheet, design/icons/sheet.html.
 
 The rules (design/icons/GUIDELINES.md): a 24 grid with a 2-unit margin (live area 20 × 20); one stroke, 1.5, square
 caps and mitred joins; straight lines and right angles, diagonals at 45°; accents as filled squares, the logo's pen
-head; a circle only where the meaning is round (the record dot, a help ring). Nothing rounded off.
+head. No curves at all: nothing round, nothing rounded off.
 """
 import os
 
@@ -26,10 +26,6 @@ def fill(d):
 
 def rect(x, y, w, h):
     return f"M{x:g} {y:g}H{x + w:g}V{y + h:g}H{x:g}Z"
-
-
-def circle(cx, cy, r):
-    return f"M{cx - r:g} {cy:g}A{r:g} {r:g} 0 1 1 {cx + r:g} {cy:g}A{r:g} {r:g} 0 1 1 {cx - r:g} {cy:g}Z"
 
 
 ICONS = {
@@ -59,8 +55,8 @@ ICONS = {
     "ic_edit": [stroke("M15.5 4.5L19.5 8.5L9 19H5V15Z"), stroke("M13 7L17 11")],
     # Bluetooth's rune, in straight strokes.
     "ic_bluetooth": [stroke("M7 7.5L16.5 16.5L12 21V3L16.5 7.5L7 16.5")],
-    # Nothing leaves the device: an angular shield with a tick.
-    "ic_shield": [stroke("M12 3L19.5 6V12.5L12 21L4.5 12.5V6Z"), stroke("M8.5 12L11 14.5L15.5 10")],
+    # Nothing leaves the device: a squared shield, its point at 45°, with a tick.
+    "ic_shield": [stroke("M4.75 3.75H19.25V13L12 20.25L4.75 13Z"), stroke("M8.5 11L11 13.5L15.5 9")],
     # An espresso machine: the body, the group head over the cup.
     "ic_machine": [stroke("M4.75 3.75H19.25V9.75H4.75Z"), stroke("M4.75 9.75V20.25H19.25"), fill(rect(10, 9.75, 4, 2.5)),
                    stroke("M9.5 14.5V18.5H14.5V14.5")],
@@ -68,8 +64,8 @@ ICONS = {
     "ic_film": [stroke(rect(2.75, 6.75, 13, 10.5)), fill("M17.5 12L21.5 8V16Z")],
     # Settings as an instrument's sliders: two rails, two square knobs.
     "ic_settings": [stroke("M3 8H21"), stroke("M3 16H21"), fill(rect(13, 5, 6, 6)), fill(rect(5, 13, 6, 6))],
-    # Recording: the one round thing, the record dot, in its ring.
-    "ic_record": [stroke(circle(12, 12, 8.25)), fill(circle(12, 12, 4))],
+    # Recording: the record key's square frame around its dot, a square too.
+    "ic_record": [stroke(rect(3.75, 3.75, 16.5, 16.5)), fill(rect(8.5, 8.5, 7, 7))],
     # About OnlyShots: a question in a square, its dot a square.
     "ic_help": [stroke(rect(3.75, 3.75, 16.5, 16.5)), stroke("M9 9.5V8H15V12H12V14.5"), fill(rect(11.25, 16, 1.5, 1.5))],
     # A shot start the recording fixed: a squared padlock.

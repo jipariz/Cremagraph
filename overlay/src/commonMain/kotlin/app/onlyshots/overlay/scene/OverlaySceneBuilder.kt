@@ -234,6 +234,18 @@ private class SceneBuilder(
             sample.targetPressure?.let { pressureFlow = maxOf(pressureFlow, it) }
             sample.targetFlow?.let { pressureFlow = maxOf(pressureFlow, it) }
         }
+        // The curves' heads between two samples (see curveRuns) count too: the axis grows with them frame by frame, so
+        // a head near the top stays there while the curve moves on, rather than rising past its place until the next
+        // sample rescales everything at once.
+        val last = shot.samples.lastOrNull()
+        if (last != null && tUs in 0 until last.tUs && tUs <= windowUs) {
+            shot.sampleAt(tUs)?.let { head ->
+                head.weight?.let { weight = maxOf(weight, it) }
+                head.pressure?.let { pressureFlow = maxOf(pressureFlow, it) }
+                head.flow?.let { pressureFlow = maxOf(pressureFlow, it) }
+                head.weightFlow?.let { pressureFlow = maxOf(pressureFlow, it) }
+            }
+        }
         // With a target the scale is the machine's (the target and 60 g); without one the axis follows the weight, so a
         // scale's shot fills the chart as it pours instead of creeping up the bottom of a 60 g axis.
         val base = if (targeted) OverlayMetrics.WEIGHT_MAX else OverlayMetrics.WEIGHT_FLOOR
@@ -308,7 +320,10 @@ private class SceneBuilder(
             }
         }
         drawScrim()
-        if (tiles != null) topTile?.let { drawTile(it, panel.color) } else drawPanel()
+        if (tiles != null) {
+            drawTileBacking()
+            topTile?.let { drawTile(it, panel.color) }
+        } else drawPanel()
         header?.let { drawHeader(it) }
         chart?.let { drawChart(it) }
         readings?.let { drawReadings(it) }
@@ -366,11 +381,23 @@ private class SceneBuilder(
     }
 
     /** An acrylic tile: the blurred video under a dark base, the tile's colour, and a hairline edge. */
+    /**
+     * Under the tiles, with a [TileStyle.base]: the blurred video and the base across the whole panel, gaps included,
+     * so the gaps between the tiles are the base too (Metro's black lines). Without one, each tile blurs its own patch
+     * and the gaps show the video.
+     */
+    fun drawTileBacking() {
+        val t = tiles ?: return
+        if (t.base.alpha <= 0f) return
+        val radius = panel.radius * u
+        out += BackdropPrim(box, radius, panel.blur * u)
+        out += RectPrim(box, t.base.bg(), radius)
+    }
+
     fun drawTile(b: Box, color: Argb) {
         val t = tiles ?: return
         val radius = panel.radius * u
-        out += BackdropPrim(b, radius, panel.blur * u)
-        if (t.base.alpha > 0f) out += RectPrim(b, t.base.bg(), radius)
+        if (t.base.alpha <= 0f) out += BackdropPrim(b, radius, panel.blur * u)
         out += RectPrim(b, color.timesAlpha(panel.opacity).bg(), radius)
         if (t.edgeLine.alpha > 0f) out += RectPrim(b.inset(0.5f * u), t.edgeLine, radius, stroke = 1f * u)
     }

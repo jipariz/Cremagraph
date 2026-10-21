@@ -276,10 +276,17 @@ class OverlaySceneTest {
         assertEquals(1, aero.prims.count { it is BackdropPrim })
         // The gloss is a gradient with a hard step.
         assertTrue(aero.prims.any { it is RectPrim && it.gradient?.size == 4 })
-        // Metro: the header and chart tile, plus one tile per reading.
+        // Metro: one blur under the whole panel, its black base showing as the lines between the tiles.
         val metro = scene(25.0, style = GraphStyles.Metro)
-        // Time, weight, pressure, flow: the default series.
-        assertEquals(1 + 4, metro.prims.count { it is BackdropPrim })
+        assertEquals(1, metro.prims.count { it is BackdropPrim })
+        assertTrue(metro.prims.first { it is BackdropPrim } is BackdropPrim)
+        // Tiles without a base blur each its own patch: the header and chart tile, plus one per reading (time, weight,
+        // pressure, flow: the default series), and the gaps show the video.
+        val bare =
+            GraphStyles.Metro.copy(
+                panel = GraphStyles.Metro.panel.copy(tiles = GraphStyles.Metro.panel.tiles!!.copy(base = 0))
+            )
+        assertEquals(1 + 4, scene(25.0, style = bare).prims.count { it is BackdropPrim })
         assertEquals(0, scene(25.0, style = GraphStyles.Gaggiuino).prims.count { it is BackdropPrim })
     }
 
@@ -609,5 +616,17 @@ class OverlaySceneTest {
 
         assertEquals(listOf("phase 2", "phase 4"), labels.map { it.text }, "the crowded label is dropped")
         assertTrue(lines.isNotEmpty(), "every phase still draws its line")
+    }
+
+    @Test
+    fun aWeightAtTheTopStaysThereFrameByFrame() {
+        // Samples four times a second, frames thirty: between two samples the head of the curve is drawn in between,
+        // and the axis must grow with it, not wait for the next sample and drop the whole curve back down.
+        val scale = synthetic { t -> Sample(t.us(), weight = (t * 0.9).toFloat(), weightFlow = 0.9f) }
+        val weight = GraphStyles.Gaggiuino.series.weight
+        val settings = OverlaySettings(series = setOf(Series.WEIGHT, Series.WEIGHT_FLOW))
+        val heads = (0..(20 * 30)).map { curve(scene(15.0 + it / 30.0, settings, s = scale), weight).last() }
+        val drift = heads.max() - heads.min()
+        assertTrue(drift < 0.5f, "the head moved $drift px up and down while the weight climbed")
     }
 }

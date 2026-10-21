@@ -213,7 +213,7 @@ internal fun MobileOpenBody(
                         .heightIn(min = 56.dp)
                         .clip(RoundedCornerShape(28.dp))
                         .background(
-                            animateColorAsState(if (ready) CgColors.Brand.Orange else CgColors.Surface.Raised).value
+                            animateColorAsState(if (ready) CgColors.Brand.Signal else CgColors.Surface.Raised).value
                         )
                         .clickable(enabled = ready, role = Role.Button, onClick = onOpenEditor),
                     Alignment.Center,
@@ -292,7 +292,7 @@ private fun MobileHeader(store: Store, open: (() -> Unit)?) {
             Text(
                 stringResource(Res.string.app_name),
                 style = CgTheme.type.body.copy(fontSize = 19.sp),
-                color = CgColors.Brand.Cream,
+                color = CgColors.Brand.Bone,
             )
         }
         if (open != null) {
@@ -316,7 +316,7 @@ private fun MobileHeader(store: Store, open: (() -> Unit)?) {
                 Text(
                     stringResource(Res.string.open_get_app),
                     style = CgTheme.type.body.copy(fontSize = 15.sp),
-                    color = CgColors.Brand.Cream,
+                    color = CgColors.Brand.Bone,
                 )
             }
         }
@@ -340,7 +340,7 @@ private fun CompactStep(
             .clip(shape)
             .background(CgColors.Surface.Bar)
             .then(
-                if (next) Modifier.drawBehind { dashedBorder(CgColors.Brand.Orange, radius.toPx()) }
+                if (next) Modifier.drawBehind { dashedBorder(CgColors.Brand.Signal, radius.toPx()) }
                 else Modifier.border(1.dp, CgColors.Line.Hairline, shape)
             )
             .padding(start = 16.dp, end = 14.dp, top = 14.dp, bottom = 14.dp),
@@ -377,7 +377,7 @@ private fun Fold(title: String, text: String) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = CgTheme.type.body.copy(fontSize = 15.sp), color = CgColors.Brand.Cream)
+            Text(title, style = CgTheme.type.body.copy(fontSize = 15.sp), color = CgColors.Brand.Bone)
             val turn by animateFloatAsState(if (open) 180f else 0f, CgMotion.settle(), label = "chevron")
             Canvas(Modifier.size(16.dp).rotate(turn)) {
                 val s = size.width / 16f

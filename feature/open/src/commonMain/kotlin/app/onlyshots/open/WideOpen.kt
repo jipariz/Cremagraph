@@ -228,7 +228,7 @@ private fun Header(note: String?, gutter: Dp, narrow: Boolean, onPrivacy: (() ->
                 Text(
                     stringResource(Res.string.app_name),
                     style = CgTheme.type.body.copy(fontSize = 22.sp, fontWeight = FontWeight.Normal),
-                    color = CgColors.Brand.Cream,
+                    color = CgColors.Brand.Bone,
                 )
             }
         }
@@ -379,7 +379,7 @@ private fun Steps(
                     .heightIn(min = 56.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(
-                        animateColorAsState(if (ready) CgColors.Brand.Orange else CgColors.Surface.Raised).value
+                        animateColorAsState(if (ready) CgColors.Brand.Signal else CgColors.Surface.Raised).value
                     )
                     .clickable(enabled = ready, role = Role.Button, onClick = onOpenEditor)
                     .padding(horizontal = 36.dp, vertical = 16.dp),
@@ -416,7 +416,7 @@ private fun EmptyStep(
     tag: String,
 ) {
     val radius = 16.dp
-    val dash = if (next && number == 2) CgColors.Brand.Orange else CgColors.Text.Dim
+    val dash = if (next && number == 2) CgColors.Brand.Signal else CgColors.Text.Dim
     Row(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(radius))
@@ -494,7 +494,7 @@ internal fun PillButton(
             .background(
                 when {
                     outlined -> Color.Transparent
-                    light -> CgColors.Brand.Cream
+                    light -> CgColors.Brand.Bone
                     else -> CgColors.Surface.Raised
                 }
             )
@@ -510,7 +510,7 @@ internal fun PillButton(
                     fontSize = 15.sp,
                     fontWeight = if (outlined) FontWeight.Normal else FontWeight.SemiBold,
                 ),
-            color = if (light && !outlined) CgColors.Text.OnLight else CgColors.Brand.Cream,
+            color = if (light && !outlined) CgColors.Text.OnLight else CgColors.Brand.Bone,
         )
     }
 }

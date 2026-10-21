@@ -328,7 +328,7 @@ private fun DrawScope.overview(item: VideoItem, v: TimelineView, pad: Float) {
     if (start != null && shot != null) {
         val a = x(start.coerceIn(0, item.durationUs))
         val b = x((start + shot.durationUs).coerceIn(0, item.durationUs))
-        if (b > a) drawRect(CgColors.Brand.Orange, Offset(a, y), Size(b - a, h))
+        if (b > a) drawRect(CgColors.Brand.Signal, Offset(a, y), Size(b - a, h))
     }
     if (v.zoomed) {
         val a = x(v.us(pad))
@@ -464,7 +464,7 @@ private fun DrawScope.flag(item: VideoItem, v: TimelineView) {
     val start = item.shotStartInVideoUs ?: return
     if (item.shot == null) return
     val x = v.x(start)
-    val color = if (item.syncLocked) CgColors.Text.Dim else CgColors.Brand.Orange
+    val color = if (item.syncLocked) CgColors.Text.Dim else CgColors.Brand.Signal
     drawRect(color, Offset(x - 1.dp.toPx(), 46.dp.toPx()), Size(2.dp.toPx(), 82.dp.toPx()))
     drawRect(color, Offset(x, 44.dp.toPx()), Size(16.dp.toPx(), 12.dp.toPx()))
 }
@@ -496,7 +496,7 @@ private fun DrawScope.label(
     val pad = PAD.dp.toPx()
     val left = (v.x(v.playheadUs) - w / 2f).coerceIn(pad, (size.width - pad - w).coerceAtLeast(pad))
     val top = OVERVIEW.dp.toPx() - 7.dp.toPx()
-    drawRoundRect(CgColors.Brand.Orange, Offset(left, top), Size(w, h), CornerRadius(4.dp.toPx()), alpha = alpha)
+    drawRoundRect(CgColors.Brand.Signal, Offset(left, top), Size(w, h), CornerRadius(4.dp.toPx()), alpha = alpha)
     drawText(measured, topLeft = Offset(left + 10.dp.toPx(), top + (h - measured.size.height) / 2f), alpha = alpha)
 }
 

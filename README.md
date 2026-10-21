@@ -327,4 +327,5 @@ All seven milestones done: spike, foundations, record, editor, share, more sourc
 - **Min iOS:** suggest 16. minSdk 26.
 - **Toolchain:** AGP 9.3.2, Gradle 9.6.1, Kotlin 2.4.21, Compose 1.12.1.
 
-Open Sans: SIL Open Font License 1.1 (`core/resources/OPEN_SANS_LICENSE.txt`).
+Open Sans: SIL Open Font License 1.1 (`core/resources/OPEN_SANS_LICENSE.txt`). IBM Plex Mono and Plex Sans: SIL Open
+Font License 1.1 (`core/resources/IBM_PLEX_LICENSE.txt`).

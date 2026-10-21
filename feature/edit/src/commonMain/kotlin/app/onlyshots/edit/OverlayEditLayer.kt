@@ -262,7 +262,7 @@ fun OverlayEditLayer(
                         .wrapContentWidth()
                         .offset(y = (maxHeight * rect.bottom + 8.dp).coerceAtMost(maxHeight - 36.dp))
                         .clip(RoundedCornerShape(14.dp))
-                        .background(CgColors.Brand.Orange)
+                        .background(CgColors.Brand.Signal)
                         .padding(horizontal = CgSpace.S12, vertical = CgSpace.S6),
             )
         }
@@ -287,10 +287,10 @@ private fun Guides(snap: OverlaySnap.Snapped) {
     Canvas(Modifier.fillMaxSize()) {
         val w = 3.dp.toPx()
         snap.vertical?.let {
-            drawRect(CgColors.Brand.Orange, Offset(0f, it.guide * size.height - w / 2), Size(size.width, w))
+            drawRect(CgColors.Brand.Signal, Offset(0f, it.guide * size.height - w / 2), Size(size.width, w))
         }
         snap.horizontal?.let {
-            drawRect(CgColors.Brand.Orange, Offset(it.guide * size.width - w / 2, 0f), Size(w, size.height))
+            drawRect(CgColors.Brand.Signal, Offset(it.guide * size.width - w / 2, 0f), Size(w, size.height))
         }
     }
 }

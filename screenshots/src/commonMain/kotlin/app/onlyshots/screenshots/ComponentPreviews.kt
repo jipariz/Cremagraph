@@ -267,7 +267,7 @@ internal fun EditorControls() = Sheet {
         TopChip("export", onClick = {}, primary = true)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
-        Pill("⚑ start here", onClick = {}, color = CgColors.Brand.Orange)
+        Pill("⚑ start here", onClick = {}, color = CgColors.Brand.Signal)
         Pill("find start", onClick = {}, color = CgColors.Status.Live, enabled = false)
         Pill("fit", onClick = {})
         Pill("graph start", onClick = {}, icon = CgIcons.Lock)

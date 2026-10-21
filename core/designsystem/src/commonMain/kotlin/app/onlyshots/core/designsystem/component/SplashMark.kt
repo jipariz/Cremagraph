@@ -159,8 +159,8 @@ fun DrawScope.drawSplashMark(geometry: SplashGeometry, pose: SplashPose, alpha: 
 }
 
 private fun DrawScope.drawGrid(g: SplashGeometry, pose: SplashPose, alpha: Float) {
-    val cream = CgColors.Brand.Cream
-    val shot = CgColors.Brand.Orange
+    val cream = CgColors.Brand.Bone
+    val shot = CgColors.Brand.Signal
     g.brackets.forEachIndexed { i, path ->
         val (dx, dy) = Diagonals[i]
         val off = pose.cornerOffset[i]

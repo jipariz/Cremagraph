@@ -51,7 +51,7 @@ fun CgTextField(
         onValueChange = onValueChange,
         singleLine = true,
         textStyle = CgTheme.type.body.copy(color = CgColors.Text.Primary),
-        cursorBrush = SolidColor(CgColors.Brand.Orange),
+        cursorBrush = SolidColor(CgColors.Brand.Signal),
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         modifier = modifier.semantics { if (label != null) contentDescription = label },

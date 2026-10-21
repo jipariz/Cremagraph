@@ -138,7 +138,7 @@ fun TopChip(
     Box(modifier.heightIn(min = CgSize.Touch).clickable(role = Role.Button, onClick = onClick), Alignment.Center) {
         Row(
             Modifier.clip(Chip)
-                .background(if (primary) CgColors.Brand.Orange else CgColors.Surface.Raised)
+                .background(if (primary) CgColors.Brand.Signal else CgColors.Surface.Raised)
                 .padding(start = CgSpace.S12, end = 10.dp, top = CgSpace.S8, bottom = CgSpace.S8),
             horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
             verticalAlignment = Alignment.CenterVertically,
@@ -180,7 +180,7 @@ fun SplitButton(
         modifier.heightIn(min = CgSize.Touch),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.clip(Chip).background(CgColors.Brand.Orange), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.clip(Chip).background(CgColors.Brand.Signal), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text,
                 style = CgTheme.type.labelStrong,
@@ -725,7 +725,7 @@ fun ProgressLine(fraction: Float, modifier: Modifier = Modifier) {
     // The export reports in steps; the line glides between them instead of jumping.
     val shown by animateFloatAsState(fraction.coerceIn(0f, 1f), CgMotion.settle(), label = "progress")
     Box(modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(CgColors.Line.Divider)) {
-        Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(CgColors.Brand.Orange))
+        Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(CgColors.Brand.Signal))
     }
 }
 

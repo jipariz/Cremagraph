@@ -493,7 +493,7 @@ private fun Header(
                 onValueChange = { text = it.copy(text = it.text.take(32)) },
                 singleLine = true,
                 textStyle = CgTheme.type.sheetTitle.copy(color = CgColors.Text.Primary),
-                cursorBrush = SolidColor(CgColors.Brand.Orange),
+                cursorBrush = SolidColor(CgColors.Brand.Signal),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { commit() }),
                 modifier =
@@ -537,7 +537,7 @@ private fun Header(
                 .padding(horizontal = CgSpace.S8),
             Alignment.Center,
         ) {
-            Text(stringResource(Res.string.style_save), style = CgTheme.type.body, color = CgColors.Brand.Orange)
+            Text(stringResource(Res.string.style_save), style = CgTheme.type.body, color = CgColors.Brand.Signal)
         }
     }
 }

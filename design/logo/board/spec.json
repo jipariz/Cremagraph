@@ -2,31 +2,47 @@
   "brand": "onlyshots",
   "tagline": "Your shot, with its graph",
   "brief": "An app that films an espresso shot with its shot graph (pressure, flow, weight) drawn over it, for home baristas who tune their machines and share their shots. It should feel precise, crafted and warm, and it has to work as an app icon on Android, iOS, the desktop and the web.",
-  "adjectives": ["precise", "crafted", "warm", "shareable"],
+  "adjectives": [
+    "precise",
+    "crafted",
+    "warm",
+    "shareable"
+  ],
   "criteria": "Success: says filming plus graph without a coffee-cup cliché, reads at 16 px, works in one colour, keeps the app's orange on espresso.",
-  "mockups": ["app-icon", "favicon-tab", "cup", "social", "sticker", "website"],
-  "nav": ["How it works", "Machines", "Download"],
+  "mockups": [
+    "app-icon",
+    "favicon-tab",
+    "cup",
+    "social",
+    "sticker",
+    "website"
+  ],
+  "nav": [
+    "How it works",
+    "Machines",
+    "Download"
+  ],
   "brand_color": "#EF4E2B",
   "tile_color": "#1C1412",
   "greyscale": false,
   "designer": "OnlyShots",
-  "round": 2,
+  "round": 3,
   "concepts": [
     {
-      "name": "Viewfinder",
+      "name": "Viewfinder · Playhead",
       "symbol": "../kit/onlyshots-symbol.svg",
       "symbol_on_tile": "../kit/onlyshots-symbol-on-dark.svg",
       "lockup": "../kit/onlyshots-horizontal.svg",
       "lockup_on_dark": "../kit/onlyshots-horizontal-on-dark.svg",
-      "idea": "A camera's four corners frame the shot curve; the dot, set apart from its end, is now.",
+      "idea": "A camera's four corners frame the shot as it is recorded: the curve is drawn up to a playhead, and the dot rides the playhead where the curve meets it.",
       "rationale": [
-        "Says what the app does, filming the shot with its graph, without drawing a cup",
-        "Two colours with a meaning: the frame is the camera, the orange curve is the shot",
-        "A heavier small-size cut keeps the frame and the dot readable at 16 px"
+        "Says what the app does, recording the shot with its graph, without drawing a cup",
+        "Two colours with a meaning: the frame and playhead are the camera, the orange curve and dot are the shot",
+        "The dot sits on the line, so nothing floats above the curve to read as a head"
       ]
     }
   ],
-  "recommendation": "Viewfinder, refined: real outlines, three weights (regular, small, reversed), orange on espresso as in the app.",
+  "recommendation": "Viewfinder with the Playhead: real outlines, three weights (regular, small, reversed), orange on espresso as in the app.",
   "next_steps": [
     "Put the new icons into the Android, iOS, desktop and web builds",
     "Replace OnlyShotsMark in the design system",

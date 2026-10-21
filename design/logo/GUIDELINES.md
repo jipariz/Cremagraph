@@ -2,17 +2,18 @@
 
 ## 1. The logo
 
-- **Idea:** a camera's four corners frame the shot curve. The frame is the camera, the orange curve is the shot, and the
-  dot, set apart from its end, is "now": the app films the shot with its graph over it.
+- **Idea:** a camera's four corners frame the shot as it is recorded. The curve is drawn up to a playhead, and the dot
+  rides the playhead where the curve meets it: the app films the shot with its graph being written over it. The frame
+  and the playhead are the camera, the orange curve and the dot are the shot.
 - **Versions:** horizontal lockup (primary) · stacked lockup · symbol · wordmark.
-- **Weights of the symbol:** *regular* from 48 px up · *small* (heavier strokes, a bigger dot, the curve drawn in) from
+- **Weights of the symbol:** *regular* from 48 px up · *small* (heavier strokes, playhead and dot) from
   16 to 47 px and in every favicon · *reversed* (thinned) for light marks on dark grounds at large sizes.
 - **Files:** `kit/` holds the SVG masters; `kit/png/`, `kit/web/`, `kit/ios/`, `kit/android/` and `kit/desktop/` the
   rendered sets; `kit/variants/` the one-colour files. Everything is a filled outline: no strokes, no live text.
 
 ## 2. Clear space
 
-Keep a margin of **x** on every side, where x is the dot's diameter twice over (20 % of the symbol's height). Nothing
+Keep a margin of **x** on every side, where x is the dot's diameter (14 % of the symbol's height). Nothing
 else, including text, other logos and the edge of the screen, comes closer.
 
 ## 3. Minimum size
@@ -33,8 +34,8 @@ else, including text, other logos and the edge of the screen, comes closer.
 | Tile, the icon ground | `#1C1412` | 28 20 18 | 60 70 70 85 | Black 4 C |
 | Cream, the frame on dark | `#F4EEEA` | 244 238 234 | 3 5 6 0 | 9224 C |
 
-- **On light grounds:** espresso frame, orange curve and dot (`onlyshots-symbol.svg`, `onlyshots-horizontal.svg`).
-- **On dark grounds:** cream frame, orange curve and dot (`*-on-dark.svg`). Orange holds 5 : 1 on the tile and 5.3 : 1 on
+- **On light grounds:** espresso frame and playhead, orange curve and dot (`onlyshots-symbol.svg`, `onlyshots-horizontal.svg`).
+- **On dark grounds:** cream frame and playhead, orange curve and dot (`*-on-dark.svg`). Orange holds 5 : 1 on the tile and 5.3 : 1 on
   espresso.
 - **One colour:** black, white or orange (`kit/variants/`). Use one colour whenever two can't be reproduced.
 - Orange on white is 3.6 : 1: fine for the mark, too faint for small orange text beside it.
@@ -59,9 +60,10 @@ else, including text, other logos and the edge of the screen, comes closer.
 
 ## 7. Don'ts
 
-- Don't recolour the frame orange or the curve in the frame's colour: the two colours carry the idea.
-- Don't join the dot to the curve, move it, or add more dots.
-- Don't redraw the curve as another chart shape (bars, a zigzag, a rising arrow).
+- Don't recolour the frame or playhead orange, or the curve and dot in the frame's colour: the two colours carry the
+  idea.
+- Don't move the dot off the playhead, set it apart from the curve, or add more dots (including a REC light).
+- Don't redraw the curve as another chart shape (bars, a zigzag, a rising arrow), or draw it past the playhead.
 - Don't add a cup, steam or beans.
 - Don't stretch, rotate, outline, shadow or put a gradient on the mark.
 - Don't use the regular weight below 48 px or the small cut above 64 px.

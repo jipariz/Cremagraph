@@ -14,7 +14,7 @@ from ttf_outline import Font, word_path  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, '..', 'kit'))
 FONT = os.path.normpath(
-    os.path.join(HERE, '..', '..', '..', 'core', 'designsystem', 'src', 'commonMain', 'composeResources', 'font',
+    os.path.join(HERE, '..', '..', '..', 'core', 'resources', 'src', 'commonMain', 'composeResources', 'font',
                  'open_sans_semibold.ttf'))
 
 # Brand colours: the app's own (core/designsystem Tokens.kt).
@@ -25,9 +25,9 @@ CREAM = '#F4EEEA'       # a warm white for the frame on dark grounds
 
 # ── geometry ───────────────────────────────────────────────────────────────────────────────────────────────
 # A 256 grid. The frame is four L brackets on a 196-wide box (30..226 at the outer edge); each arm is 48 long on
-# the centreline, the corner a true arc. The curve is the shot: a short preinfusion flat, the rise, the peak, the
-# long decline; the dot, set apart from its end, is "now".
-
+# the centreline, the corner a true arc. Inside it the shot is being recorded: the curve (a short preinfusion flat, the
+# rise, the plateau) is drawn only up to a playhead, and the dot rides the playhead where the curve meets it. The
+# playhead belongs to the frame (the camera and editor), the curve and the dot to the shot.
 def bracket(w, arm=48, inset=40, r=20):
     """Top-left bracket as a filled outline: centreline (inset, inset+arm) → corner arc → (inset+arm, inset)."""
     h = w / 2
@@ -74,16 +74,16 @@ def cubic(p0, p1, p2, p3, t):
     return tuple(u ** 3 * a + 3 * u * u * t * b + 3 * u * t * t * c + t ** 3 * d for a, b, c, d in zip(p0, p1, p2, p3))
 
 
-def centreline(dx, dy, scale=1.0):
-    """Sample the shot curve's centreline densely: flat, then two cubics, tangent-continuous at the joins. [scale] draws
-    it in towards the frame's centre, for room between the curve and the brackets."""
-    S = lambda p: (128 + (p[0] + dx - 128) * scale, 128 + (p[1] + dy - 128) * scale)
-    pts = [S((72, 164))]
-    pts += [S((72 + 16 * k / 6, 164)) for k in range(1, 7)]
-    a = [(88, 164), (108, 164), (110, 104), (132, 104)]
-    b = [(132, 104), (152, 104), (160, 122), (170, 126)]
-    for seg in (a, b):
-        pts += [S(cubic(*seg, k / 40)) for k in range(1, 41)]
+PLAYHEAD_X = 178
+PLATEAU_Y = 110
+
+
+def centreline(start_x):
+    """Sample the shot curve's centreline densely: flat, the rise, the plateau up to the playhead."""
+    pts = [(start_x + (88 - start_x) * k / 8, 168) for k in range(9)]
+    rise = [(88, 168), (106, 168), (112, PLATEAU_Y), (134, PLATEAU_Y)]
+    pts += [cubic(*rise, k / 40) for k in range(1, 41)]
+    pts += [(134 + (PLAYHEAD_X - 134) * k / 8, PLATEAU_Y) for k in range(1, 9)]
     return pts
 
 
@@ -131,22 +131,26 @@ def dot_path(cx, cy, r):
     return f'M{cx - r:.2f} {cy:.2f}A{r} {r} 0 1 0 {cx + r:.2f} {cy:.2f}A{r} {r} 0 1 0 {cx - r:.2f} {cy:.2f}Z'
 
 
-def symbol(w, dot_r, scale, gap=9):
-    """(frame path, shot path) for one weight. The curve is shifted to sit at the frame's optical centre."""
-    dx, dy = -9, -6
-    pts = centreline(dx, dy, scale)
-    end, before = pts[-1], pts[-4]
-    tx, ty = end[0] - before[0], end[1] - before[1]
-    L = math.hypot(tx, ty)
-    reach = w / 2 + gap + dot_r
-    cx, cy = end[0] + tx / L * reach, end[1] + ty / L * reach
-    return frame(w), stroke_outline(pts, w) + dot_path(cx, cy, dot_r)
+def capsule(x, y0, y1, w):
+    """A vertical round-ended bar from y0 to y1 on the centreline, as a filled outline."""
+    h = w / 2
+    return f'M{x - h} {y0}V{y1}A{h} {h} 0 0 0 {x + h} {y1}V{y0}A{h} {h} 0 0 0 {x - h} {y0}Z'
+
+
+def symbol(w, dot_r, playhead_w):
+    """(frame and playhead path, curve and dot path) for one weight. The curve starts 12 units clear of the brackets'
+    inner edge whatever the weight."""
+    start_x = 40 + w + 12
+    pts = centreline(start_x)
+    camera = frame(w) + capsule(PLAYHEAD_X, 78, 182, playhead_w)
+    shot = stroke_outline(pts, w) + dot_path(PLAYHEAD_X, PLATEAU_Y, dot_r)
+    return camera, shot
 
 
 WEIGHTS = {
-    'regular': (20, 13, 0.9),     # everything from 48 px up
-    'small': (28, 17, 0.8),       # 32 px and below: heavier, so the frame and the dot survive
-    'reversed': (18, 12, 0.9),    # light on dark at large sizes: thinned against irradiation
+    'regular': (20, 18, 14),      # everything from 48 px up
+    'small': (28, 23, 18),        # 16 to 47 px and favicons: heavier, so the frame, playhead and dot survive
+    'reversed': (18, 16, 12),     # light on dark at large sizes: thinned against irradiation
 }
 
 # ── files ──────────────────────────────────────────────────────────────────────────────────────────────────

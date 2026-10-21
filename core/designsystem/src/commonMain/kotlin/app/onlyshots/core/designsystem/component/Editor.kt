@@ -6,14 +6,9 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -94,6 +89,7 @@ import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgMotion.tick
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
@@ -295,14 +291,10 @@ fun ExportOverlay(
                             ),
                 )
             }
-            // Making → made: the progress gives way to where the video went, and the card eases to its new height.
+            // Making → made: the progress ticks over to where the video went, and the card moves to its new height.
             AnimatedContent(
                 done != null,
-                transitionSpec = {
-                    (fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.92f)) togetherWith
-                        fadeOut(CgMotion.short()) using
-                        SizeTransform { _, _ -> CgMotion.sizeSpec }
-                },
+                transitionSpec = { tick() },
                 label = "export",
             ) { finished ->
                 Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
@@ -628,11 +620,13 @@ fun EditorSheet(
         scope.launch {
             if (flick || drag > height * DISMISS_FRACTION) {
                 // Off the screen first, so the sheet leaves rather than vanishing where the finger let go.
-                animate(drag, height.toFloat(), animationSpec = tween(DISMISS_MS)) { v, _ -> drag = v }
+                animate(drag, height.toFloat(), animationSpec = tween(DISMISS_MS, easing = CgMotion.Mechanical)) { v, _
+                    ->
+                    drag = v
+                }
                 close()
             } else {
-                animate(drag, 0f, animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) { v, _
-                    ->
+                animate(drag, 0f, animationSpec = tween(CgMotion.SHORT, easing = CgMotion.Mechanical)) { v, _ ->
                     drag = v
                 }
             }
@@ -696,15 +690,15 @@ fun EditorSheet(
     }
 }
 
-/** A sheet let go this far down its height, or flicked down this fast, closes; otherwise it springs back. */
+/** A sheet let go this far down its height, or flicked down this fast, closes; otherwise it snaps back. */
 private const val DISMISS_FRACTION = 0.3f
 private val DISMISS_VELOCITY = 1000.dp
-private const val DISMISS_MS = 200
+private const val DISMISS_MS = CgMotion.MEDIUM
 
 /**
  * Where an [EditorSheet] shows: none while [sheet] is null; one slides up from the bottom when it is set and back down
- * when it is cleared (the last one stays drawn while it leaves); a switch from one sheet to another cross-fades in
- * place as the height eases. Shown at once on the first frame, so a screenshot finds it open.
+ * when it is cleared (the last one stays drawn while it leaves); a switch from one sheet to another cuts in place as
+ * the height moves. Shown at once on the first frame, so a screenshot finds it open.
  */
 @Composable
 fun <T : Any> EditorSheetSlot(
@@ -717,14 +711,11 @@ fun <T : Any> EditorSheetSlot(
         modifier,
         transitionSpec = {
             when {
-                initialState == null ->
-                    slideInVertically(CgMotion.long()) { it } + fadeIn(CgMotion.medium()) togetherWith
-                        ExitTransition.None
+                initialState == null -> slideInVertically(CgMotion.long()) { it } togetherWith ExitTransition.None
                 targetState == null ->
                     EnterTransition.None togetherWith
-                        slideOutVertically(tween(CgMotion.MEDIUM, easing = CgMotion.EmphasizedAccelerate)) { it } +
-                            fadeOut(CgMotion.medium())
-                else -> fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short())
+                        slideOutVertically(tween(CgMotion.MEDIUM, easing = CgMotion.Mechanical)) { it }
+                else -> EnterTransition.None togetherWith ExitTransition.None
             } using SizeTransform(clip = false) { _, _ -> CgMotion.sizeSpec }
         },
         contentAlignment = Alignment.BottomCenter,
@@ -772,8 +763,8 @@ fun SheetHeader(title: String, onDone: (() -> Unit)?, modifier: Modifier = Modif
 /** A 12 dp progress bar: a hairline frame with the done part filled with the signal, 2 dp inside it. */
 @Composable
 fun ProgressLine(fraction: Float, modifier: Modifier = Modifier) {
-    // The export reports in steps; the bar glides between them instead of jumping.
-    val shown by animateFloatAsState(fraction.coerceIn(0f, 1f), CgMotion.settle(), label = "progress")
+    // The export reports in steps; the bar runs between them at an even rate, like a gauge, instead of jumping.
+    val shown by animateFloatAsState(fraction.coerceIn(0f, 1f), CgMotion.gauge(), label = "progress")
     Box(modifier.fillMaxWidth().height(12.dp).border(CgStroke.Hairline, CgColors.Line.Hairline).padding(3.dp)) {
         Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(CgColors.Brand.Signal))
     }

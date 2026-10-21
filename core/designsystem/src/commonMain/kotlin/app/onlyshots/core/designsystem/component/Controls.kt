@@ -119,7 +119,11 @@ fun SeriesChip(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val bg by animateColorAsState(if (selected && enabled) CgColors.Surface.Raised else CgColors.Surface.Base)
+    val bg by
+        animateColorAsState(
+            if (selected && enabled) CgColors.Surface.Raised else CgColors.Surface.Base,
+            CgMotion.short(),
+        )
     val ink =
         when {
             !enabled -> CgColors.Text.Disabled

@@ -2,6 +2,7 @@ package app.onlyshots.style
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -51,6 +52,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import app.onlyshots.SharedKeys
@@ -119,7 +121,8 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                     style,
                     picked = style.id == currentId,
                     width = TILE_SMALL,
-                    modifier = Modifier.animateItem(),
+                    modifier =
+                        Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = ItemPlacement),
                     onPick = { actions.pick(style.id) },
                     menu = { close ->
                         Item(stringResource(Res.string.style_edit), TestTags.StyleMenuEdit) {
@@ -141,7 +144,12 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                     },
                 )
             }
-            item(key = NEW_STYLE_KEY) { NewStyleTile(onClick = { actions.create(currentId) }, Modifier.animateItem()) }
+            item(key = NEW_STYLE_KEY) {
+                NewStyleTile(
+                    onClick = { actions.create(currentId) },
+                    Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = ItemPlacement),
+                )
+            }
         }
         SectionHeader(stringResource(Res.string.style_built_in))
         // As many columns as fit (a sheet on a phone takes three, the wide panel and a wide sheet more); a grid that
@@ -397,3 +405,6 @@ private val TileShape = RectangleShape
 private val NAME_STRIP = 30.dp
 
 private const val NEW_STYLE_KEY = "new-style"
+
+/** A tile moving to its new place in the row: it slides there and stops; tiles never fade in or out. */
+private val ItemPlacement = tween<IntOffset>(CgMotion.MEDIUM, easing = CgMotion.Mechanical)

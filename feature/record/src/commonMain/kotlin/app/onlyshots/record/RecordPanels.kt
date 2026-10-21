@@ -2,12 +2,8 @@ package app.onlyshots.record
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -62,6 +58,7 @@ import app.onlyshots.camera.CameraState
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgMotion.tick
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
@@ -134,7 +131,7 @@ internal fun TakeTopRow(take: TakeInputs, back: Boolean) {
         )
         Spacer(Modifier.weight(1f))
         // Start, pre-roll and stop rules, as the phone's gear: they need a machine and are closed mid-shot.
-        PopIn(take.state.hasData && !take.state.recording) {
+        KeyIn(take.state.hasData && !take.state.recording) {
             IconCircleButton(
                 CgIcons.Settings,
                 stringResource(Res.string.record_settings),
@@ -167,14 +164,11 @@ internal fun RulesBlock(take: TakeInputs, modifier: Modifier = Modifier) {
             take.state.hasData -> RulesMode.RULES
             else -> RulesMode.HINT
         }
-    // The rules turn into their progress when recording starts, with a cross-fade and the block easing to its height.
+    // The rules turn into their progress when recording starts: the block ticks over, like a readout, to its new
+    // height.
     AnimatedContent(
         mode,
-        transitionSpec = {
-            fadeIn(CgMotion.medium()) togetherWith
-                fadeOut(CgMotion.short()) using
-                SizeTransform { _, _ -> CgMotion.sizeSpec }
-        },
+        transitionSpec = { tick() },
         label = "rules",
         modifier = modifier,
     ) { shown ->
@@ -274,14 +268,10 @@ internal fun TakeFooter(take: TakeInputs, clock: TextStyle = CgTheme.type.cardTi
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
             // While filming, the take's one clock (the brew's, once the shot runs); before, a word says where
-            // things stand. One gives way to the other with a fade.
+            // things stand. One ticks over into the other.
             AnimatedContent(
                 state.recording,
-                transitionSpec = {
-                    fadeIn(CgMotion.medium()) togetherWith
-                        fadeOut(CgMotion.short()) using
-                        SizeTransform { _, _ -> CgMotion.sizeSpec }
-                },
+                transitionSpec = { tick() },
                 label = "clock",
             ) { recording ->
                 if (recording) Text(state.status.text(), style = clock)
@@ -307,8 +297,8 @@ internal fun TakeFooter(take: TakeInputs, clock: TextStyle = CgTheme.type.cardTi
         )
         AnimatedVisibility(
             take.canSimulate,
-            enter = fadeIn(CgMotion.medium()) + expandHorizontally(CgMotion.sizeSpec),
-            exit = fadeOut(CgMotion.short()) + shrinkHorizontally(CgMotion.sizeSpec),
+            enter = expandHorizontally(CgMotion.sizeSpec, expandFrom = Alignment.Start),
+            exit = shrinkHorizontally(CgMotion.sizeSpec, shrinkTowards = Alignment.Start),
         ) {
             Pill(
                 stringResource(Res.string.record_simulate_shot),
@@ -369,14 +359,10 @@ internal fun TabletopPanel(
             ) {
                 if (take.state.statusWorthShowing) TakeStatus(take.state)
                 RulesBlock(take, Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline))
-                // Recording, every reading; before, the two that matter, faded one into the other.
+                // Recording, every reading; before, the two that matter, one ticking over into the other.
                 AnimatedContent(
                     take.state.recording,
-                    transitionSpec = {
-                        fadeIn(CgMotion.medium()) togetherWith
-                            fadeOut(CgMotion.short()) using
-                            SizeTransform { _, _ -> CgMotion.sizeSpec }
-                    },
+                    transitionSpec = { tick() },
                     label = "tabletop",
                 ) { recording ->
                     if (recording) ReadingsGrid(take, columns = 4, large = false)

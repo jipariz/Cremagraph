@@ -2,9 +2,6 @@ package app.onlyshots.open
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -738,10 +735,10 @@ internal fun StepRow(
                 title.caps(),
                 style = (if (large) CgTheme.type.screenTitle else CgTheme.type.label).copy(letterSpacing = 0.em),
             )
-            // "choose a video" → the picked file's name and length, with a fade.
+            // "choose a video" ticks over to the picked file's name and length.
             AnimatedContent(
                 detail,
-                transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) },
+                transitionSpec = { with(CgMotion) { tick() } },
                 label = "detail",
             ) {
                 Text(

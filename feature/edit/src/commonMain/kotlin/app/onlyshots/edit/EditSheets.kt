@@ -1,10 +1,6 @@
 package app.onlyshots.edit
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,7 +38,7 @@ import app.onlyshots.connect.label
 import app.onlyshots.connect.labelRes
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
-import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgMotion.tick
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
@@ -416,7 +412,7 @@ fun ExportSheetContent(
 ) {
     val wording = LocalExportWording.current
     val choose = qualities.size > 1
-    // Options → progress → saved: each step fades into the next, and the sheet eases to its height.
+    // Options → progress → saved: each step ticks over to the next, and the sheet moves to its height.
     val step =
         when {
             savedToGallery -> ExportStep.SAVED
@@ -425,11 +421,7 @@ fun ExportSheetContent(
         }
     AnimatedContent(
         step,
-        transitionSpec = {
-            fadeIn(CgMotion.medium()) togetherWith
-                fadeOut(CgMotion.short()) using
-                SizeTransform { _, _ -> CgMotion.sizeSpec }
-        },
+        transitionSpec = { tick() },
         label = "export",
     ) { shown ->
         Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {

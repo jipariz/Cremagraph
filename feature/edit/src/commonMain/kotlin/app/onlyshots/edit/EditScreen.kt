@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -88,6 +87,7 @@ import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgMotion.cut
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
@@ -570,12 +570,12 @@ fun EditBody(
                         // The graph's settings while the graph is selected, else the video's: its shot, its frame and
                         // the export. The graph's page stays where it was while something else (an export) borrows the
                         // sheet.
-                        // Selecting the graph swaps the video's panel for the graph's, with a cross-fade rather than a
-                        // cut.
+                        // Selecting the graph swaps the video's panel for the graph's: a cut, the selection already
+                        // shows what changed.
                         AnimatedContent(
                             graphPanel,
                             modifier = Modifier.fillMaxSize().startRule(),
-                            transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) },
+                            transitionSpec = { cut() },
                             label = "panel",
                         ) { graph ->
                             if (graph) {
@@ -597,9 +597,7 @@ fun EditBody(
                                 ) {
                                     AnimatedContent(
                                         page,
-                                        transitionSpec = {
-                                            fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short())
-                                        },
+                                        transitionSpec = { cut() },
                                         label = "page",
                                     ) { shown ->
                                         Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
@@ -866,9 +864,9 @@ private fun Picture(
             if (formatStrip) {
                 AnimatedVisibility(
                     reframing,
-                    Modifier.align(Alignment.TopCenter).padding(CgSpace.S12),
-                    enter = fadeIn(CgMotion.medium()) + slideInVertically(CgMotion.offsetSpec) { -it / 2 },
-                    exit = fadeOut(CgMotion.short()) + slideOutVertically(CgMotion.offsetSpec) { -it / 2 },
+                    Modifier.align(Alignment.TopCenter).padding(CgSpace.S12).clipToBounds(),
+                    enter = slideInVertically(CgMotion.offsetSpec) { -it },
+                    exit = slideOutVertically(CgMotion.offsetSpec) { -it },
                 ) {
                     FormatStrip(video.format, onPick = actions::setFormat)
                 }
@@ -876,9 +874,10 @@ private fun Picture(
             AnimatedVisibility(
                 reframing,
                 Modifier.align(if (onReframing != null) Alignment.BottomStart else Alignment.BottomCenter)
-                    .padding(CgSpace.S12),
-                enter = fadeIn(CgMotion.medium()) + slideInVertically(CgMotion.offsetSpec) { it / 2 },
-                exit = fadeOut(CgMotion.short()) + slideOutVertically(CgMotion.offsetSpec) { it / 2 },
+                    .padding(CgSpace.S12)
+                    .clipToBounds(),
+                enter = slideInVertically(CgMotion.offsetSpec) { it },
+                exit = slideOutVertically(CgMotion.offsetSpec) { it },
             ) {
                 StatusChip(stringResource(Res.string.edit_reframe_hint), recording = false)
             }
@@ -1076,8 +1075,8 @@ private fun MessageBanner(message: UiText?, onOk: () -> Unit, modifier: Modifier
     AnimatedVisibility(
         message != null,
         modifier.clipToBounds(),
-        enter = slideInVertically(CgMotion.offsetSpec) { -it } + fadeIn(CgMotion.medium()),
-        exit = slideOutVertically(CgMotion.offsetSpec) { -it } + fadeOut(CgMotion.short()),
+        enter = slideInVertically(CgMotion.offsetSpec) { -it },
+        exit = slideOutVertically(CgMotion.offsetSpec) { -it },
     ) {
         last?.let {
             Banner(it.text(), BannerKind.Warning, action = stringResource(Res.string.edit_ok), onAction = onOk)
@@ -1444,26 +1443,21 @@ private fun EditPanel(
 }
 
 /**
- * The answer to a tap on the picture: a play or pause mark that swells and fades in the middle, so a tap that starts or
- * stops the video is seen to. Nothing until the first tap ([taps] counts them).
+ * The answer to a tap on the picture: a play or pause mark in the middle, held a moment and then gone, so a tap that
+ * starts or stops the video is seen to. Nothing until the first tap ([taps] counts them).
  */
 @Composable
 private fun PlayMark(taps: Int, playing: Boolean, modifier: Modifier = Modifier) {
-    val fade = remember { Animatable(0f) }
+    val shown = remember { Animatable(0f) }
     LaunchedEffect(taps) {
         if (taps == 0) return@LaunchedEffect
-        fade.snapTo(1f)
-        fade.animateTo(0f, tween(PLAY_MARK_MS, delayMillis = 120, easing = CgMotion.Standard))
+        shown.snapTo(1f)
+        shown.animateTo(0f, tween(CgMotion.SHORT, delayMillis = PLAY_MARK_HOLD_MS, easing = CgMotion.Linear))
     }
     Box(
         modifier
             .size(56.dp)
-            .graphicsLayer {
-                alpha = fade.value
-                val grow = 1f + 0.25f * (1f - fade.value)
-                scaleX = grow
-                scaleY = grow
-            }
+            .graphicsLayer { alpha = shown.value }
             .background(CgColors.Surface.Base.copy(alpha = 0.6f))
             .border(CgStroke.Hairline, CgColors.Brand.Bone),
         contentAlignment = Alignment.Center,
@@ -1472,7 +1466,7 @@ private fun PlayMark(taps: Int, playing: Boolean, modifier: Modifier = Modifier)
     }
 }
 
-private const val PLAY_MARK_MS = 450
+private const val PLAY_MARK_HOLD_MS = 300
 
 /** A hairline along the bottom edge: under the top bars. */
 private fun Modifier.bottomRule(): Modifier = drawBehind {

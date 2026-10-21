@@ -2,12 +2,7 @@ package app.onlyshots.open
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -766,7 +761,7 @@ internal fun ctaHint(video: Boolean, shot: Boolean): StringResource =
         else -> Res.string.open_hint_both
     }
 
-/** An empty step and the same step picked: the one fades into the other, the column easing to its new height. */
+/** An empty step and the same step picked: the one ticks over to the other, the column moving to its new height. */
 @Composable
 internal fun StepSwap(
     done: Boolean,
@@ -776,11 +771,7 @@ internal fun StepSwap(
     AnimatedContent(
         done,
         modifier,
-        transitionSpec = {
-            (fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.96f)) togetherWith
-                fadeOut(CgMotion.short()) using
-                SizeTransform { _, _ -> CgMotion.sizeSpec }
-        },
+        transitionSpec = { with(CgMotion) { tick() } },
         label = "step",
     ) {
         content(it)

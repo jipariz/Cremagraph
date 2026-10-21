@@ -2,8 +2,6 @@ package app.onlyshots.core.designsystem.component
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -11,11 +9,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,11 +32,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -70,12 +65,6 @@ import app.onlyshots.core.resources.core_library_count
 import app.onlyshots.core.resources.core_scale_connect
 import app.onlyshots.core.resources.core_scale_connected
 import app.onlyshots.core.resources.core_scale_connecting
-import com.valentinilk.shimmer.ShimmerBounds
-import com.valentinilk.shimmer.defaultShimmerTheme
-import com.valentinilk.shimmer.rememberShimmer
-import com.valentinilk.shimmer.shimmer
-import kotlin.math.PI
-import kotlin.math.cos
 import org.jetbrains.compose.resources.stringResource
 
 /*
@@ -155,8 +144,9 @@ fun SectionHeader(
             }
             val ink by animateColorAsState(trailingColor, CgMotion.medium())
             Box(target ?: Modifier, contentAlignment = Alignment.CenterEnd) {
-                // "searching…" gives way to "2 found" with a fade, not a jump.
-                Crossfade(searching, animationSpec = CgMotion.medium(), label = "searching") { busy ->
+                // "searching…" ticks over to "2 found", like a readout.
+                AnimatedContent(searching, transitionSpec = { with(CgMotion) { tick() } }, label = "searching") { busy
+                    ->
                     if (busy) SearchingNote(trailing.caps(), ink)
                     else Text(trailing.caps(), style = CgTheme.type.labelStrong, color = ink)
                 }
@@ -166,45 +156,29 @@ fun SectionHeader(
 }
 
 /**
- * "searching…" while a search runs: a dot sends out a ring that fades as it grows, and the word breathes with it. One
- * 1.4 s beat, so the two never drift apart. Still in an IDE preview.
+ * "searching…" while a search runs: the square dot blinks, on and off, like an instrument's busy light; the word stays
+ * solid. Lit in an IDE preview and on the first frame.
  */
 @Composable
 private fun SearchingNote(text: String, color: Color) {
     val still = LocalInspectionMode.current
-    // Read only where it is drawn: the beat changes every frame, the composition need not.
-    val beat =
+    // Read only where it is drawn: the light changes on its beat, the composition need not.
+    val light =
         rememberInfiniteTransition(label = "searching")
-            .animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(tween(1_400, easing = LinearEasing)),
-                label = "beat",
-            )
-    fun t() = if (still) 0f else beat.value
+            .animateFloat(initialValue = 1f, targetValue = 1f, animationSpec = CgMotion.blink(800), label = "light")
     Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S6), verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier.size(14.dp).drawBehind {
                 val dot = 2.5.dp.toPx()
-                val t = t()
-                val ping = dot + (size.minDimension / 2 - dot) * t
                 drawRect(
                     color,
-                    topLeft = center - Offset(ping, ping),
-                    size = Size(ping * 2, ping * 2),
-                    alpha = 0.5f * (1f - t),
-                    style = Stroke(1.dp.toPx()),
+                    topLeft = center - Offset(dot, dot),
+                    size = Size(dot * 2, dot * 2),
+                    alpha = if (still) 1f else light.value,
                 )
-                drawRect(color, topLeft = center - Offset(dot, dot), size = Size(dot * 2, dot * 2))
             }
         )
-        // Brightest as the ring leaves the dot, dimmest as it fades out.
-        Text(
-            text,
-            style = CgTheme.type.labelStrong,
-            color = color,
-            modifier = Modifier.graphicsLayer { alpha = 0.55f + 0.45f * (0.5f + 0.5f * cos(2f * PI.toFloat() * t())) },
-        )
+        Text(text, style = CgTheme.type.labelStrong, color = color)
     }
 }
 
@@ -220,7 +194,7 @@ fun StatusPill(text: String, dot: Color, modifier: Modifier = Modifier) {
         Box(Modifier.size(6.dp).background(dotColor))
         AnimatedContent(
             text,
-            transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) using SizeTransform() },
+            transitionSpec = { with(CgMotion) { tick() } },
             label = "status",
         ) {
             Text(it.caps(), style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp), color = dotColor)
@@ -266,8 +240,8 @@ fun MachineRow(
             // The live line opens under the name when readings start, rather than pushing the row taller at once.
             AnimatedVisibility(
                 live != null,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
+                enter = CgMotion.reveal,
+                exit = CgMotion.conceal,
             ) {
                 var last by remember { mutableStateOf(live.orEmpty()) }
                 if (live != null) last = live
@@ -328,16 +302,15 @@ fun ChoiceCard(
 }
 
 /**
- * Where the next search result will land, while the search runs; a light sweeps across it (compose-shimmer). An IDE
- * preview draws it still; the screenshot tests catch the sweep's first frame, before the light arrives, every run.
+ * Where the next search result will land, while the search runs; a scan band sweeps across it ([scanning]). An IDE
+ * preview and the screenshot tests see it at rest, before the band comes in.
  */
 @Composable
 fun SkeletonRow(modifier: Modifier = Modifier) {
-    val shimmer = rememberShimmer(ShimmerBounds.View, SkeletonShimmer)
     Row(
         modifier
             .fillMaxWidth()
-            .then(if (LocalInspectionMode.current) Modifier.alpha(0.6f) else Modifier.shimmer(shimmer))
+            .scanning()
             .background(CgColors.Surface.Bar)
             .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .padding(horizontal = CgSpace.S16, vertical = CgSpace.S14),
@@ -352,11 +325,44 @@ fun SkeletonRow(modifier: Modifier = Modifier) {
     }
 }
 
-/** The row rests at 60 % and the light brings it to full, rather than the library's 25 % that hides it on dark. */
-private val SkeletonShimmer =
-    defaultShimmerTheme.copy(
-        shaderColors = listOf(Color.White.copy(alpha = 0.6f), Color.White, Color.White.copy(alpha = 0.6f))
-    )
+/**
+ * Something being made or looked for: it rests at 60 % and a hard-edged band at full strength scans across it, left to
+ * right at an even rate, every 1.2 s, like a scanner's bar. It starts off the left edge, so a still frame (an IDE
+ * preview, a screenshot) shows it at rest.
+ */
+@Composable
+fun Modifier.scanning(): Modifier {
+    val still = LocalInspectionMode.current
+    val sweep =
+        rememberInfiniteTransition(label = "scan")
+            .animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(tween(ScanMs, easing = LinearEasing)),
+                label = "sweep",
+            )
+    return graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val band = ScanBand.toPx()
+            val left = if (still) -band else -band + (size.width + band) * sweep.value
+            // Take 40 % out everywhere but the band.
+            val dim = Color.Black.copy(alpha = 0.4f)
+            if (left > 0f) drawRect(dim, size = Size(left, size.height), blendMode = BlendMode.DstOut)
+            val right = (left + band).coerceAtLeast(0f)
+            if (right < size.width) {
+                drawRect(
+                    dim,
+                    topLeft = Offset(right, 0f),
+                    size = Size(size.width - right, size.height),
+                    blendMode = BlendMode.DstOut,
+                )
+            }
+        }
+}
+
+private const val ScanMs = 1_200
+private val ScanBand = 48.dp
 
 @Composable
 private fun Bar(width: Dp) {

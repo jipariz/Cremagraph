@@ -1,9 +1,6 @@
 package app.onlyshots.home
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -104,10 +101,8 @@ fun MachineShotsBody(
             Modifier.weight(1f).fillMaxWidth(),
             transitionSpec = {
                 val forward = initialState == null
-                (slideInHorizontally(CgMotion.offsetSpec) { if (forward) it / 6 else -it / 6 } +
-                    fadeIn(CgMotion.medium())) togetherWith
-                    (slideOutHorizontally(CgMotion.offsetSpec) { if (forward) -it / 6 else it / 6 } +
-                        fadeOut(CgMotion.short()))
+                slideInHorizontally(CgMotion.long()) { if (forward) it else -it } togetherWith
+                    slideOutHorizontally(CgMotion.long()) { if (forward) -it else it }
             },
             contentKey = { it?.host },
             label = "machine",
@@ -285,7 +280,7 @@ private fun MachineShots(
         searching = shots == null || state.busy != null,
         modifier = headerModifier,
     )
-    // Loading, none, or the shots: one fades into the next.
+    // Loading, none, or the shots: one ticks over to the next.
     val list =
         when {
             shots == null -> ShotsList.LOADING
@@ -294,11 +289,7 @@ private fun MachineShots(
         }
     AnimatedContent(
         list,
-        transitionSpec = {
-            fadeIn(CgMotion.medium()) togetherWith
-                fadeOut(CgMotion.short()) using
-                SizeTransform { _, _ -> CgMotion.sizeSpec }
-        },
+        transitionSpec = { with(CgMotion) { tick() } },
         label = "shots",
     ) { now ->
         // The shots as one list of cells meeting on their hairlines.

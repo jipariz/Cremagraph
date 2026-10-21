@@ -2,10 +2,6 @@ package app.onlyshots.style
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -936,8 +932,8 @@ private fun More(label: String, content: @Composable () -> Unit) {
     }
     AnimatedVisibility(
         open,
-        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
-        exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+        enter = CgMotion.reveal,
+        exit = CgMotion.conceal,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) { content() }
     }

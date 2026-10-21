@@ -3,12 +3,11 @@ package app.onlyshots.record
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -625,21 +624,19 @@ private fun CameraPane(
             }
             var ring by remember { mutableStateOf<Offset?>(null) }
             if (focusAt != null) ring = focusAt
-            AnimatedVisibility(
-                camera.focusLocked && focusAt != null && granted && !tiny && !state.recording,
-                Modifier.matchParentSize(),
-                enter = fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.9f),
-                exit = fadeOut(CgMotion.short()),
-            ) {
-                // Under the ring, as the camera apps put their lock label: tap it to go back to continuous focus
-                // and exposure. A held focus survives into the recording, as it should.
-                ring?.let {
-                    Pill(
-                        stringResource(Res.string.record_focus_locked),
-                        onClick = actions::unlockFocus,
-                        color = CgColors.Status.Warning,
-                        modifier = Modifier.belowFocusRing(it),
-                    )
+            // Under the ring, as the camera apps put their lock label: tap it to go back to continuous focus and
+            // exposure. A held focus survives into the recording, as it should. It lights with the ring and goes out
+            // with it, like a lamp: no motion of its own.
+            if (camera.focusLocked && focusAt != null && granted && !tiny && !state.recording) {
+                Box(Modifier.matchParentSize()) {
+                    ring?.let {
+                        Pill(
+                            stringResource(Res.string.record_focus_locked),
+                            onClick = actions::unlockFocus,
+                            color = CgColors.Status.Warning,
+                            modifier = Modifier.belowFocusRing(it),
+                        )
+                    }
                 }
             }
         }
@@ -651,17 +648,17 @@ private fun CameraPane(
             AnimatedVisibility(
                 state.statusWorthShowing && !state.recording,
                 Modifier.align(BiasAlignment(-1f, corner)).padding(CgSpace.S12),
-                enter = fadeIn(CgMotion.medium()),
-                exit = fadeOut(CgMotion.short()),
+                enter = CgMotion.reveal,
+                exit = CgMotion.conceal,
             ) {
                 TakeStatus(state)
             }
-            // The lenses step out of the way when recording starts, and back after.
+            // The lenses slide off the edge when recording starts, and back on after.
             AnimatedVisibility(
                 !state.recording && granted,
                 Modifier.align(Alignment.CenterEnd).padding(CgSpace.S12),
-                enter = fadeIn(CgMotion.medium()),
-                exit = fadeOut(CgMotion.short()) + slideOutHorizontally(CgMotion.offsetSpec) { it / 2 },
+                enter = slideInHorizontally(CgMotion.offsetSpec) { it * 2 },
+                exit = slideOutHorizontally(CgMotion.offsetSpec) { it * 2 },
             ) {
                 LensPicker(camera, actions::setZoom, vertical = true)
             }
@@ -709,8 +706,8 @@ private fun WarningBanner(text: String?) {
     if (text != null) last = text
     AnimatedVisibility(
         text != null,
-        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
-        exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+        enter = CgMotion.reveal,
+        exit = CgMotion.conceal,
     ) {
         last?.let { Banner(it, BannerKind.Warning) }
     }
@@ -795,13 +792,13 @@ private fun CameraError.text(): String =
         is CameraError.RecordingFailed -> detail ?: stringResource(Res.string.camera_recording_failed)
     }
 
-/** A small control that pops into place and out again, rather than appearing and vanishing. */
+/** A small key that slides out of its row's edge and back into it, rather than appearing and vanishing. */
 @Composable
-internal fun PopIn(visible: Boolean, content: @Composable () -> Unit) {
+internal fun KeyIn(visible: Boolean, content: @Composable () -> Unit) {
     AnimatedVisibility(
         visible,
-        enter = fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.8f),
-        exit = fadeOut(CgMotion.short()) + scaleOut(CgMotion.short(), targetScale = 0.8f),
+        enter = expandHorizontally(CgMotion.sizeSpec, expandFrom = Alignment.End),
+        exit = shrinkHorizontally(CgMotion.sizeSpec, shrinkTowards = Alignment.End),
     ) {
         content()
     }

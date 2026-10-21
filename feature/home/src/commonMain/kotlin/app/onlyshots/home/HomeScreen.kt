@@ -2,10 +2,6 @@ package app.onlyshots.home
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -558,8 +554,8 @@ private fun NextTakePane(
                     if (readings.isNotEmpty()) shown = readings
                     AnimatedVisibility(
                         readings.isNotEmpty(),
-                        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
-                        exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+                        enter = CgMotion.reveal,
+                        exit = CgMotion.conceal,
                     ) {
                         // One grid: the tiles meet on single hairlines.
                         HairlineGrid(shown.size, columns = shown.size) { i, cell ->

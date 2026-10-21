@@ -1,7 +1,5 @@
 package app.onlyshots.record
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,7 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -37,6 +38,7 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.record_zoom_lens
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -100,19 +102,25 @@ fun zoomLabel(zoom: Float): String {
 private val STOP_WIDTH = 52.dp
 
 /**
- * The square where the user tapped to focus, drawn while the camera settles and then fading to a dimmer one that stays
- * as long as focus and exposure are held there. [key] changes with every tap, so a new tap restarts it.
+ * The square where the user tapped to focus: it appears at its size, blinks twice while the camera settles, like a
+ * lamp, then dims to the one that stays as long as focus and exposure are held there. [key] changes with every tap, so
+ * a new tap restarts it.
  */
 @Composable
 fun FocusRing(at: Offset, key: Int, modifier: Modifier = Modifier) {
-    val scale = remember(key) { Animatable(1.4f) }
-    val alpha = remember(key) { Animatable(1f) }
+    var alpha by remember(key) { mutableFloatStateOf(1f) }
     LaunchedEffect(key) {
-        scale.animateTo(1f, tween(FOCUS_SETTLE_MS))
-        alpha.animateTo(0.5f, tween(FOCUS_FADE_MS))
+        repeat(FOCUS_BLINKS) {
+            delay(FOCUS_BLINK_MS)
+            alpha = 0f
+            delay(FOCUS_BLINK_MS)
+            alpha = 1f
+        }
+        delay(FOCUS_BLINK_MS)
+        alpha = 0.5f
     }
-    Canvas(modifier.fillMaxSize().alpha(alpha.value)) {
-        val half = FOCUS_RING_RADIUS.dp.toPx() * scale.value
+    Canvas(modifier.fillMaxSize().alpha(alpha)) {
+        val half = FOCUS_RING_RADIUS.dp.toPx()
         drawRect(
             CgColors.Status.Warning,
             Offset(at.x - half, at.y - half),
@@ -124,5 +132,5 @@ fun FocusRing(at: Offset, key: Int, modifier: Modifier = Modifier) {
 
 /** Half the focus square's side in dp; the lock label sits just under it. */
 internal const val FOCUS_RING_RADIUS = 28
-private const val FOCUS_SETTLE_MS = 250
-private const val FOCUS_FADE_MS = 900
+private const val FOCUS_BLINKS = 2
+private const val FOCUS_BLINK_MS = 90L

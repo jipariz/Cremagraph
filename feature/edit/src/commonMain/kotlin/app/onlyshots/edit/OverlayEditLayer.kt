@@ -4,8 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -238,21 +239,14 @@ fun OverlayEditLayer(
                 }
         )
 
-        // The snap's name, in an orange pill under the graph.
+        // The snap's name, in an orange pill under the graph: on while the graph sits snapped, off the moment it isn't.
         val snapName =
             snap
                 ?.let { s -> listOfNotNull(s.vertical?.place, s.horizontal?.place).map { stringResource(it.label) } }
                 ?.joinToString(" · ")
-        var lastName by remember { mutableStateOf("") }
-        val showName = dragging && !snapName.isNullOrEmpty()
-        if (showName) lastName = snapName.orEmpty()
-        AnimatedVisibility(
-            showName,
-            enter = fadeIn(CgMotion.short()) + scaleIn(CgMotion.springy(), initialScale = 0.85f),
-            exit = fadeOut(CgMotion.short()),
-        ) {
+        if (dragging && !snapName.isNullOrEmpty()) {
             Text(
-                lastName.caps(),
+                snapName.caps(),
                 style = CgTheme.type.labelStrong,
                 color = CgColors.Text.OnLight,
                 modifier =
@@ -264,13 +258,16 @@ fun OverlayEditLayer(
             )
         }
 
-        // The toolbar rises into place over the graph when it is picked, and steps aside while it is dragged.
+        // The toolbar rises into its slot over the graph when it is picked, and drops out while it is dragged.
         if (toolbar != null) {
             AnimatedVisibility(
                 selected && !dragging,
-                Modifier.fillMaxWidth().wrapContentWidth().offset(y = (maxHeight * rect.y - 52.dp).coerceAtLeast(8.dp)),
-                enter = fadeIn(CgMotion.short()) + slideInVertically(CgMotion.offsetSpec) { it / 3 },
-                exit = fadeOut(CgMotion.short()),
+                Modifier.fillMaxWidth()
+                    .wrapContentWidth()
+                    .offset(y = (maxHeight * rect.y - 52.dp).coerceAtLeast(8.dp))
+                    .clipToBounds(),
+                enter = slideInVertically(CgMotion.offsetSpec) { it },
+                exit = slideOutVertically(CgMotion.offsetSpec) { it },
             ) {
                 toolbar()
             }

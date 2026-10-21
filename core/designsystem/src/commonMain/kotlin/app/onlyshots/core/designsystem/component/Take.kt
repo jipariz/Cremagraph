@@ -2,10 +2,6 @@ package app.onlyshots.core.designsystem.component
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgMotion.tick
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
@@ -139,12 +136,12 @@ fun ReadingTile(
             .padding(horizontal = 10.dp, vertical = CgSpace.S6)
     ) {
         Text(label.caps(), style = CgTheme.type.data, color = CgColors.Text.Secondary, maxLines = 1)
-        // The first reading fades in over the dash; after that the number just ticks (ten times a second, a fade on
-        // each would blur it).
+        // The first reading ticks in over the dash, like a counter; after that the number just changes (ten times a
+        // second, a slide on each would blur it).
         AnimatedContent(
             value,
             contentKey = { v -> v.any { it.isDigit() } },
-            transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) },
+            transitionSpec = { tick() },
             label = "reading",
         ) { shown ->
             val style =
@@ -190,14 +187,10 @@ fun RuleStatusRow(text: String, done: Boolean, modifier: Modifier = Modifier, ma
     ) {
         mark()
         Text(text.caps(), style = CgTheme.type.labelStrong, modifier = Modifier.weight(1f))
-        val ink by
-            animateColorAsState(if (done) CgColors.Status.Success else CgColors.Text.Secondary, CgMotion.medium())
+        val ink by animateColorAsState(if (done) CgColors.Status.Success else CgColors.Text.Secondary, CgMotion.short())
         AnimatedContent(
             done,
-            transitionSpec = {
-                (fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.8f)) togetherWith
-                    fadeOut(CgMotion.short())
-            },
+            transitionSpec = { tick() },
             label = "rule",
         ) { now ->
             Text(

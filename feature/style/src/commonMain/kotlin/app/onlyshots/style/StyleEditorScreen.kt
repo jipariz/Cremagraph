@@ -9,6 +9,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -366,15 +367,15 @@ fun StyleEditorBody(
                 m.verticalScroll(rememberScrollState()).padding(CgSpace.S16),
                 verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
             ) {
-                // A tab's controls slide in from the side the tab sits on; rows that come and go inside ease the
-                // height.
+                // A tab's controls slide across from the side the tab sits on, the last ones out the other way,
+                // clipped to the panel; rows that come and go inside move the height.
                 AnimatedContent(
                     tab,
                     transitionSpec = {
                         val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                        (slideInHorizontally(CgMotion.offsetSpec) { dir * it / 8 } + fadeIn(CgMotion.medium()))
-                            .togetherWith(fadeOut(CgMotion.short()))
-                            .using(SizeTransform(clip = false) { _, _ -> CgMotion.sizeSpec })
+                        slideInHorizontally(CgMotion.offsetSpec) { dir * it }
+                            .togetherWith(slideOutHorizontally(CgMotion.offsetSpec) { -dir * it })
+                            .using(SizeTransform(clip = true) { _, _ -> CgMotion.sizeSpec })
                     },
                     label = "tab",
                 ) { shown ->

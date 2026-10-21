@@ -1,10 +1,6 @@
 package app.onlyshots.record
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
@@ -101,8 +97,8 @@ fun RecordingSettingsContent(
         // The rule's amount opens under the picker for the rules that have one, and folds away for those that do not.
         AnimatedVisibility(
             effective.stopRule.stepLabel != null,
-            enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
-            exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+            enter = CgMotion.reveal,
+            exit = CgMotion.conceal,
         ) {
             effective.stopRule.stepLabel?.let { label ->
                 SettingRow(

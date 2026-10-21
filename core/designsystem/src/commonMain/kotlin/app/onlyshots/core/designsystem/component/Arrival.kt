@@ -3,8 +3,6 @@ package app.onlyshots.core.designsystem.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,7 +23,7 @@ fun rememberListSettled(): Boolean {
 }
 
 /**
- * A row in a list that grows as things are found (machines, scales, shots): it fades in and opens its height when it
+ * A row in a list that grows as things are found (machines, scales, shots): it unrolls from its top, no fade, when it
  * arrives after the list is up ([animate], from [rememberListSettled]). Wrap it in a `key` so it is the same row when
  * the list reorders.
  */
@@ -34,7 +32,7 @@ fun Arriving(animate: Boolean, content: @Composable () -> Unit) {
     val state = remember { MutableTransitionState(!animate).apply { targetState = true } }
     AnimatedVisibility(
         state,
-        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
+        enter = CgMotion.reveal,
         exit = ExitTransition.None,
     ) {
         content()

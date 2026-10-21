@@ -1,13 +1,9 @@
 package app.onlyshots.core.designsystem.component
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -143,8 +139,8 @@ enum class RecordButtonState {
 
 /**
  * Figma "Record button": an 80 dp square frame around the red dot, which squares off into the stop key while recording.
- * Armed, the frame is the signal and breathes (1.6 s); idle and recording it is bone; disabled, a hairline with a grey
- * dot.
+ * Armed, the frame is the signal and blinks once a second, like a standby light; idle and recording it is bone;
+ * disabled, a hairline with a grey dot.
  */
 @Composable
 fun RecordButton(
@@ -154,15 +150,15 @@ fun RecordButton(
 ) {
     val label =
         stringResource(if (state == RecordButtonState.Recording) Res.string.core_stop else Res.string.core_record)
-    // Read while drawing, so the breathing redraws the frame without recomposing the button.
+    // Read while drawing, so the blinking redraws the frame without recomposing the button.
     val frameAlpha: () -> Float =
         if (state == RecordButtonState.Armed) {
             val t = rememberInfiniteTransition(label = "armed")
             val pulse =
                 t.animateFloat(
                     initialValue = 1f,
-                    targetValue = 0.45f,
-                    animationSpec = infiniteRepeatable(tween(800, easing = LinearEasing), RepeatMode.Reverse),
+                    targetValue = 0.2f,
+                    animationSpec = CgMotion.blink(1000, dim = 0.2f),
                     label = "frame",
                 )
             pulse::value
@@ -171,9 +167,9 @@ fun RecordButton(
         }
     val enabled = state != RecordButtonState.Disabled
     val recording = state == RecordButtonState.Recording
-    // Record and stop morph: the red dot squares off into the stop key, and back.
-    val innerSize by animateDpAsState(if (recording) 30.dp else 32.dp, CgMotion.springy(), label = "inner")
-    val corner by animateDpAsState(if (recording) 0.dp else 16.dp, CgMotion.springy(), label = "corner")
+    // Record and stop morph: the red dot squares off into the stop key, and back, and stops dead.
+    val innerSize by animateDpAsState(if (recording) 30.dp else 32.dp, CgMotion.short(), label = "inner")
+    val corner by animateDpAsState(if (recording) 0.dp else 16.dp, CgMotion.short(), label = "corner")
     val fill by
         animateColorAsState(
             if (enabled) CgColors.Status.Record else CgColors.Line.Hairline,

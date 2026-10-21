@@ -41,6 +41,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgTheme
@@ -142,6 +144,7 @@ internal fun MobileOpenBody(
                             opening ?: stringResource(Res.string.open_mobile_video_detail),
                             next = true,
                             onClick = onPickVideo,
+                            tag = TestTags.OpenPickVideo,
                         )
                     } else {
                         PickedStep(
@@ -150,6 +153,7 @@ internal fun MobileOpenBody(
                             tile = { VideoTile(pickedFile?.thumb, picked.id) },
                             onChange = onPickVideo,
                             highlighted = false,
+                            tag = TestTags.OpenPickVideo,
                         )
                     }
                 }
@@ -161,6 +165,7 @@ internal fun MobileOpenBody(
                             stringResource(Res.string.open_mobile_shot_detail),
                             next = picked != null,
                             onClick = onPickShot,
+                            tag = TestTags.OpenPickShot,
                         )
                     } else {
                         PickedStep(
@@ -169,6 +174,7 @@ internal fun MobileOpenBody(
                             tile = { ShotTile() },
                             onChange = onPickShot,
                             highlighted = false,
+                            tag = TestTags.OpenPickShot,
                         )
                     }
                 }
@@ -202,7 +208,8 @@ internal fun MobileOpenBody(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Box(
-                    Modifier.fillMaxWidth()
+                    Modifier.testTag(TestTags.OpenEditor)
+                        .fillMaxWidth()
                         .heightIn(min = 56.dp)
                         .clip(RoundedCornerShape(28.dp))
                         .background(
@@ -318,7 +325,14 @@ private fun MobileHeader(store: Store, open: (() -> Unit)?) {
 
 /** A step to do, compact: its number, what goes in, and "choose" (light when it is the next thing to do). */
 @Composable
-private fun CompactStep(number: Int, title: String, detail: String, next: Boolean, onClick: () -> Unit) {
+private fun CompactStep(
+    number: Int,
+    title: String,
+    detail: String,
+    next: Boolean,
+    onClick: () -> Unit,
+    tag: String,
+) {
     val radius = 18.dp
     val shape = RoundedCornerShape(radius)
     Row(
@@ -340,7 +354,13 @@ private fun CompactStep(number: Int, title: String, detail: String, next: Boolea
             Text(title, style = CgTheme.type.body.copy(fontSize = 17.sp), color = CgColors.Text.Primary)
             Text(detail, style = CgTheme.type.body.copy(fontSize = 13.sp), color = CgColors.Text.Dim)
         }
-        PillButton(stringResource(Res.string.open_choose), light = next, outlined = !next, onClick = onClick)
+        PillButton(
+            stringResource(Res.string.open_choose),
+            light = next,
+            outlined = !next,
+            onClick = onClick,
+            modifier = Modifier.testTag(tag),
+        )
     }
 }
 

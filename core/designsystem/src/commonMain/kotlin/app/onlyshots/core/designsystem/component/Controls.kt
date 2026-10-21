@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -135,6 +136,8 @@ fun SegmentedControl(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     fill: Boolean = false,
+    /** A test tag per option ([app.onlyshots.TestTags]), for the segments UI tests pick. */
+    tags: List<String>? = null,
 ) {
     // The white pill slides from the old choice to the new one: its edges are read from where the segments were placed
     // (layout, the same frame), and only drawing follows the animated index, so a still frame shows it settled.
@@ -169,6 +172,7 @@ fun SegmentedControl(
                 (if (fill) Modifier.weight(label.length.coerceAtLeast(MIN_SEGMENT_CHARS).toFloat()) else Modifier)
                     // A minimum, not a height: at 200 % font the label must still fit.
                     .heightIn(min = CgSize.Touch - 6.dp)
+                    .then(tags?.getOrNull(i)?.let { Modifier.testTag(it) } ?: Modifier)
                     .onPlaced {
                         val x = it.positionInParent().x
                         if (i * 2 + 1 < edges.size) {

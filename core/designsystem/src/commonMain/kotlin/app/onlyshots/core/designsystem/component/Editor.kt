@@ -82,6 +82,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -90,6 +91,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
@@ -293,8 +295,9 @@ fun ExportOverlay(
                                 stringResource(Res.string.core_export_keep_editing),
                                 onClick = onKeepEditing,
                                 kind = CgButtonKind.Secondary,
+                                modifier = Modifier.testTag(TestTags.ExportKeepEditing),
                             )
-                            CgButton(next, onClick = onNext)
+                            CgButton(next, onClick = onNext, modifier = Modifier.testTag(TestTags.ExportNext))
                         }
                     } else {
                         Text(stringResource(Res.string.core_export_making), style = CgTheme.type.sheetTitle)
@@ -692,7 +695,10 @@ fun SheetHeader(title: String, onDone: (() -> Unit)?, modifier: Modifier = Modif
             Text(title, style = CgTheme.type.sheetTitle, modifier = Modifier.weight(1f).semantics { heading() })
             if (onDone != null) {
                 Box(
-                    Modifier.heightIn(min = CgSize.Touch).clickable(role = Role.Button, onClick = onDone).padding(4.dp),
+                    Modifier.testTag(TestTags.SheetDone)
+                        .heightIn(min = CgSize.Touch)
+                        .clickable(role = Role.Button, onClick = onDone)
+                        .padding(4.dp),
                     Alignment.Center,
                 ) {
                     Text(

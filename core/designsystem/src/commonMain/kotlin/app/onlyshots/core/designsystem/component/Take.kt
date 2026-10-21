@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgShape
@@ -75,6 +77,7 @@ fun FormatPicker(
                 @Composable { Text(option.label, style = CgTheme.type.labelStrong.copy(fontSize = 13.sp), color = ink) }
             val body =
                 Modifier.weight(1f)
+                    .testTag(TestTags.format(option.label))
                     .height(if (compact) 48.dp else 72.dp)
                     .clip(shape)
                     .background(ground)

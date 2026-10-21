@@ -1,6 +1,9 @@
 package app.onlyshots.edit
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.component.CardBar
 import app.onlyshots.core.designsystem.component.CardBarButton
 import app.onlyshots.core.resources.Res
@@ -24,9 +27,23 @@ fun GraphToolbar(
     onText: (() -> Unit)? = null,
 ) {
     CardBar {
-        CardBarButton(stringResource(Res.string.edit_toolbar_style), onClick = onStyle)
-        CardBarButton(stringResource(Res.string.edit_toolbar_data), onClick = onData)
-        onText?.let { CardBarButton(stringResource(Res.string.edit_toolbar_text), onClick = it) }
+        CardBarButton(
+            stringResource(Res.string.edit_toolbar_style),
+            onClick = onStyle,
+            modifier = Modifier.testTag(TestTags.ToolbarStyle),
+        )
+        CardBarButton(
+            stringResource(Res.string.edit_toolbar_data),
+            onClick = onData,
+            modifier = Modifier.testTag(TestTags.ToolbarData),
+        )
+        onText?.let {
+            CardBarButton(
+                stringResource(Res.string.edit_toolbar_text),
+                onClick = it,
+                modifier = Modifier.testTag(TestTags.ToolbarText),
+            )
+        }
         CardBarButton("◐ ${(opacity * 100).roundToInt()} %", onClick = { onOpacity(nextOpacity(opacity)) })
         CardBarButton("↺", onClick = onReset)
     }

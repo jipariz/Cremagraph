@@ -42,7 +42,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import app.onlyshots.TestTags
 import app.onlyshots.camera.CameraState
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
@@ -115,7 +117,12 @@ internal fun TakeTopRow(take: TakeInputs, back: Boolean) {
         Spacer(Modifier.weight(1f))
         // Start, pre-roll and stop rules, as the phone's gear: they need a machine and are closed mid-shot.
         PopIn(take.state.hasData && !take.state.recording) {
-            IconCircleButton(CgIcons.Settings, stringResource(Res.string.record_settings), onClick = take.onSettings)
+            IconCircleButton(
+                CgIcons.Settings,
+                stringResource(Res.string.record_settings),
+                onClick = take.onSettings,
+                modifier = Modifier.testTag(TestTags.RecordSettings),
+            )
         }
     }
 }
@@ -226,7 +233,11 @@ internal fun TakeFooter(take: TakeInputs) {
                     color = CgColors.Text.Secondary,
                 )
             }
-            RecordButton(state.buttonState(), onClick = take.actions::recordPressed)
+            RecordButton(
+                state.buttonState(),
+                onClick = take.actions::recordPressed,
+                modifier = Modifier.testTag(TestTags.RecordButton),
+            )
         }
         AnimatedVisibility(
             take.canSimulate,
@@ -237,6 +248,7 @@ internal fun TakeFooter(take: TakeInputs) {
                 stringResource(Res.string.record_simulate_shot),
                 onClick = take.actions::simulateShot,
                 kind = CgButtonKind.Secondary,
+                modifier = Modifier.testTag(TestTags.RecordSimulate),
             )
         }
     }
@@ -382,6 +394,7 @@ internal fun FloatingControls(
                     stringResource(Res.string.record_simulate_shot),
                     onClick = take.actions::simulateShot,
                     kind = CgButtonKind.Secondary,
+                    modifier = Modifier.testTag(TestTags.RecordSimulate),
                 )
             }
         }
@@ -427,7 +440,11 @@ internal fun FloatingControls(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
                     ) {
-                        RecordButton(state.buttonState(), onClick = take.actions::recordPressed)
+                        RecordButton(
+                            state.buttonState(),
+                            onClick = take.actions::recordPressed,
+                            modifier = Modifier.testTag(TestTags.RecordButton),
+                        )
                         simulate()
                     }
                 }
@@ -457,7 +474,11 @@ internal fun FloatingControls(
                         Box(Modifier.widthIn(max = RULES_WIDTH)) { RulesBlock(take) }
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) { simulate() }
-                            RecordButton(state.buttonState(), onClick = take.actions::recordPressed)
+                            RecordButton(
+                                state.buttonState(),
+                                onClick = take.actions::recordPressed,
+                                modifier = Modifier.testTag(TestTags.RecordButton),
+                            )
                             Spacer(Modifier.weight(1f))
                         }
                     }

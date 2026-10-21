@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -51,6 +52,7 @@ import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.PRIVACY_URL
 import app.onlyshots.StopRuleChoice
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
@@ -293,6 +295,7 @@ private fun Machines(state: HomeUiState, onMachine: (FoundMachine) -> Unit, onAd
     AddRow(
         stringResource(Res.string.home_add_by_address),
         onClick = onAddByAddress,
+        modifier = Modifier.testTag(TestTags.HomeAddByAddress),
         subtitle = if (rows.isEmpty()) stringResource(Res.string.home_add_by_address_subtitle) else null,
     )
 }
@@ -380,9 +383,14 @@ private fun AddressSheet(address: String, onAddress: (String) -> Unit, onConnect
                 label = stringResource(Res.string.home_address_label),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { onConnect() }),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(TestTags.HomeAddressField),
             )
-            CgButton(stringResource(Res.string.home_connect), onClick = onConnect, enabled = address.isNotBlank())
+            CgButton(
+                stringResource(Res.string.home_connect),
+                onClick = onConnect,
+                enabled = address.isNotBlank(),
+                modifier = Modifier.testTag(TestTags.HomeAddressConnect),
+            )
         }
     }
 }
@@ -483,6 +491,7 @@ private fun NextTakePane(
                     else stringResource(Res.string.home_record_armed_manual),
                 enabled = action.enabled,
                 onClick = onOpenCamera,
+                modifier = Modifier.testTag(TestTags.HomeRecordAction),
             )
             SampleLink(onSample, Modifier.align(Alignment.CenterHorizontally))
         }
@@ -585,7 +594,13 @@ private fun ReadingKind.color(): Color =
  */
 @Composable
 private fun SampleLink(onSample: () -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier) { FooterLink(stringResource(Res.string.home_try_sample), onClick = onSample) }
+    Box(modifier) {
+        FooterLink(
+            stringResource(Res.string.home_try_sample),
+            onClick = onSample,
+            modifier = Modifier.testTag(TestTags.HomeSample),
+        )
+    }
 }
 
 /**
@@ -609,7 +624,9 @@ fun HelpContent(modifier: Modifier = Modifier, onPrivacy: (() -> Unit)? = null, 
         )
         // The app's own privacy screen where the host has one; the published page otherwise. Either ends with where to
         // get help, so one link serves both.
-        FooterLink(stringResource(Res.string.home_privacy)) { onPrivacy?.invoke() ?: uri.openUri(PRIVACY_URL) }
+        FooterLink(stringResource(Res.string.home_privacy), modifier = Modifier.testTag(TestTags.HelpPrivacy)) {
+            onPrivacy?.invoke() ?: uri.openUri(PRIVACY_URL)
+        }
         Text(stringResource(Res.string.core_version, version), style = CgTheme.type.caption, color = CgColors.Text.Dim)
     }
 }
@@ -624,12 +641,12 @@ private fun HelpSection(title: String, names: String, note: String) {
 }
 
 @Composable
-private fun FooterLink(label: String, onClick: () -> Unit) {
+private fun FooterLink(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(
         label,
         style = CgTheme.type.caption.copy(textDecoration = TextDecoration.Underline),
         color = CgColors.Text.Secondary,
         modifier =
-            Modifier.heightIn(min = CgSize.Touch).wrapContentHeight().clickable(role = Role.Button, onClick = onClick),
+            modifier.heightIn(min = CgSize.Touch).wrapContentHeight().clickable(role = Role.Button, onClick = onClick),
     )
 }

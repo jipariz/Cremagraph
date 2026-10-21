@@ -24,11 +24,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgShape
@@ -110,6 +112,7 @@ fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val back = stringResource(Res.string.core_back)
     Box(
         modifier
+            .testTag(TestTags.Back)
             .size(CgSize.Touch)
             .clip(CircleShape)
             .background(CgColors.Surface.Raised)

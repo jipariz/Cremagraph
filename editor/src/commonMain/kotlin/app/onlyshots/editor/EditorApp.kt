@@ -24,6 +24,8 @@ import app.onlyshots.SharedMotion
 import app.onlyshots.SplashHost
 import app.onlyshots.SplashState
 import app.onlyshots.StyleEditorRoute
+import app.onlyshots.TaggedScreen
+import app.onlyshots.TestTags
 import app.onlyshots.back
 import app.onlyshots.backTo
 import app.onlyshots.core.designsystem.CgTheme
@@ -107,54 +109,64 @@ private fun EditorGraph(
         entryProvider =
             entryProvider {
                 entry<OpenRoute> {
-                    OpenScreen(
-                        onOpen = { id -> nav.go(EditRoute(id, manual = true)) },
-                        onFromMachine = fromMachine,
-                        pickedShot = results.pickedShot,
-                        onPickedShotUsed = { results.pickedShot.value = null },
-                        host = host,
-                        stores = stores,
-                        onPrivacy = { nav.go(PrivacyRoute) },
-                    )
-                }
-                entry<EditRoute> { route ->
-                    val id = route.id
-                    val back = { nav.backTo(OpenRoute) }
-                    EditScreen(
-                        id = id,
-                        onBack = { back() },
-                        onExported = { back() },
-                        askBeforeLeaving = false,
-                        onFromMachine = fromMachine,
-                        pickedShot = results.pickedShot,
-                        onPickedShotUsed = { results.pickedShot.value = null },
-                        onStyleEditor = { nav.go(it.copy(videoId = id)) },
-                        savedStyle = results.savedStyle,
-                        onSavedStyleUsed = { results.savedStyle.value = null },
-                    )
-                }
-                if (machineShots != null) {
-                    entry<MachineShotsRoute>(metadata = ModalMotion) {
-                        machineShots(
-                            { shot ->
-                                results.pickedShot.value = SidecarCodec.json.encodeToString(Shot.serializer(), shot)
-                                nav.back()
-                            },
-                            { nav.back() },
+                    TaggedScreen(TestTags.ScreenOpen) {
+                        OpenScreen(
+                            onOpen = { id -> nav.go(EditRoute(id, manual = true)) },
+                            onFromMachine = fromMachine,
+                            pickedShot = results.pickedShot,
+                            onPickedShotUsed = { results.pickedShot.value = null },
+                            host = host,
+                            stores = stores,
+                            onPrivacy = { nav.go(PrivacyRoute) },
                         )
                     }
                 }
-                entry<PrivacyRoute>(metadata = ModalMotion) { PrivacyScreen(onBack = { nav.back() }) }
+                entry<EditRoute> { route ->
+                    TaggedScreen(TestTags.ScreenEdit) {
+                        val id = route.id
+                        val back = { nav.backTo(OpenRoute) }
+                        EditScreen(
+                            id = id,
+                            onBack = { back() },
+                            onExported = { back() },
+                            askBeforeLeaving = false,
+                            onFromMachine = fromMachine,
+                            pickedShot = results.pickedShot,
+                            onPickedShotUsed = { results.pickedShot.value = null },
+                            onStyleEditor = { nav.go(it.copy(videoId = id)) },
+                            savedStyle = results.savedStyle,
+                            onSavedStyleUsed = { results.savedStyle.value = null },
+                        )
+                    }
+                }
+                if (machineShots != null) {
+                    entry<MachineShotsRoute>(metadata = ModalMotion) {
+                        TaggedScreen(TestTags.ScreenMachineShots) {
+                            machineShots(
+                                { shot ->
+                                    results.pickedShot.value = SidecarCodec.json.encodeToString(Shot.serializer(), shot)
+                                    nav.back()
+                                },
+                                { nav.back() },
+                            )
+                        }
+                    }
+                }
+                entry<PrivacyRoute>(metadata = ModalMotion) {
+                    TaggedScreen(TestTags.ScreenPrivacy) { PrivacyScreen(onBack = { nav.back() }) }
+                }
                 entry<StyleEditorRoute>(metadata = FadeMotion) { route ->
-                    StyleEditorScreen(
-                        baseId = route.baseId,
-                        editId = route.editId,
-                        videoId = route.videoId,
-                        onClose = { saved ->
-                            if (saved != null) results.savedStyle.value = saved
-                            nav.back()
-                        },
-                    )
+                    TaggedScreen(TestTags.ScreenStyleEditor) {
+                        StyleEditorScreen(
+                            baseId = route.baseId,
+                            editId = route.editId,
+                            videoId = route.videoId,
+                            onClose = { saved ->
+                                if (saved != null) results.savedStyle.value = saved
+                                nav.back()
+                            },
+                        )
+                    }
                 }
             },
     )

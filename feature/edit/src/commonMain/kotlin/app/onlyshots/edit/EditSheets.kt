@@ -31,8 +31,10 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
+import app.onlyshots.TestTags
 import app.onlyshots.connect.color
 import app.onlyshots.connect.label
 import app.onlyshots.connect.labelRes
@@ -140,6 +142,7 @@ fun DataSheetContent(
                 color = series.color,
                 selected = series in settings.series,
                 enabled = series in available,
+                modifier = Modifier.testTag(TestTags.series(series.name)),
                 onClick = {
                     onChange { s -> s.copy(series = if (series in s.series) s.series - series else s.series + series) }
                 },
@@ -342,7 +345,7 @@ fun TextSheetContent(item: VideoItem, onChange: (push: Boolean, (OverlaySettings
         onValueChange = { text -> onChange(push()) { it.copy(title = text.ifEmpty { null }) } },
         label = title,
         placeholder = default,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag(TestTags.TextTitleField),
     )
     Text(recipe, style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
     CgTextField(
@@ -404,7 +407,7 @@ fun ExportSheetContent(
                     Pill(
                         stringResource(wording.next),
                         onClick = onNextShot,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().testTag(TestTags.ExportNext),
                         light = true,
                         fill = true,
                     )
@@ -440,6 +443,7 @@ fun ExportSheetContent(
                         "${exportSummary(item, galleryQuality.takeUnless { choose }, sound, wording)} · " +
                             stringResource(wording.saveWhere),
                         onClick = onSaveToGallery,
+                        modifier = Modifier.testTag(TestTags.ExportSave),
                         trailing =
                             if (choose) {
                                 {
@@ -455,6 +459,7 @@ fun ExportSheetContent(
                             stringResource(share),
                             exportSummary(item, shareQuality.takeUnless { choose }, sound, wording) + where,
                             onClick = onShare,
+                            modifier = Modifier.testTag(TestTags.ExportShare),
                             trailing =
                                 if (choose) {
                                     {
@@ -522,14 +527,14 @@ fun ExportBar(
             CgButton(
                 stringResource(wording.save),
                 onClick = onSave,
-                modifier = Modifier.weight(1f).heightIn(min = 52.dp).fillMaxHeight(),
+                modifier = Modifier.weight(1f).heightIn(min = 52.dp).fillMaxHeight().testTag(TestTags.ExportSave),
             )
             wording.share?.let {
                 CgButton(
                     stringResource(it),
                     onClick = onShare,
                     kind = CgButtonKind.Secondary,
-                    modifier = Modifier.weight(1f).heightIn(min = 52.dp).fillMaxHeight(),
+                    modifier = Modifier.weight(1f).heightIn(min = 52.dp).fillMaxHeight().testTag(TestTags.ExportShare),
                 )
             }
         }

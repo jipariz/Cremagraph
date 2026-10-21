@@ -35,9 +35,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
@@ -234,6 +236,7 @@ fun OpenBody(
                 done = picked != null,
                 highlighted = dragging,
                 onClick = onPickVideo,
+                modifier = Modifier.testTag(TestTags.OpenPickVideo),
             )
             Step(
                 number = 2,
@@ -248,6 +251,7 @@ fun OpenBody(
                 action = stringResource(if (shot == null) Res.string.open_choose else Res.string.open_change),
                 done = shot != null,
                 onClick = onPickShot,
+                modifier = Modifier.testTag(TestTags.OpenPickShot),
             )
             status
                 ?.takeIf { it != Opening }
@@ -257,7 +261,7 @@ fun OpenBody(
             stringResource(Res.string.open_editor),
             onClick = onOpenEditor,
             enabled = picked != null && shot != null,
-            modifier = Modifier.fillMaxWidth().padding(CgSpace.S16),
+            modifier = Modifier.testTag(TestTags.OpenEditor).fillMaxWidth().padding(CgSpace.S16),
         )
     }
 }
@@ -272,6 +276,7 @@ fun ShotSourceChoices(onFile: () -> Unit, onMachine: (() -> Unit)?) {
             title = stringResource(Res.string.open_from_file),
             detail = stringResource(Res.string.open_shot_file_detail),
             onClick = onFile,
+            modifier = Modifier.testTag(TestTags.OpenFromFile),
         )
         if (onMachine != null) {
             ChoiceCard(
@@ -280,6 +285,7 @@ fun ShotSourceChoices(onFile: () -> Unit, onMachine: (() -> Unit)?) {
                 title = stringResource(Res.string.open_from_machine),
                 detail = stringResource(Res.string.open_from_machine_detail),
                 onClick = onMachine,
+                modifier = Modifier.testTag(TestTags.OpenFromMachine),
             )
         }
     }
@@ -321,6 +327,7 @@ private fun Step(
     done: Boolean,
     onClick: () -> Unit,
     highlighted: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     val card = RoundedCornerShape(16.dp)
     // A step lights up as it is done or hovered with a file, rather than switching at once.
@@ -339,7 +346,8 @@ private fun Step(
     val disc by animateColorAsState(if (done) CgColors.Text.Primary else CgColors.Surface.Raised, CgMotion.medium())
     val digit by animateColorAsState(if (done) CgColors.Text.OnLight else CgColors.Text.Primary, CgMotion.medium())
     Row(
-        Modifier.fillMaxWidth()
+        modifier
+            .fillMaxWidth()
             .clip(card)
             .background(ground)
             .border(edgeWidth, edge, card)

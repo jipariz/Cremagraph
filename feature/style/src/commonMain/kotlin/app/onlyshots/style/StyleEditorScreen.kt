@@ -71,6 +71,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -82,6 +83,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.SharedKeys
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
@@ -526,7 +528,8 @@ private fun Header(
             }
         }
         Box(
-            Modifier.heightIn(min = CgSize.Touch)
+            Modifier.testTag(TestTags.StyleEditorSave)
+                .heightIn(min = CgSize.Touch)
                 .clickable(role = Role.Button) {
                     if (editing) commit()
                     onSave()
@@ -647,7 +650,11 @@ private fun Tabs(tab: StyleTab, onTab: (StyleTab) -> Unit) {
             val on = t == tab
             val ink by animateColorAsState(if (on) CgColors.Text.Primary else CgColors.Text.Dim, CgMotion.short())
             Box(
-                Modifier.weight(1f).fillMaxSize().clickable(role = Role.Tab) { onTab(t) },
+                Modifier.weight(1f).fillMaxSize().testTag(TestTags.styleTab(t.name.lowercase())).clickable(
+                    role = Role.Tab
+                ) {
+                    onTab(t)
+                },
                 Alignment.Center,
             ) {
                 Text(stringResource(t.label), style = CgTheme.type.body, color = ink)
@@ -842,7 +849,7 @@ fun SaveSheet(
             Pill(
                 stringResource(Res.string.style_save),
                 onClick = { onSave(text, picked) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).testTag(TestTags.StyleSaveConfirm),
                 light = true,
                 fill = true,
                 enabled = text.isNotBlank(),

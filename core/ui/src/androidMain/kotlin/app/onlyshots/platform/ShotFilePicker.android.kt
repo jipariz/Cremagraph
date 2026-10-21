@@ -14,7 +14,7 @@ import okio.Path
 import okio.Path.Companion.toOkioPath
 
 @Composable
-actual fun rememberShotFilePicker(onPicked: (Path) -> Unit): () -> Unit {
+internal actual fun rememberPlatformShotFilePicker(onPicked: (Path) -> Unit): () -> Unit {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val launcher =

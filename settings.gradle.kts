@@ -83,4 +83,5 @@ include(
     ":storage",
     ":screenshots",
     ":app:webApp",
+    ":uitests",
 )

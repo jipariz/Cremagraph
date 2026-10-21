@@ -86,6 +86,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.SharedKeys
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
@@ -96,6 +97,7 @@ import app.onlyshots.core.designsystem.component.BackButton
 import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.CgButtonKind
 import app.onlyshots.core.designsystem.component.CgDialog
+import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.CgSlider
 import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CgToggle
@@ -555,7 +557,7 @@ private fun Header(
                     modifier =
                         Modifier.weight(1f, fill = false).padding(horizontal = CgSpace.S4).semantics { heading() },
                 )
-                Text("✎", style = CgTheme.type.labelStrong, color = CgColors.Text.Dim)
+                CgIcon(CgIcons.Edit, tint = CgColors.Text.Dim, size = 14.dp)
             }
         }
         Box(

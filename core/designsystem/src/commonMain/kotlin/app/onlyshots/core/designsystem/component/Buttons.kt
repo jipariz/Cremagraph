@@ -8,7 +8,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,8 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -34,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
@@ -132,22 +130,7 @@ fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .semantics { contentDescription = back },
         contentAlignment = Alignment.Center,
     ) {
-        Chevron(CgColors.Text.Primary)
-    }
-}
-
-/** The back key's chevron: 16 dp, a 1.5 dp stroke pointing left. */
-@Composable
-private fun Chevron(color: Color) {
-    Canvas(Modifier.size(16.dp)) {
-        val u = size.width / 16f
-        val path =
-            Path().apply {
-                moveTo(10 * u, 3 * u)
-                lineTo(5 * u, 8 * u)
-                lineTo(10 * u, 13 * u)
-            }
-        drawPath(path, color, style = Stroke(width = 1.5f * u))
+        CgIcon(CgIcons.ChevronLeft, size = 20.dp)
     }
 }
 

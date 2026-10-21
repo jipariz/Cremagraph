@@ -39,6 +39,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
@@ -53,15 +54,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
+import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.core_less
+import app.onlyshots.core.resources.core_more
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * A switch: a 56 × 32 square track with a square knob. On, track and edge are the signal and the knob ink; off, a
@@ -216,7 +222,7 @@ fun CgStepper(
         modifier.height(CgSize.Touch).border(CgStroke.Hairline, CgColors.Line.Hairline),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StepperKey("−", minusEnabled, onMinus)
+        StepperKey(CgIcons.Minus, stringResource(Res.string.core_less), minusEnabled, onMinus)
         Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Line.Hairline))
         Text(
             value.caps(),
@@ -225,20 +231,21 @@ fun CgStepper(
             textAlign = TextAlign.Center,
         )
         Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Line.Hairline))
-        StepperKey("+", plusEnabled, onPlus)
+        StepperKey(CgIcons.Plus, stringResource(Res.string.core_more), plusEnabled, onPlus)
     }
 }
 
 @Composable
-private fun StepperKey(symbol: String, enabled: Boolean, onClick: () -> Unit) {
+private fun StepperKey(icon: ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.size(CgSize.Touch).clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            symbol,
-            style = CgTheme.type.cardTitle,
-            color = if (enabled) CgColors.Text.Primary else CgColors.Text.Disabled,
+        CgIcon(
+            icon,
+            tint = if (enabled) CgColors.Text.Primary else CgColors.Text.Disabled,
+            size = 18.dp,
+            contentDescription = description,
         )
     }
 }

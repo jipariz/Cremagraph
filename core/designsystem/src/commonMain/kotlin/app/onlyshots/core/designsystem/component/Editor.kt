@@ -49,7 +49,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -68,7 +67,6 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -159,10 +157,10 @@ fun TopChip(
             modifier = Modifier.widthIn(max = 180.dp),
         )
         if (caret) {
-            Text(
-                "▾",
-                style = CgTheme.type.caption,
-                color = if (primary) CgColors.Text.OnLight else CgColors.Text.Secondary,
+            CgIcon(
+                CgIcons.CaretDown,
+                tint = if (primary) CgColors.Text.OnLight else CgColors.Text.Secondary,
+                size = 12.dp,
             )
         }
     }
@@ -203,7 +201,7 @@ fun SplitButton(
                         .padding(horizontal = CgSpace.S12),
                     Alignment.Center,
                 ) {
-                    Text("▾", style = KeyStyle, color = CgColors.Text.OnLight)
+                    CgIcon(CgIcons.CaretDown, tint = CgColors.Text.OnLight, size = 12.dp)
                 }
                 DropdownMenu(
                     expanded = open,
@@ -314,7 +312,7 @@ fun ExportOverlay(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Box(Modifier.size(28.dp).background(CgColors.Status.Success), Alignment.Center) {
-                                Text("✓", style = CgTheme.type.label, color = CgColors.Text.OnLight)
+                                CgIcon(CgIcons.Check, tint = CgColors.Text.OnLight, size = 20.dp)
                             }
                             Text(done.orEmpty().caps(), style = CgTheme.type.screenTitle)
                         }
@@ -439,19 +437,14 @@ fun IconCircleButton(
             .semantics { this.contentDescription = contentDescription },
         Alignment.Center,
     ) {
-        Image(
-            icon,
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(CgColors.Text.Primary),
-            modifier = Modifier.size(20.dp),
-        )
+        CgIcon(icon, size = 20.dp)
     }
 }
 
 @Composable
 private fun RuleLine(icon: ImageVector, color: Color, text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S6), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(RULE_GLYPH))
+        CgIcon(icon, tint = color, size = RULE_GLYPH)
         Text(
             text.caps(),
             style = KeyStyle,
@@ -482,8 +475,10 @@ fun Pill(
     minWidth: Dp = 0.dp,
     /** Stretch the key itself across [modifier]'s width, for the wide cancel and confirm buttons of a sheet. */
     fill: Boolean = false,
-    /** Drawn before the text, in the text's colour. */
+    /** Drawn before the text, in the text's colour; with an empty [text], the key is the icon alone. */
     icon: ImageVector? = null,
+    /** What an icon-only key does, for screen readers. */
+    iconDescription: String? = null,
     /** Over the picture: on an ink ground, so it reads over any frame of the video. */
     overVideo: Boolean = false,
 ) {
@@ -508,21 +503,20 @@ fun Pill(
                 .padding(horizontal = CgSpace.S12, vertical = CgSpace.S8),
             Alignment.Center,
         ) {
-            if (icon == null) {
-                Text(text.caps(), style = KeyStyle, color = fg)
-            } else {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // An empty text is a key that is only its icon: then [iconDescription] says what it does.
+                if (icon != null) {
+                    CgIcon(
                         icon,
-                        contentDescription = null,
-                        colorFilter = ColorFilter.tint(fg),
-                        modifier = Modifier.size(14.dp),
+                        tint = fg,
+                        size = if (text.isEmpty()) 18.dp else 16.dp,
+                        contentDescription = iconDescription.takeIf { text.isEmpty() },
                     )
-                    Text(text.caps(), style = KeyStyle, color = fg)
                 }
+                if (text.isNotEmpty()) Text(text.caps(), style = KeyStyle, color = fg)
             }
         }
     }
@@ -556,7 +550,7 @@ fun ListRow(
         if (trailing != null) {
             trailing()
         } else {
-            Text("›", style = CgTheme.type.cardTitle, color = CgColors.Text.Secondary)
+            CgIcon(CgIcons.ChevronRight, tint = CgColors.Text.Secondary, size = 20.dp)
         }
     }
 }
@@ -580,17 +574,28 @@ fun CardBar(modifier: Modifier = Modifier, content: @Composable RowScope.() -> U
 }
 
 @Composable
-fun CardBarButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
+fun CardBarButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Drawn before the text. */
+    icon: ImageVector? = null,
+    /** A caret after the text: the key opens a sheet. */
+    caret: Boolean = false,
+) {
+    Row(
         modifier
             .fillMaxHeight()
             .heightIn(min = 40.dp)
             .background(CgColors.Surface.Base)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = CgSpace.S12),
-        Alignment.Center,
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (icon != null) CgIcon(icon, size = 16.dp)
         Text(text.caps(), style = KeyStyle)
+        if (caret) CgIcon(CgIcons.CaretDown, tint = CgColors.Text.Secondary, size = 12.dp)
     }
 }
 
@@ -827,12 +832,7 @@ fun DropZone(onPick: () -> Unit, modifier: Modifier = Modifier, active: Boolean 
         verticalArrangement = Arrangement.spacedBy(CgSpace.S12, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Image(
-            CgIcons.Film,
-            contentDescription = null,
-            modifier = Modifier.size(40.dp),
-            colorFilter = ColorFilter.tint(if (active) CgColors.Brand.Signal else CgColors.Text.Secondary),
-        )
+        CgIcon(CgIcons.Film, tint = if (active) CgColors.Brand.Signal else CgColors.Text.Secondary, size = 40.dp)
         Text(
             (busy ?: stringResource(if (active) Res.string.core_drop_to_open else Res.string.core_drop_video)).caps(),
             style = CgTheme.type.sheetTitle,

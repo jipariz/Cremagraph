@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -30,11 +29,13 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
+import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.model.AppVersion
 import app.onlyshots.core.resources.Res
@@ -189,15 +190,18 @@ private fun Sections(version: String) {
     )
     Section(stringResource(Res.string.privacy_support_title)) {
         Paragraph(stringResource(Res.string.privacy_support))
-        Text(
-            "github.com/parez-dev/OnlyShots/issues ↗",
-            style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em),
-            color = CgColors.Text.Primary,
-            modifier =
-                Modifier.heightIn(min = CgSize.Touch).wrapContentHeight().clickable(role = Role.Button) {
-                    uri.openUri(SUPPORT_ISSUES_URL)
-                },
-        )
+        Row(
+            Modifier.heightIn(min = CgSize.Touch).clickable(role = Role.Button) { uri.openUri(SUPPORT_ISSUES_URL) },
+            horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "github.com/parez-dev/OnlyShots/issues",
+                style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em),
+                color = CgColors.Text.Primary,
+            )
+            CgIcon(CgIcons.Launch, size = 14.dp)
+        }
     }
     Text(stringResource(Res.string.core_version, version), style = data, color = CgColors.Text.Secondary)
 }

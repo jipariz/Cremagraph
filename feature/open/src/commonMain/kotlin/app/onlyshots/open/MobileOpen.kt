@@ -6,7 +6,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,10 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -48,12 +44,14 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
+import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
@@ -222,11 +220,7 @@ private fun Banner(store: Store, onOpen: () -> Unit, onDismiss: () -> Unit) {
                 },
                 Alignment.Center,
             ) {
-                Canvas(Modifier.size(16.dp)) {
-                    val s = size.width / 16f
-                    drawLine(CgColors.Text.Secondary, Offset(4 * s, 4 * s), Offset(12 * s, 12 * s), 1.5f * s)
-                    drawLine(CgColors.Text.Secondary, Offset(12 * s, 4 * s), Offset(4 * s, 12 * s), 1.5f * s)
-                }
+                CgIcon(CgIcons.Close, tint = CgColors.Text.Secondary, size = 18.dp)
             }
         }
         StoreButton(store, onOpen, Modifier.fillMaxWidth().padding(end = CgSpace.S8))
@@ -298,18 +292,7 @@ private fun Fold(title: String, text: String) {
                 color = CgColors.Text.Primary,
             )
             val turn by animateFloatAsState(if (open) 180f else 0f, CgMotion.settle(), label = "chevron")
-            Canvas(Modifier.size(16.dp).rotate(turn)) {
-                val s = size.width / 16f
-                drawPath(
-                    Path().apply {
-                        moveTo(4 * s, 6 * s)
-                        lineTo(8 * s, 10 * s)
-                        lineTo(12 * s, 6 * s)
-                    },
-                    CgColors.Text.Secondary,
-                    style = Stroke(1.5f * s),
-                )
-            }
+            CgIcon(CgIcons.ChevronDown, Modifier.rotate(turn), tint = CgColors.Text.Secondary, size = 18.dp)
         }
         AnimatedVisibility(
             open,

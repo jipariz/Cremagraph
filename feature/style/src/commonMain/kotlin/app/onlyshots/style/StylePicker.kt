@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.em
 import app.onlyshots.SharedKeys
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
@@ -63,6 +64,7 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgDialog
+import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CoffeeScene
 import app.onlyshots.core.designsystem.component.DialogRisk
@@ -304,7 +306,7 @@ private fun NewStyleTile(onClick: () -> Unit, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(CgSpace.S4, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("+", style = CgTheme.type.screenTitle.copy(letterSpacing = 0.em), color = CgColors.Brand.Signal)
+        CgIcon(CgIcons.Plus, tint = CgColors.Brand.Signal, size = 24.dp)
         Text(label.caps(), style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em))
     }
 }

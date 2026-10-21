@@ -57,8 +57,8 @@
     <!-- The graph on the picture -->
     <string name="edit_graph_description">graph: tap for its style, drag to move, drag a corner to resize</string>
     <string name="edit_graph_style_action">graph style</string>
-    <string name="edit_toolbar_style">style ▾</string>
-    <string name="edit_toolbar_data">data ▾</string>
+    <string name="edit_toolbar_style">style</string>
+    <string name="edit_toolbar_data">data</string>
 
     <!-- Editor screen -->
     <string name="edit_leave_title">leave this video?</string>
@@ -72,13 +72,16 @@
     <string name="edit_export">export</string>
     <string name="edit_reframe_hint">drag to move · pinch to zoom</string>
     <string name="edit_done">done</string>
-    <string name="edit_frame_switch">⤢ frame</string>
+    <string name="edit_frame_switch">frame</string>
     <string name="edit_graph_start">graph start</string>
-    <string name="edit_start_here">⚑ start here</string>
+    <string name="edit_start_here">start here</string>
     <string name="edit_find_start">find start</string>
     <string name="edit_muted">muted</string>
     <string name="edit_sound">sound</string>
     <string name="edit_fit">fit</string>
+    <string name="edit_zoom_in">zoom in</string>
+    <string name="edit_step_back">a frame back</string>
+    <string name="edit_step_forward">a frame on</string>
     <string name="edit_graph">graph</string>
     <string name="edit_shot">shot</string>
     <string name="edit_frame">frame</string>

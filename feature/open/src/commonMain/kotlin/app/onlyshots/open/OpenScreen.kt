@@ -74,6 +74,7 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
+import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.ChoiceCard
 import app.onlyshots.core.designsystem.component.HeaderBack
@@ -726,11 +727,11 @@ internal fun StepRow(
             Modifier.size(if (large) CgSize.Touch else 36.dp).background(box).border(CgStroke.Hairline, edge),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                if (done) "✓" else stepNumber(number),
-                style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em),
-                color = digit,
-            )
+            if (done) {
+                CgIcon(CgIcons.Check, tint = digit, size = 18.dp)
+            } else {
+                Text(stepNumber(number), style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em), color = digit)
+            }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(

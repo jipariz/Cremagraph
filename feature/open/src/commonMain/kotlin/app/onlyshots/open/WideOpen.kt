@@ -44,7 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -63,12 +62,14 @@ import app.onlyshots.PRIVACY_URL
 import app.onlyshots.SharedKeys
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
+import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.CoffeeScene
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
 import app.onlyshots.core.model.VideoItem
@@ -254,7 +255,7 @@ private fun Header(note: String?, gutter: Dp, narrow: Boolean, onPrivacy: (() ->
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Shield()
+                        CgIcon(CgIcons.Shield, tint = CgColors.Text.Secondary, size = 16.dp)
                         Text(note, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
                     }
                 }
@@ -461,11 +462,17 @@ private fun DeskPickedStep(
     ) {
         tile()
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
-            Text(
-                "${stepNumber(number)} · ${title.caps()} ✓",
-                style = CgTheme.type.data,
-                color = CgColors.Status.Success,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "${stepNumber(number)} · ${title.caps()}",
+                    style = CgTheme.type.data,
+                    color = CgColors.Status.Success,
+                )
+                CgIcon(CgIcons.Check, tint = CgColors.Status.Success, size = 14.dp)
+            }
             Text(
                 name,
                 style = CgTheme.type.label.copy(letterSpacing = 0.em),
@@ -528,7 +535,7 @@ internal fun OpenEditorKey(ready: Boolean, onClick: () -> Unit, modifier: Modifi
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(stringResource(Res.string.open_editor).caps(), style = CgTheme.type.label, color = ink)
-        Arrow(ink)
+        CgIcon(CgIcons.ArrowRight, tint = ink, size = 18.dp)
     }
 }
 
@@ -665,55 +672,6 @@ internal fun ShotTile() {
         Alignment.Center,
     ) {
         Image(painterResource(Res.drawable.illus_shot_tile), contentDescription = null, Modifier.size(44.dp, 30.dp))
-    }
-}
-
-/** "→", square-ended, as the canvas's Mono arrow. */
-@Composable
-internal fun Arrow(color: Color) {
-    Canvas(Modifier.size(18.dp)) {
-        val s = size.width / 18f
-        val stroke = Stroke(1.6f * s, cap = StrokeCap.Square)
-        drawLine(color, Offset(3.5f * s, 9 * s), Offset(14.5f * s, 9 * s), 1.6f * s, StrokeCap.Square)
-        drawPath(
-            Path().apply {
-                moveTo(10 * s, 4.5f * s)
-                lineTo(14.5f * s, 9 * s)
-                lineTo(10 * s, 13.5f * s)
-            },
-            color,
-            style = stroke,
-        )
-    }
-}
-
-/** "Nothing is uploaded": a shield with a green tick. */
-@Composable
-private fun Shield() {
-    Canvas(Modifier.size(16.dp)) {
-        val s = size.width / 16f
-        drawPath(
-            Path().apply {
-                moveTo(8 * s, 1.5f * s)
-                lineTo(2.5f * s, 3.5f * s)
-                lineTo(2.5f * s, 7.5f * s)
-                cubicTo(2.5f * s, 10.7f * s, 4.8f * s, 13.4f * s, 8 * s, 14.5f * s)
-                cubicTo(11.2f * s, 13.4f * s, 13.5f * s, 10.7f * s, 13.5f * s, 7.5f * s)
-                lineTo(13.5f * s, 3.5f * s)
-                close()
-            },
-            CgColors.Text.Secondary,
-            style = Stroke(1.4f * s),
-        )
-        drawPath(
-            Path().apply {
-                moveTo(5.5f * s, 8 * s)
-                lineTo(7.3f * s, 9.8f * s)
-                lineTo(10.8f * s, 6.3f * s)
-            },
-            CgColors.Status.Success,
-            style = Stroke(1.4f * s, cap = StrokeCap.Square),
-        )
     }
 }
 

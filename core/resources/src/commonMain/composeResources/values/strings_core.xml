@@ -65,4 +65,6 @@
     <string name="core_web_videos_note">Exports at 1080p without sound, in Chrome, Edge or Safari 16.4+.</string>
     <string name="core_web_file_gone">that file is gone</string>
     <string name="core_version">OnlyShots %1$s</string>
+    <string name="core_less">less</string>
+    <string name="core_more">more</string>
 </resources>

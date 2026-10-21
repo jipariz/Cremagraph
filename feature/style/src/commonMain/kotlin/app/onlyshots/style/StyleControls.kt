@@ -33,12 +33,14 @@ import app.onlyshots.TestTags
 import app.onlyshots.connect.label
 import app.onlyshots.connect.labelRes
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
+import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.CgToggle
 import app.onlyshots.core.designsystem.component.ColorChip
 import app.onlyshots.core.designsystem.component.SegmentedControl
@@ -924,13 +926,13 @@ private fun More(label: String, content: @Composable () -> Unit) {
             .padding(horizontal = CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        CgIcon(CgIcons.ChevronRight, Modifier.graphicsLayer { rotationZ = turn }, size = 16.dp)
         Text(
-            "▸",
+            label.caps(),
             style = CgTheme.type.labelStrong,
             color = CgColors.Text.Primary,
-            modifier = Modifier.graphicsLayer { rotationZ = turn },
+            modifier = Modifier.padding(start = CgSpace.S6),
         )
-        Text(" ${label.caps()}", style = CgTheme.type.labelStrong, color = CgColors.Text.Primary)
     }
     AnimatedVisibility(
         open,

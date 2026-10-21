@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import app.onlyshots.TestTags
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.component.CardBar
 import app.onlyshots.core.designsystem.component.CardBarButton
 import app.onlyshots.core.resources.Res
@@ -28,17 +29,23 @@ fun GraphToolbar(
             stringResource(Res.string.edit_toolbar_style),
             onClick = onStyle,
             modifier = Modifier.testTag(TestTags.ToolbarStyle),
+            caret = true,
         )
         CardBarButton(
             stringResource(Res.string.edit_toolbar_data),
             onClick = onData,
             modifier = Modifier.testTag(TestTags.ToolbarData),
+            caret = true,
         )
-        CardBarButton("◐ ${(opacity * 100).roundToInt()} %", onClick = { onOpacity(nextOpacity(opacity)) })
+        CardBarButton(
+            "${(opacity * 100).roundToInt()} %",
+            onClick = { onOpacity(nextOpacity(opacity)) },
+            icon = CgIcons.Contrast,
+        )
     }
 }
 
-/** The ◐ button's steps for the background: 100 → 75 → 50 → 25 → 0, then round again. */
+/** The opacity key's steps for the background: 100 → 75 → 50 → 25 → 0, then round again. */
 fun nextOpacity(current: Float): Float =
     when {
         current > 0.875f -> 0.75f

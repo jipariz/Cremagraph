@@ -97,6 +97,7 @@ import app.onlyshots.core.designsystem.component.BackButton
 import app.onlyshots.core.designsystem.component.Banner
 import app.onlyshots.core.designsystem.component.BannerKind
 import app.onlyshots.core.designsystem.component.CgDialog
+import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.DialogRisk
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.EditorSheetSlot
@@ -150,10 +151,13 @@ import app.onlyshots.core.resources.edit_saved
 import app.onlyshots.core.resources.edit_shot
 import app.onlyshots.core.resources.edit_sound
 import app.onlyshots.core.resources.edit_start_here
+import app.onlyshots.core.resources.edit_step_back
+import app.onlyshots.core.resources.edit_step_forward
 import app.onlyshots.core.resources.edit_style
 import app.onlyshots.core.resources.edit_style_named
 import app.onlyshots.core.resources.edit_tap_graph_hint
 import app.onlyshots.core.resources.edit_zoom_and_crop
+import app.onlyshots.core.resources.edit_zoom_in
 import app.onlyshots.core.resources.text
 import app.onlyshots.export.ExportManager
 import app.onlyshots.label
@@ -584,7 +588,8 @@ fun EditBody(
                                     onDone = { graphSelected = false },
                                     tools = {
                                         Pill(
-                                            "◐ ${(video.overlay.opacity * 100).roundToInt()} %",
+                                            "${(video.overlay.opacity * 100).roundToInt()} %",
+                                            icon = CgIcons.Contrast,
                                             onClick = { actions.overlay { it.withOpacity(nextOpacity(it.opacity)) } },
                                         )
                                     },
@@ -887,6 +892,7 @@ private fun Picture(
                     else stringResource(Res.string.edit_frame_switch),
                     onClick = { set(!reframing) },
                     light = reframing,
+                    icon = if (reframing) null else CgIcons.Frame,
                     overVideo = true,
                     modifier =
                         Modifier.align(BiasAlignment(1f, bias))
@@ -955,27 +961,34 @@ private fun TimeBand(
                         stringResource(Res.string.edit_start_here),
                         onClick = { actions.setShotStart(player.positionUs, push = true) },
                         enabled = movable,
+                        icon = CgIcons.Flag,
                     )
                     Pill(stringResource(Res.string.edit_find_start), onClick = actions::findStart, enabled = movable)
                 }
                 if (!narrow) Spacer(Modifier.weight(1f))
                 Pill(
-                    "‹",
+                    "",
                     onClick = {
                         player.playing = false
                         player.seek(TimelineMath.stepFrame(video, player.positionUs, -1))
                     },
+                    icon = CgIcons.ChevronLeft,
+                    iconDescription = stringResource(Res.string.edit_step_back),
                 )
                 Pill(
-                    "›",
+                    "",
                     onClick = {
                         player.playing = false
                         player.seek(TimelineMath.stepFrame(video, player.positionUs, 1))
                     },
+                    icon = CgIcons.ChevronRight,
+                    iconDescription = stringResource(Res.string.edit_step_forward),
                 )
                 Pill(
-                    if (zoom == null) "+" else stringResource(Res.string.edit_fit),
+                    if (zoom == null) "" else stringResource(Res.string.edit_fit),
                     onClick = { onZoom(if (zoom == null) 4f else null) },
+                    icon = if (zoom == null) CgIcons.Plus else null,
+                    iconDescription = stringResource(Res.string.edit_zoom_in),
                 )
             }
         }
@@ -1280,7 +1293,7 @@ private fun PlayerHalf(
                     .semantics { contentDescription = playLabel },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(if (player.playing) "❚❚" else "▶", style = CgTheme.type.screenTitle)
+                CgIcon(if (player.playing) CgIcons.Pause else CgIcons.Play, size = 28.dp)
             }
         }
     }
@@ -1455,7 +1468,7 @@ private fun PlayMark(taps: Int, playing: Boolean, modifier: Modifier = Modifier)
             .border(CgStroke.Hairline, CgColors.Brand.Bone),
         contentAlignment = Alignment.Center,
     ) {
-        Text(if (playing) "▶" else "❚❚", style = CgTheme.type.cardTitle, color = CgColors.Text.Primary)
+        CgIcon(if (playing) CgIcons.Play else CgIcons.Pause, size = 24.dp)
     }
 }
 

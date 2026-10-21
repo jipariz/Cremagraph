@@ -1,9 +1,10 @@
+<!-- carbon:play-filled-alt (IBM Carbon, Apache 2.0), written by design/icons/build.py. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:viewportWidth="32"
+    android:viewportHeight="32">
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M8 5.6a1.2 1.2 0 0 1 1.8 -1l9.6 6.4a1.2 1.2 0 0 1 0 2l-9.6 6.4A1.2 1.2 0 0 1 8 18.4Z" />
+        android:pathData="M7 28a1 1 0 0 1-1-1V5a1 1 0 0 1 1.482-.876l20 11a1 1 0 0 1 0 1.752l-20 11A1 1 0 0 1 7 28" />
 </vector>

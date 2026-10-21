@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -47,7 +46,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -70,6 +68,7 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
+import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.HairlineGrid
 import app.onlyshots.core.designsystem.component.IconCircleButton
 import app.onlyshots.core.designsystem.component.Pill
@@ -227,7 +226,7 @@ private fun RuleCell(icon: ImageVector, text: String, modifier: Modifier) {
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Image(icon, contentDescription = null, colorFilter = ColorFilter.tint(CgColors.Text.Secondary))
+        CgIcon(icon, tint = CgColors.Text.Secondary, size = 16.dp)
         Text(text.caps(), style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp))
     }
 }

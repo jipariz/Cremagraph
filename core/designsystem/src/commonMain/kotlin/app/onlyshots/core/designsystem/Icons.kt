@@ -3,21 +3,38 @@ package app.onlyshots.core.designsystem
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.ic_arrow_right
+import app.onlyshots.core.resources.ic_bluetooth
+import app.onlyshots.core.resources.ic_caret_down
+import app.onlyshots.core.resources.ic_check
+import app.onlyshots.core.resources.ic_chevron_down
+import app.onlyshots.core.resources.ic_chevron_left
+import app.onlyshots.core.resources.ic_chevron_right
+import app.onlyshots.core.resources.ic_close
+import app.onlyshots.core.resources.ic_contrast
+import app.onlyshots.core.resources.ic_edit
 import app.onlyshots.core.resources.ic_film
+import app.onlyshots.core.resources.ic_flag
+import app.onlyshots.core.resources.ic_frame
 import app.onlyshots.core.resources.ic_help
+import app.onlyshots.core.resources.ic_launch
 import app.onlyshots.core.resources.ic_lock
 import app.onlyshots.core.resources.ic_machine
+import app.onlyshots.core.resources.ic_minus
 import app.onlyshots.core.resources.ic_onlyshots
+import app.onlyshots.core.resources.ic_pause
 import app.onlyshots.core.resources.ic_play
 import app.onlyshots.core.resources.ic_plus
 import app.onlyshots.core.resources.ic_record
 import app.onlyshots.core.resources.ic_settings
+import app.onlyshots.core.resources.ic_shield
 import app.onlyshots.core.resources.ic_stop
 import org.jetbrains.compose.resources.vectorResource
 
 /**
- * The app's icons, from the vector drawables in :core:resources (`drawable/ic_*.xml`, the Figma file's exported SVG
- * paths). The single-colour ones are drawn in white and tinted where they are used.
+ * The app's icons: IBM Carbon (`carbon:*`, drawn to sit beside IBM Plex), written as vector drawables in
+ * :core:resources (`drawable/ic_*.xml`) by design/icons/build.py. They are drawn in white and tinted where they are
+ * used; never a character in place of an icon.
  */
 object CgIcons {
     /**
@@ -27,39 +44,103 @@ object CgIcons {
     val OnlyShots: ImageVector
         @Composable get() = vectorResource(Res.drawable.ic_onlyshots)
 
-    /** Figma Icon/machine (1:125). */
-    val Machine: ImageVector
-        @Composable get() = vectorResource(Res.drawable.ic_machine)
+    /** Back, and a frame back on the timeline. */
+    val ChevronLeft: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_chevron_left)
 
-    /** Figma Icon/plus (1:96). */
+    /** A frame on; a row or card that leads somewhere; a section that opens (turned). */
+    val ChevronRight: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_chevron_right)
+
+    /** A section that opens or closes (turned as it does). */
+    val ChevronDown: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_chevron_down)
+
+    /** A chip or key that opens a sheet or a menu. */
+    val CaretDown: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_caret_down)
+
+    /** Add, and more (the timeline's zoom, a stepper). */
     val Plus: ImageVector
         @Composable get() = vectorResource(Res.drawable.ic_plus)
 
-    /** A strip of film with a play mark: the drop zone's video. */
-    val Film: ImageVector
-        @Composable get() = vectorResource(Res.drawable.ic_film)
+    /** Less: a stepper. */
+    val Minus: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_minus)
 
-    /** A gear: a ring, eight teeth and a hub. */
-    val Settings: ImageVector
-        @Composable get() = vectorResource(Res.drawable.ic_settings)
+    /** How much of the graph's background shows. */
+    val Contrast: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_contrast)
 
-    /** The record mark: a dot in a ring. */
-    val Record: ImageVector
-        @Composable get() = vectorResource(Res.drawable.ic_record)
+    /** The video's frame: its format and its crop. */
+    val Frame: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_frame)
 
-    /** A question mark in a ring: "about OnlyShots". */
-    val Help: ImageVector
-        @Composable get() = vectorResource(Res.drawable.ic_help)
+    /** The shot's start, placed by hand. */
+    val Flag: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_flag)
 
-    /** A closed padlock: a shot start the recording fixed, until it is unlocked. */
-    val Lock: ImageVector
-        @Composable get() = vectorResource(Res.drawable.ic_lock)
+    /** Done: a step taken, a video saved. */
+    val Check: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_check)
 
-    /** A rounded triangle: how a recording starts, in the rules strip. */
+    /** On to the next screen. */
+    val ArrowRight: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_arrow_right)
+
+    /** Play; how a recording starts, in the rules. */
     val Play: ImageVector
         @Composable get() = vectorResource(Res.drawable.ic_play)
 
-    /** A rounded square: how a recording stops, in the rules strip. */
+    /** Pause. */
+    val Pause: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_pause)
+
+    /** How a recording stops, in the rules. */
     val Stop: ImageVector
         @Composable get() = vectorResource(Res.drawable.ic_stop)
+
+    /** A name that can be changed. */
+    val Edit: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_edit)
+
+    /** A Bluetooth scale. */
+    val Bluetooth: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_bluetooth)
+
+    /** A link that opens outside the app. */
+    val Launch: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_launch)
+
+    /** Close, dismiss. */
+    val Close: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_close)
+
+    /** Nothing leaves the device. */
+    val Shield: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_shield)
+
+    /** An espresso machine. */
+    val Machine: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_machine)
+
+    /** A video. */
+    val Film: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_film)
+
+    /** Settings. */
+    val Settings: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_settings)
+
+    /** Recording a shot. */
+    val Record: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_record)
+
+    /** About OnlyShots. */
+    val Help: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_help)
+
+    /** A shot start the recording fixed, until it is unlocked. */
+    val Lock: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_lock)
 }

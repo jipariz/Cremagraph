@@ -44,7 +44,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -55,7 +54,6 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -311,7 +309,7 @@ fun ChoiceCard(
                 .border(if (signal) CgStroke.Rule else CgStroke.Hairline, if (signal) ink else CgColors.Line.Hairline),
             contentAlignment = Alignment.Center,
         ) {
-            Image(icon, contentDescription = null, colorFilter = ColorFilter.tint(ink), modifier = Modifier.size(20.dp))
+            CgIcon(icon, tint = ink, size = 20.dp)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
             Text(title.caps(), style = CgTheme.type.screenTitle.copy(letterSpacing = 0.sp), color = ink)
@@ -321,10 +319,10 @@ fun ChoiceCard(
                 color = if (signal) CgColors.Text.OnLight else CgColors.Text.Secondary,
             )
         }
-        Text(
-            "›",
-            style = CgTheme.type.screenTitle,
-            color = if (signal) CgColors.Text.OnLight else CgColors.Text.Secondary,
+        CgIcon(
+            CgIcons.ChevronRight,
+            tint = if (signal) CgColors.Text.OnLight else CgColors.Text.Secondary,
+            size = 20.dp,
         )
     }
 }
@@ -365,7 +363,7 @@ private fun Bar(width: Dp) {
     Box(Modifier.width(width).height(10.dp).background(CgColors.Surface.Raised))
 }
 
-/** "add by address": a dashed hairline cell with the signal's "+" for what the search cannot see. */
+/** "add by address": a dashed hairline cell with the signal's plus for what the search cannot see. */
 @Composable
 fun AddRow(title: String, onClick: () -> Unit, modifier: Modifier = Modifier, subtitle: String? = null) {
     Row(
@@ -386,13 +384,7 @@ fun AddRow(title: String, onClick: () -> Unit, modifier: Modifier = Modifier, su
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            "+",
-            style = CgTheme.type.screenTitle,
-            color = CgColors.Brand.Signal,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(24.dp),
-        )
+        CgIcon(CgIcons.Plus, tint = CgColors.Brand.Signal, size = 24.dp)
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title.caps(), style = CgTheme.type.label)
             if (subtitle != null) Text(subtitle, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
@@ -417,13 +409,13 @@ fun ConnectScaleCard(title: String, subtitle: String, onClick: () -> Unit, modif
             Modifier.size(TileSize).border(CgStroke.Hairline, CgColors.Line.Hairline),
             contentAlignment = Alignment.Center,
         ) {
-            Text("ᛒ", style = CgTheme.type.cardTitle, color = CgColors.Brand.Signal)
+            CgIcon(CgIcons.Bluetooth, tint = CgColors.Brand.Signal, size = 20.dp)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title.caps(), style = CgTheme.type.label)
             Text(subtitle, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
         }
-        Text("›", style = CgTheme.type.screenTitle, color = CgColors.Text.Secondary)
+        CgIcon(CgIcons.ChevronRight, tint = CgColors.Text.Secondary, size = 20.dp)
     }
 }
 
@@ -527,7 +519,7 @@ fun RecordAction(
             // The one round thing: the record dot.
             Box(Modifier.size(10.dp).background(ink, CircleShape))
             Text(text.caps(), style = CgTheme.type.label, color = ink, modifier = Modifier.weight(1f))
-            Text("→", style = CgTheme.type.label, color = ink)
+            CgIcon(CgIcons.ArrowRight, tint = ink, size = 18.dp)
         }
         Text(
             caption,

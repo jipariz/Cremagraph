@@ -1,0 +1,10 @@
+<!-- carbon:checkmark (IBM Carbon, Apache 2.0), written by design/icons/build.py. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="m13 24l-9-9l1.414-1.414L13 21.171L26.586 7.586L28 9z" />
+</vector>

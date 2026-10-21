@@ -5,14 +5,18 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -33,10 +37,12 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
@@ -47,6 +53,7 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.Arriving
+import app.onlyshots.core.designsystem.component.HairlineStack
 import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.designsystem.component.MachineRow
 import app.onlyshots.core.designsystem.component.SectionHeader
@@ -63,6 +70,8 @@ import app.onlyshots.core.resources.home_shots_none
 import app.onlyshots.core.resources.home_shots_pick_machine
 import app.onlyshots.core.resources.home_shots_recent
 import app.onlyshots.core.resources.home_shots_same_wifi
+import app.onlyshots.core.resources.home_shots_step_machine
+import app.onlyshots.core.resources.home_shots_step_shot
 import app.onlyshots.core.resources.home_shots_title
 import app.onlyshots.core.resources.text
 import app.onlyshots.edit.machineColor
@@ -94,6 +103,7 @@ fun MachineShotsBody(
     }
     val machine = state.machine
     Page(title = stringResource(Res.string.home_shots_title), onBack = onBack, modifier = modifier) {
+        Steps(machine, Modifier.padding(horizontal = CgSpace.S16).padding(bottom = CgSpace.S8))
         // Picking a machine moves on to its shots as a page pushed in place: the machine's row becomes the header of
         // its shots, and back from them it returns to its row.
         AnimatedContent(
@@ -240,19 +250,26 @@ private fun MachineList(
         searching = state.machines.isEmpty(),
     )
     val settled = rememberListSettled()
-    for (found in state.machines) {
-        key(found.host) {
-            Arriving(settled) {
-                MachineRow(
-                    name = found.machine.name,
-                    detail = found.label,
-                    tileColor = machineColor(found.machine.kind),
-                    status = stringResource(Res.string.home_row_ready),
-                    statusDot = CgColors.Status.Live,
-                    selected = found.host == state.machine?.host,
-                    onClick = { onMachine(found) },
-                    modifier = rowModifier(found),
-                )
+    if (state.machines.isNotEmpty()) {
+        // One grid: the rows meet on single hairlines.
+        HairlineStack {
+            for (found in state.machines) {
+                key(found.host) {
+                    Arriving(settled) {
+                        MachineRow(
+                            name = found.machine.name,
+                            detail = found.label,
+                            tileColor = machineColor(found.machine.kind),
+                            status = stringResource(Res.string.home_row_ready),
+                            statusDot = CgColors.Status.Live,
+                            selected = found.host == state.machine?.host,
+                            onClick = { onMachine(found) },
+                            modifier = rowModifier(found),
+                            framed = false,
+                            chevron = true,
+                        )
+                    }
+                }
             }
         }
     }
@@ -292,17 +309,18 @@ private fun MachineShots(
         transitionSpec = { with(CgMotion) { tick() } },
         label = "shots",
     ) { now ->
-        // The shots as one list of cells meeting on their hairlines.
-        Column {
-            when (now) {
-                ShotsList.LOADING -> repeat(3) { SkeletonRow() }
-                ShotsList.NONE ->
-                    Text(
-                        state.message?.text() ?: stringResource(Res.string.home_shots_none),
-                        style = CgTheme.type.body,
-                        color = CgColors.Text.Secondary,
-                    )
-                ShotsList.SHOTS ->
+        when (now) {
+            ShotsList.LOADING ->
+                Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) { repeat(3) { SkeletonRow() } }
+            ShotsList.NONE ->
+                Text(
+                    state.message?.text() ?: stringResource(Res.string.home_shots_none),
+                    style = CgTheme.type.body,
+                    color = CgColors.Text.Secondary,
+                )
+            // The shots as one grid of cells meeting on single hairlines; the one being fetched is chosen.
+            ShotsList.SHOTS ->
+                HairlineStack {
                     for (summary in shots.orEmpty()) {
                         ShotRow(
                             title = summary.profileName,
@@ -311,15 +329,51 @@ private fun MachineShots(
                                     " · " +
                                     length(summary.durationUs),
                             machineColor = machineColor(summary.source),
+                            selected = summary.id == state.loadingId,
                             onClick = { onShot(summary) },
+                            framed = false,
                         )
                     }
-            }
+                }
         }
     }
     state.message
         ?.takeIf { shots?.isNotEmpty() == true }
         ?.let { Text(it.text(), style = CgTheme.type.bodySmall, color = CgColors.Status.Warning) }
+}
+
+/**
+ * Where the phone's two steps are: 01 MACHINE lit while one is picked; then the machine's name (with its colour) and 02
+ * SHOT lit.
+ */
+@Composable
+private fun Steps(machine: FoundMachine?, modifier: Modifier = Modifier) {
+    val first = machine?.machine?.name?.caps() ?: ("01 " + stringResource(Res.string.home_shots_step_machine).caps())
+    val second = "02 " + stringResource(Res.string.home_shots_step_shot).caps()
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min).border(CgStroke.Hairline, CgColors.Line.Hairline)) {
+        Step(first, lit = machine == null, bar = machine?.let { machineColor(it.machine.kind) })
+        Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Line.Hairline))
+        Step(second, lit = machine != null)
+    }
+}
+
+@Composable
+private fun RowScope.Step(text: String, lit: Boolean, bar: Color? = null) {
+    Row(
+        Modifier.weight(1f)
+            .fillMaxHeight()
+            .background(if (lit) CgColors.Brand.Signal else Color.Transparent)
+            .padding(horizontal = CgSpace.S12, vertical = CgSpace.S8),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (bar != null) Box(Modifier.size(width = CgSpace.S4, height = CgSpace.S12).background(bar))
+        Text(
+            text,
+            style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp),
+            color = if (lit) CgColors.Text.OnLight else CgColors.Text.Secondary,
+        )
+    }
 }
 
 private enum class ShotsList {

@@ -73,7 +73,6 @@ import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
 import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.CgSheet
-import app.onlyshots.core.designsystem.component.ChoiceCard
 import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
 import app.onlyshots.core.designsystem.component.SheetHeader
@@ -614,25 +613,61 @@ private val FoldPreviewTop = 105.dp
 @Composable
 fun ShotSourceChoices(onFile: () -> Unit, onMachine: (() -> Unit)?) {
     Column {
-        ChoiceCard(
-            icon = CgIcons.Film,
-            tileColor = CgColors.Surface.Raised,
+        SourceChoice(
             title = stringResource(Res.string.open_from_file),
             detail = stringResource(Res.string.open_shot_file_detail),
             onClick = onFile,
             modifier = Modifier.testTag(TestTags.OpenFromFile),
-        )
+        ) {
+            CgIcon(CgIcons.File, size = 18.dp)
+        }
         if (onMachine != null) {
-            ChoiceCard(
-                icon = CgIcons.Machine,
-                tileColor = CgColors.Machine.Gaggiuino,
+            SourceChoice(
                 title = stringResource(Res.string.open_from_machine),
                 detail = stringResource(Res.string.open_from_machine_detail),
                 onClick = onMachine,
                 // The cells share their hairline, as the canvas stacks them.
                 modifier = Modifier.offset(y = -CgStroke.Hairline).testTag(TestTags.OpenFromMachine),
-            )
+            ) {
+                // The machine's colour bar, as its rows wear it.
+                Box(Modifier.size(width = CgSpace.S4, height = CgSpace.S24).background(CgColors.Machine.Gaggiuino))
+            }
         }
+    }
+}
+
+/**
+ * One way to get the shot, in the shot sheet: a hairline cell with a 44 dp framed [tile], the way in Mono capitals,
+ * what it takes, and a chevron.
+ */
+@Composable
+private fun SourceChoice(
+    title: String,
+    detail: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tile: @Composable () -> Unit,
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(CgSpace.S16),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(CgSize.Touch).border(CgStroke.Hairline, CgColors.Line.Hairline),
+            contentAlignment = Alignment.Center,
+        ) {
+            tile()
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title.caps(), style = CgTheme.type.label)
+            Text(detail, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+        }
+        CgIcon(CgIcons.ChevronRight, tint = CgColors.Text.Secondary, size = 18.dp)
     }
 }
 
@@ -767,8 +802,8 @@ private val LeadRule = 3.dp
 @Composable
 private fun PickedVideo(picked: VideoItem, file: PickedFile?) {
     Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S16), verticalAlignment = Alignment.Bottom) {
-        Box(Modifier.size(158.dp, 280.dp)) {
-            VideoTile(file?.thumb, modifier = Modifier.fillMaxSize())
+        Box(Modifier.size(158.dp, 280.dp).border(CgStroke.Hairline, CgColors.Line.Hairline)) {
+            VideoTile(file?.thumb, modifier = Modifier.fillMaxSize().padding(CgStroke.Hairline))
             LengthTag(picked, Modifier.align(Alignment.BottomStart))
         }
         Box(Modifier.padding(bottom = CgSpace.S4)) { VideoFacts(file) }

@@ -3,6 +3,7 @@
 <resources>
     <!-- Start -->
     <string name="home_start_question">What do you want to do?</string>
+    <string name="home_start_graph_series">P · F · W</string>
     <string name="home_start_record_title">Record a shot</string>
     <string name="home_start_record_detail">Film it with the graph drawn live from your machine or scale.</string>
     <string name="home_start_edit_title">Compose a video</string>
@@ -86,6 +87,8 @@
 
     <!-- Shot from the machine -->
     <string name="home_shots_title">shot from the machine</string>
+    <string name="home_shots_step_machine">machine</string>
+    <string name="home_shots_step_shot">shot</string>
     <string name="home_shots_same_wifi">The machine and this phone need to be on the same Wi‑Fi.</string>
     <string name="home_shots_pick_machine">pick a machine to see its recent shots</string>
     <string name="home_shots_recent">recent shots · %1$s</string>

@@ -60,6 +60,8 @@ ICONS = {
     # An espresso machine, solid: the housing, its column and drip tray, the group head over the cup.
     "ic_machine": [fill(rect(4, 3, 16, 7)), fill(rect(4, 10, 3, 10)), fill(rect(4, 19, 16, 2)),
                    fill(rect(10.5, 10, 3, 2.5)), fill(rect(9.5, 14, 5, 4))],
+    # A shot file: a page with its corner folded on 45°.
+    "ic_file": [stroke("M5.75 2.75H14L18.25 7V21.25H5.75Z"), stroke("M13.5 2.75V7.5H18.25")],
     # A video: the camera body and its lens.
     "ic_film": [stroke(rect(2.75, 6.75, 13, 10.5)), fill("M17.5 12L21.5 8V16Z")],
     # Settings as an instrument's sliders: two rails, two square knobs.

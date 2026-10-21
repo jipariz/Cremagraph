@@ -120,8 +120,9 @@ fun SectionHeader(
     trailing: String? = null,
     trailingColor: Color = CgColors.Text.Primary,
     onTrailing: (() -> Unit)? = null,
-    /** The note is a search still running: it breathes, with a dot sending out a ping before it. */
+    /** The note is a search still running: its square dot blinks before it ([searchingDot]). */
     searching: Boolean = false,
+    searchingDot: Boolean = true,
 ) {
     // A link keeps its 44 dp target, which would make the header taller than the 14 + 18 + 4 of the design: the
     // padding gives back what the target adds, so a header looks the same with or without a link.
@@ -146,7 +147,7 @@ fun SectionHeader(
                 // "searching…" ticks over to "2 found", like a readout.
                 AnimatedContent(searching, transitionSpec = { with(CgMotion) { tick() } }, label = "searching") { busy
                     ->
-                    if (busy) SearchingNote(trailing.caps(), ink)
+                    if (busy && searchingDot) SearchingNote(trailing.caps(), ink)
                     else Text(trailing.caps(), style = CgTheme.type.labelStrong, color = ink)
                 }
             }
@@ -202,9 +203,10 @@ fun StatusPill(text: String, dot: Color, modifier: Modifier = Modifier) {
 }
 
 /**
- * A machine or a connected scale: a cell on the bar colour with the machine's colour as a 4 dp bar, the name in Mono
- * capitals, where it is in Mono, an optional live line, and its status. The chosen one has the signal for its edge; the
- * others a hairline.
+ * A machine or a connected scale: a cell with the machine's colour as a 4 dp bar, the name in Mono capitals, where it
+ * is in Mono, an optional live line, its status and, with [chevron], a chevron to say it opens something. The chosen
+ * one sits on the bar colour with the signal for its edge (bone, and half lit, while it is [offline]); the others on
+ * ink with a hairline, or none when [framed] is off because a [HairlineStack] draws the lines between them.
  */
 @Composable
 fun MachineRow(
@@ -218,14 +220,26 @@ fun MachineRow(
     modifier: Modifier = Modifier,
     live: String? = null,
     enabled: Boolean = true,
+    offline: Boolean = false,
+    framed: Boolean = true,
+    chevron: Boolean = false,
 ) {
-    val alpha by animateFloatAsState(if (enabled) 1f else 0.5f, CgMotion.short())
-    val edge by animateColorAsState(if (selected) CgColors.Brand.Signal else CgColors.Line.Hairline, CgMotion.short())
+    val alpha by animateFloatAsState(if (enabled && !offline) 1f else 0.5f, CgMotion.short())
+    val edge by
+        animateColorAsState(
+            when {
+                selected && offline -> CgColors.Text.Primary
+                selected -> CgColors.Brand.Signal
+                framed -> CgColors.Line.Hairline
+                else -> Color.Transparent
+            },
+            CgMotion.short(),
+        )
     Row(
         modifier
             .fillMaxWidth()
             .graphicsLayer { this.alpha = alpha }
-            .background(CgColors.Surface.Bar)
+            .background(if (selected) CgColors.Surface.Bar else CgColors.Surface.Base)
             .border(CgStroke.Hairline, edge)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = CgSpace.S16, vertical = CgSpace.S14),
@@ -248,6 +262,21 @@ fun MachineRow(
             }
         }
         StatusPill(status, statusDot)
+        if (chevron) CgIcon(CgIcons.ChevronRight, tint = CgColors.Text.Secondary, size = 18.dp)
+    }
+}
+
+/**
+ * Rows stacked as one grid, the canvas's way: they meet on single 1 dp hairlines, with one around them all. Each row
+ * draws its own ground (and no edge of its own), so the lines are the gaps between them.
+ */
+@Composable
+fun HairlineStack(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Column(
+        modifier.fillMaxWidth().background(CgColors.Line.Hairline).padding(CgStroke.Hairline),
+        verticalArrangement = Arrangement.spacedBy(CgStroke.Hairline),
+    ) {
+        content()
     }
 }
 
@@ -305,25 +334,31 @@ fun ChoiceCard(
  * preview draws it still; the screenshot tests catch the sweep's first frame, before the light arrives, every run.
  */
 @Composable
-fun SkeletonRow(modifier: Modifier = Modifier) {
+fun SkeletonRow(
+    modifier: Modifier = Modifier,
+    /** How much of the row the name's and the detail's bars take: a machine's 50 % and 70 %, a scale's less. */
+    bars: Pair<Float, Float> = 0.5f to 0.7f,
+) {
     val shimmer = rememberShimmer(ShimmerBounds.View, SkeletonShimmer)
     Row(
         modifier
             .fillMaxWidth()
             .then(if (LocalInspectionMode.current) Modifier.alpha(0.6f) else Modifier.shimmer(shimmer))
-            .background(CgColors.Surface.Bar)
-            .border(CgStroke.Hairline, CgColors.Line.Hairline)
-            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S14),
+            .border(CgStroke.Hairline, CgColors.Line.Divider)
+            .padding(CgSpace.S16),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(width = 4.dp, height = 36.dp).background(CgColors.Line.Hairline))
-        Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
-            Bar(140.dp)
-            Bar(200.dp)
+        Box(Modifier.size(width = 4.dp, height = 36.dp).background(CgColors.Line.Divider))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+            Bar(bars.first, 12.dp)
+            Bar(bars.second, 10.dp)
         }
     }
 }
+
+/** A scale's skeleton: shorter bars than a machine's. */
+val ScaleSkeletonBars = 0.4f to 0.3f
 
 /**
  * The row rests at 60 % and a soft light sweeps across it, bringing it to full: a shine running over brushed metal,
@@ -335,8 +370,8 @@ private val SkeletonShimmer =
     )
 
 @Composable
-private fun Bar(width: Dp) {
-    Box(Modifier.width(width).height(10.dp).background(CgColors.Surface.Raised))
+private fun Bar(fraction: Float, height: Dp) {
+    Box(Modifier.fillMaxWidth(fraction).height(height).background(CgColors.Surface.Raised))
 }
 
 /** "add by address": a dashed hairline cell with the signal's plus for what the search cannot see. */
@@ -368,32 +403,33 @@ fun AddRow(title: String, onClick: () -> Unit, modifier: Modifier = Modifier, su
     }
 }
 
-/** The way into Bluetooth before anything is chosen: a hairline cell with a framed Bluetooth mark and a chevron. */
+/**
+ * The way into Bluetooth before anything is chosen: a cell edged in Bluetooth's blue, with the mark framed in it at the
+ * top and what allowing it adds.
+ */
 @Composable
 fun ConnectScaleCard(title: String, subtitle: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier
             .fillMaxWidth()
-            .background(CgColors.Surface.Bar)
-            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .border(CgStroke.Hairline, BluetoothBlue)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
+            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S14),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
-        Box(
-            Modifier.size(TileSize).border(CgStroke.Hairline, CgColors.Line.Hairline),
-            contentAlignment = Alignment.Center,
-        ) {
-            CgIcon(CgIcons.Bluetooth, tint = CgColors.Brand.Signal, size = 20.dp)
+        Box(Modifier.size(32.dp).border(CgStroke.Hairline, BluetoothBlue), contentAlignment = Alignment.Center) {
+            CgIcon(CgIcons.Bluetooth, tint = BluetoothBlue, size = 16.dp)
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
             Text(title.caps(), style = CgTheme.type.label)
             Text(subtitle, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
         }
-        CgIcon(CgIcons.ChevronRight, tint = CgColors.Text.Secondary, size = 20.dp)
     }
 }
+
+/** The canvas's Bluetooth and scale blue (the weight trace's colour too); not yet a token, so kept here. */
+val BluetoothBlue = Color(0xFF7FA7B8)
 
 /** What a found scale's connect pill says. */
 enum class ScaleAction {
@@ -414,12 +450,14 @@ fun ScaleDeviceRow(
     action: ScaleAction,
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Off inside a [HairlineStack], which draws the lines between the rows. */
+    framed: Boolean = true,
 ) {
     Row(
         modifier
             .fillMaxWidth()
             .background(CgColors.Surface.Base)
-            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .then(if (framed) Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline) else Modifier)
             .clickable(enabled = action == ScaleAction.Connect, role = Role.Button, onClick = onAction)
             .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
@@ -469,18 +507,29 @@ fun ScaleDeviceRow(
 
 /**
  * The main action at the bottom of Home: a 56 dp signal bar naming what will be used, an ink dot before it and an arrow
- * after, with how recording starts under it. Disabled, a hairline bar with grey letters.
+ * after, with how recording starts under it. Without a source's data ([withData] off) the bar is bone and its dot the
+ * recording red: it records, but draws no graph. Disabled, a hairline bar with grey letters.
  */
 @Composable
 fun RecordAction(
     text: String,
-    caption: String,
+    caption: String?,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    withData: Boolean = true,
 ) {
-    val ground by animateColorAsState(if (enabled) CgColors.Brand.Signal else Color.Transparent, CgMotion.medium())
+    val ground by
+        animateColorAsState(
+            when {
+                !enabled -> Color.Transparent
+                withData -> CgColors.Brand.Signal
+                else -> CgColors.Brand.Bone
+            },
+            CgMotion.medium(),
+        )
     val ink by animateColorAsState(if (enabled) CgColors.Text.OnLight else CgColors.Text.Disabled, CgMotion.medium())
+    val dot by animateColorAsState(if (enabled && !withData) CgColors.Status.Record else ink, CgMotion.medium())
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
         Row(
             Modifier.fillMaxWidth()
@@ -493,15 +542,17 @@ fun RecordAction(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // The one round thing: the record dot.
-            Box(Modifier.size(10.dp).background(ink, CircleShape))
+            Box(Modifier.size(10.dp).background(dot, CircleShape))
             Text(text.caps(), style = CgTheme.type.label, color = ink, modifier = Modifier.weight(1f))
             CgIcon(CgIcons.ArrowRight, tint = ink, size = 18.dp)
         }
-        Text(
-            caption,
-            style = CgTheme.type.bodySmall,
-            color = CgColors.Text.Secondary,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (caption != null) {
+            Text(
+                caption,
+                style = CgTheme.type.bodySmall,
+                color = CgColors.Text.Secondary,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }

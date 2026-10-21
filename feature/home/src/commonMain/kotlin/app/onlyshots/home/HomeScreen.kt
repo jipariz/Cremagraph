@@ -53,6 +53,7 @@ import app.onlyshots.PRIVACY_URL
 import app.onlyshots.StopRuleChoice
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
@@ -61,13 +62,16 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.AddRow
 import app.onlyshots.core.designsystem.component.Arriving
+import app.onlyshots.core.designsystem.component.BluetoothBlue
 import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.CgButtonKind
+import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.CgStepper
 import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.ConnectScaleCard
 import app.onlyshots.core.designsystem.component.HairlineGrid
+import app.onlyshots.core.designsystem.component.HairlineStack
 import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.designsystem.component.MachineRow
 import app.onlyshots.core.designsystem.component.ReadingTile
@@ -75,6 +79,7 @@ import app.onlyshots.core.designsystem.component.RecordAction
 import app.onlyshots.core.designsystem.component.RuleRow
 import app.onlyshots.core.designsystem.component.ScaleAction
 import app.onlyshots.core.designsystem.component.ScaleDeviceRow
+import app.onlyshots.core.designsystem.component.ScaleSkeletonBars
 import app.onlyshots.core.designsystem.component.SectionHeader
 import app.onlyshots.core.designsystem.component.SegmentedControl
 import app.onlyshots.core.designsystem.component.SettingRow
@@ -314,6 +319,7 @@ fun HomeBody(
                     enabled = action.enabled,
                     onClick = onOpenCamera,
                     modifier = Modifier.testTag(TestTags.HomeRecordAction),
+                    withData = action.withData,
                 )
                 SampleLink(onSample)
             }
@@ -340,21 +346,28 @@ private fun Machines(state: HomeUiState, onMachine: (FoundMachine) -> Unit, onAd
         trailingColor = if (state.machines.isEmpty()) CgColors.Brand.Signal else CgColors.Text.Primary,
         searching = state.machines.isEmpty(),
     )
-    // Machines turn up one by one as the search finds them: each slides open rather than pushing the list down.
+    // Machines turn up one by one as the search finds them: each slides open rather than pushing the list down. They
+    // stack as one grid, meeting on single hairlines.
     val settled = rememberListSettled()
-    for (row in rows) {
-        key(row.kind, row.selected, row.found?.host ?: row.detail) {
-            Arriving(settled) {
-                MachineRow(
-                    name = row.name.text(),
-                    detail = row.detail,
-                    tileColor = machineColor(row.kind),
-                    status = stringResource(row.status.label),
-                    statusDot = dotOf(row.status),
-                    selected = row.selected,
-                    onClick = { row.found?.let(onMachine) },
-                    enabled = row.found != null || row.selected,
-                )
+    if (rows.isNotEmpty()) {
+        HairlineStack {
+            for (row in rows) {
+                key(row.kind, row.selected, row.found?.host ?: row.detail) {
+                    Arriving(settled) {
+                        MachineRow(
+                            name = row.name.text(),
+                            detail = row.detail,
+                            tileColor = machineColor(row.kind),
+                            status = stringResource(row.status.label),
+                            statusDot = dotOf(row.status),
+                            selected = row.selected,
+                            onClick = { row.found?.let(onMachine) },
+                            enabled = row.found != null || row.selected,
+                            offline = row.status == RowStatus.Offline,
+                            framed = false,
+                        )
+                    }
+                }
             }
         }
     }
@@ -380,32 +393,46 @@ private fun Scales(state: HomeUiState, onScale: (FoundBleDevice) -> Unit, onAllo
                 else -> foundNote(state.scales.size).text()
             },
         trailingColor =
-            if (state.scales.isEmpty() && !state.bluetoothOff) CgColors.Brand.Signal else CgColors.Text.Primary,
+            when {
+                state.bluetoothOff -> CgColors.Status.Warning
+                state.scales.isEmpty() -> CgColors.Brand.Signal
+                else -> CgColors.Text.Primary
+            },
         searching = state.scales.isEmpty() && !state.bluetoothOff && !state.bluetoothDenied,
+        // The machines' search shows the light; the scales' just says so.
+        searchingDot = false,
     )
-    if (scale != null) {
-        val status = if (state.connectingScaleId != null) RowStatus.Connecting else statusOf(state.connection)
-        MachineRow(
-            name = scale.name.text(),
-            detail = stringResource(Res.string.home_bluetooth_scale),
-            tileColor = CgColors.Status.Info,
-            status = stringResource(status.label),
-            statusDot = dotOf(status),
-            selected = true,
-            onClick = {},
-        )
-    }
     val settled = rememberListSettled()
-    for (device in others) {
-        key(device.id) {
-            Arriving(settled) {
-                ScaleDeviceRow(
-                    name = device.name,
-                    detail = stringResource(Res.string.home_scale_detail),
-                    bars = signalBars(device.advertisement.rssi),
-                    action = ScaleAction.Connect,
-                    onAction = { onScale(device) },
+    if (scale != null || others.isNotEmpty()) {
+        // The connected scale and the ones found as one grid, meeting on single hairlines.
+        HairlineStack {
+            if (scale != null) {
+                val status = if (state.connectingScaleId != null) RowStatus.Connecting else statusOf(state.connection)
+                MachineRow(
+                    name = scale.name.text(),
+                    detail = stringResource(Res.string.home_bluetooth_scale),
+                    tileColor = CgColors.Status.Info,
+                    status = stringResource(status.label),
+                    statusDot = dotOf(status),
+                    selected = true,
+                    onClick = {},
+                    offline = status == RowStatus.Offline,
+                    framed = false,
                 )
+            }
+            for (device in others) {
+                key(device.id) {
+                    Arriving(settled) {
+                        ScaleDeviceRow(
+                            name = device.name,
+                            detail = stringResource(Res.string.home_scale_detail),
+                            bars = signalBars(device.advertisement.rssi),
+                            action = ScaleAction.Connect,
+                            onAction = { onScale(device) },
+                            framed = false,
+                        )
+                    }
+                }
             }
         }
     }
@@ -422,7 +449,7 @@ private fun Scales(state: HomeUiState, onScale: (FoundBleDevice) -> Unit, onAllo
             color = CgColors.Text.Secondary,
         )
     } else if (scale == null && others.isEmpty()) {
-        SkeletonRow()
+        SkeletonRow(bars = ScaleSkeletonBars)
     }
 }
 
@@ -432,7 +459,7 @@ private fun dotOf(status: RowStatus) =
         RowStatus.Connected -> CgColors.Status.Live
         RowStatus.Connecting,
         RowStatus.Busy -> CgColors.Status.Warning
-        RowStatus.Offline -> CgColors.Text.Disabled
+        RowStatus.Offline -> CgColors.Text.Secondary
     }
 
 @Composable
@@ -585,6 +612,7 @@ private fun NextTakePane(
                 enabled = action.enabled,
                 onClick = onOpenCamera,
                 modifier = Modifier.testTag(TestTags.HomeRecordAction),
+                withData = !withoutData,
             )
             SampleLink(onSample, Modifier.align(Alignment.CenterHorizontally))
         }
@@ -604,15 +632,19 @@ private fun TakeRules(
     val scale = kind == SourceKind.SCALE
     // What this source really runs with: a scale shows "weight settles" where a machine's "shot end" is saved.
     val effective = settings.effective(kind)
-    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+    // One framed list, the rules divided by the panel's rule colour, as the canvas lists them.
+    Column(Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline)) {
         RuleRow(
             stringResource(Res.string.home_rule_start),
             startRuleDetail(settings, kind).text(),
             checked = settings.autoStart,
             onToggle = { on -> onRecording { it.copy(autoStart = on) } },
+            modifier = RuleCell,
         )
+        RuleDivider()
         SettingRow(
             stringResource(Res.string.home_rule_pre_roll),
+            RuleCell,
             hint =
                 stringResource(if (scale) Res.string.record_pre_roll_hint_scale else Res.string.record_pre_roll_hint),
         ) {
@@ -624,39 +656,55 @@ private fun TakeRules(
                 plusEnabled = settings.preRollSeconds < PRE_ROLL.last,
             )
         }
+        RuleDivider()
         RuleRow(
             stringResource(Res.string.home_rule_stop),
             stopRuleDetail(settings, kind).text(),
             checked = settings.stopRule != StopRule.Manual,
             onToggle = { on -> onRecording { it.withStopAfterShot(on) } },
+            modifier = RuleCell,
         )
         if (effective.stopRule != StopRule.Manual) {
+            RuleDivider()
             // "By hand" is the switch above; the picker holds the rules that stop by themselves.
             val choices =
                 StopRuleChoice.entries.filter {
                     it != StopRuleChoice.MANUAL && (kind == null || it.rule().availableFor(kind))
                 }
             val current = StopRuleChoice.of(effective.stopRule)
-            SegmentedControl(
-                fill = true,
-                options = choices.map { stringResource(it.label) },
-                selectedIndex = choices.indexOf(current),
-                onSelect = { i -> onRecording { it.copy(stopRule = choices[i].rule()) } },
-            )
-            val label = effective.stopRule.stepLabel
-            val parameter = current.parameter
-            if (label != null && parameter != null) {
-                SettingRow(stringResource(parameter).replaceFirstChar { it.uppercase() }) {
-                    // Stepped from what is shown, so a scale's stand-in "weight settles" becomes the saved rule.
-                    CgStepper(
-                        value = label,
-                        onMinus = { onRecording { s -> s.copy(stopRule = s.effective(kind).stopRule.stepped(-1)) } },
-                        onPlus = { onRecording { s -> s.copy(stopRule = s.effective(kind).stopRule.stepped(1)) } },
-                    )
+            Column(RuleCell, verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                SegmentedControl(
+                    fill = true,
+                    options = choices.map { stringResource(it.label) },
+                    selectedIndex = choices.indexOf(current),
+                    onSelect = { i -> onRecording { it.copy(stopRule = choices[i].rule()) } },
+                )
+                val label = effective.stopRule.stepLabel
+                val parameter = current.parameter
+                if (label != null && parameter != null) {
+                    SettingRow(stringResource(parameter).replaceFirstChar { it.uppercase() }) {
+                        // Stepped from what is shown, so a scale's stand-in "weight settles" becomes the saved rule.
+                        CgStepper(
+                            value = label,
+                            onMinus = {
+                                onRecording { s -> s.copy(stopRule = s.effective(kind).stopRule.stepped(-1)) }
+                            },
+                            onPlus = { onRecording { s -> s.copy(stopRule = s.effective(kind).stopRule.stepped(1)) } },
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+/** A cell of the take's framed rules: the canvas's 12 × 16 padding. */
+private val RuleCell = Modifier.padding(horizontal = CgSpace.S16, vertical = CgSpace.S12)
+
+/** The rule between two of the take's rules. */
+@Composable
+private fun RuleDivider() {
+    Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Divider))
 }
 
 private fun RecordingSettings.effective(kind: SourceKind?) = kind?.let { effectiveFor(it) } ?: this
@@ -674,9 +722,9 @@ private fun SectionLabel(text: String) {
 /** The colour the graph draws this quantity in, so a tile reads as its line. */
 private fun ReadingKind.color(): Color =
     when (this) {
-        ReadingKind.Temperature -> CgColors.Series.Temperature
-        ReadingKind.Pressure -> CgColors.Series.Pressure
-        ReadingKind.Weight -> CgColors.Text.Primary
+        ReadingKind.Temperature -> CgColors.Status.Warning
+        ReadingKind.Pressure -> CgColors.Brand.Signal
+        ReadingKind.Weight -> BluetoothBlue
         ReadingKind.Flow -> CgColors.Series.Flow
         ReadingKind.WeightFlow -> CgColors.Series.WeightFlow
     }
@@ -733,11 +781,19 @@ fun HelpContent(modifier: Modifier = Modifier, onPrivacy: (() -> Unit)? = null, 
             Row(Modifier.fillMaxWidth().padding(top = CgSpace.S8), verticalAlignment = Alignment.CenterVertically) {
                 // The app's own privacy screen where the host has one; the published page otherwise. Either ends with
                 // where to get help, so one link serves both.
-                FooterLink(
-                    stringResource(Res.string.home_privacy),
-                    modifier = Modifier.weight(1f).testTag(TestTags.HelpPrivacy),
-                ) {
-                    onPrivacy?.invoke() ?: uri.openUri(PRIVACY_URL)
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    FooterLink(
+                        stringResource(Res.string.home_privacy),
+                        modifier = Modifier.testTag(TestTags.HelpPrivacy),
+                    ) {
+                        onPrivacy?.invoke() ?: uri.openUri(PRIVACY_URL)
+                    }
+                    CgIcon(
+                        CgIcons.ArrowRight,
+                        tint = CgColors.Text.Primary,
+                        size = 14.dp,
+                        modifier = Modifier.padding(start = CgSpace.S6),
+                    )
                 }
                 Text(
                     stringResource(Res.string.core_version, version),

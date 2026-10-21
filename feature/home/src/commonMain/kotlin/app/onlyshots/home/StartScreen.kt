@@ -1,6 +1,8 @@
 package app.onlyshots.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,8 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
@@ -38,6 +44,7 @@ import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
+import app.onlyshots.core.designsystem.component.BluetoothBlue
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.ChoiceCard
 import app.onlyshots.core.designsystem.component.IconCircleButton
@@ -49,6 +56,7 @@ import app.onlyshots.core.resources.app_name
 import app.onlyshots.core.resources.home_about
 import app.onlyshots.core.resources.home_start_edit_detail
 import app.onlyshots.core.resources.home_start_edit_title
+import app.onlyshots.core.resources.home_start_graph_series
 import app.onlyshots.core.resources.home_start_question
 import app.onlyshots.core.resources.home_start_record_detail
 import app.onlyshots.core.resources.home_start_record_title
@@ -133,7 +141,7 @@ fun StartBody(
                             verticalArrangement = Arrangement.spacedBy(28.dp),
                         ) {
                             StartHeader(onHelp = null, big = !layout.fold)
-                            if (layout.fold) Spacer(Modifier.weight(1f))
+                            GraphCard(Modifier.weight(1f), big = !layout.fold)
                             Headline(big = !layout.fold)
                         }
                     },
@@ -168,8 +176,8 @@ fun StartBody(
                     verticalArrangement = Arrangement.spacedBy(32.dp),
                 ) {
                     StartHeader(onHelp = onHelp, big = true)
+                    GraphCard(Modifier.weight(1f), big = true)
                     Headline(big = true)
-                    Spacer(Modifier.weight(1f))
                     Choices(onRecord, onEdit, sideBySide = true)
                 }
         }
@@ -184,9 +192,10 @@ private fun PhoneStart(onRecord: () -> Unit, onEdit: () -> Unit, onHelp: () -> U
             StartHeader(onHelp = onHelp, big = false)
             Column(
                 Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
+                verticalArrangement = Arrangement.spacedBy(CgSpace.S24),
             ) {
-                Spacer(Modifier.height(CgSpace.S24))
+                Spacer(Modifier.height(0.dp))
+                GraphCard(Modifier.height(GRAPH_CARD_PHONE), big = false)
                 Headline(big = false)
             }
             Box(Modifier.padding(top = CgSpace.S16, bottom = CgSpace.S24)) {
@@ -227,11 +236,15 @@ private fun HelpKey(onHelp: () -> Unit) {
     )
 }
 
-/** "Your shot, with its graph": the phone's headline, or the large Mono one of a wide window. */
+/**
+ * "Your shot, with its graph": the phone's headline, broken after its comma onto two lines as the canvas sets it, or
+ * the large Mono one of a wide window on one.
+ */
 @Composable
 private fun Headline(big: Boolean) {
+    val title = stringResource(Res.string.start_title)
     Text(
-        stringResource(Res.string.start_title),
+        if (big) title else title.replaceFirst(", ", ",\n"),
         style =
             if (big) {
                 CgTheme.type.valueLarge.copy(
@@ -287,6 +300,65 @@ private fun Choices(onRecord: () -> Unit, onEdit: () -> Unit, sideBySide: Boolea
         }
     }
 }
+
+/**
+ * What OnlyShots makes, drawn small: a shot's graph in a bar-coloured cell, which series it plots and how long it ran
+ * over a grid, pressure in the signal, flow in bone, weight in blue. Decoration only.
+ */
+@Composable
+private fun GraphCard(modifier: Modifier, big: Boolean) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(CgColors.Surface.Bar)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .padding(if (big) CgSpace.S16 else CgSpace.S12),
+        verticalArrangement = Arrangement.spacedBy(if (big) CgSpace.S12 else CgSpace.S8),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                stringResource(Res.string.home_start_graph_series),
+                style = CgTheme.type.data,
+                color = CgColors.Text.Secondary,
+            )
+            Text("0:28", style = CgTheme.type.data, color = CgColors.Text.Secondary)
+        }
+        val trace = if (big) 2.dp else 1.5.dp
+        Canvas(Modifier.fillMaxWidth().weight(1f).clearAndSetSemantics {}) {
+            // The canvas draws it in a 300 × 120 box, stretched to fit.
+            val sx = size.width / 300f
+            val sy = size.height / 120f
+            val hair = CgStroke.Hairline.toPx()
+            for (y in floatArrayOf(24f, 60f, 96f)) {
+                drawLine(CgColors.Line.Divider, Offset(0f, y * sy), Offset(size.width, y * sy), hair)
+            }
+            for (x in floatArrayOf(75f, 150f, 225f)) {
+                drawLine(CgColors.Line.Divider, Offset(x * sx, 0f), Offset(x * sx, size.height), hair)
+            }
+            fun line(color: Color, build: Path.() -> Unit) =
+                drawPath(Path().apply(build), color, style = Stroke(trace.toPx()))
+            line(CgColors.Brand.Signal) {
+                moveTo(0f, 118f * sy)
+                cubicTo(20f * sx, 118f * sy, 30f * sx, 30f * sy, 50f * sx, 24f * sy)
+                lineTo(180f * sx, 24f * sy)
+                cubicTo(220f * sx, 26f * sy, 260f * sx, 40f * sy, 300f * sx, 48f * sy)
+            }
+            line(CgColors.Text.Primary) {
+                moveTo(0f, 118f * sy)
+                cubicTo(40f * sx, 116f * sy, 60f * sx, 90f * sy, 90f * sx, 72f * sy)
+                cubicTo(140f * sx, 60f * sy, 200f * sx, 56f * sy, 300f * sx, 54f * sy)
+            }
+            line(BluetoothBlue) {
+                moveTo(0f, 118f * sy)
+                lineTo(40f * sx, 118f * sy)
+                cubicTo(120f * sx, 110f * sy, 200f * sx, 60f * sy, 300f * sx, 14f * sy)
+            }
+        }
+    }
+}
+
+/** The phone card: its header and a 112 dp graph, as the canvas draws it. */
+private val GRAPH_CARD_PHONE = 152.dp
 
 /** The instrument's faint ground: a 24 dp grid of bone lines at 4 %. */
 private fun DrawScope.drawGrid() {

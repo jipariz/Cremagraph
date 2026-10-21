@@ -13,6 +13,7 @@ import app.onlyshots.core.resources.ic_chevron_right
 import app.onlyshots.core.resources.ic_close
 import app.onlyshots.core.resources.ic_contrast
 import app.onlyshots.core.resources.ic_edit
+import app.onlyshots.core.resources.ic_file
 import app.onlyshots.core.resources.ic_film
 import app.onlyshots.core.resources.ic_flag
 import app.onlyshots.core.resources.ic_frame
@@ -127,6 +128,10 @@ object CgIcons {
     /** A video. */
     val Film: ImageVector
         @Composable get() = vectorResource(Res.drawable.ic_film)
+
+    /** A shot file. */
+    val File: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_file)
 
     /** Settings. */
     val Settings: ImageVector

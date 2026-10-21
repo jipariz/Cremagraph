@@ -26,6 +26,7 @@ import app.onlyshots.core.designsystem.caps
 /**
  * Figma "Shot row": one shot from the machine's history, pickable in the editor. A cell on the ink with the machine's
  * bar, the shot's name in Mono capitals and its time in Mono; chosen, the cell is raised and framed in the signal.
+ * Inside a [HairlineStack] ([framed] off) an unchosen row draws no edge of its own: the stack's lines are its edges.
  */
 @Composable
 fun ShotRow(
@@ -35,13 +36,20 @@ fun ShotRow(
     selected: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    framed: Boolean = true,
 ) {
     Row(
         modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = CgSize.Touch)
             .background(if (selected) CgColors.Surface.Raised else CgColors.Surface.Base)
-            .border(CgStroke.Hairline, if (selected) CgColors.Brand.Signal else CgColors.Line.Hairline)
+            .then(
+                when {
+                    selected -> Modifier.border(CgStroke.Hairline, CgColors.Brand.Signal)
+                    framed -> Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline)
+                    else -> Modifier
+                }
+            )
             .selectable(selected, onClick = onClick)
             .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,

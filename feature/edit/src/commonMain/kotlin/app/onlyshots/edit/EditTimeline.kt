@@ -22,6 +22,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -41,7 +43,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
-import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.CgTypography
 import app.onlyshots.core.model.VideoItem
@@ -84,7 +85,7 @@ fun EditTimeline(
     modifier: Modifier = Modifier,
     loading: Boolean = false,
 ) {
-    // While the frames are being made, a scan band runs across the empty strip. Only then: an endless animation would
+    // While the frames are being made, a light sweeps across the empty strip. Only then: an endless animation would
     // keep the canvas drawing, and the screenshots from settling.
     val sweep =
         if (loading)
@@ -366,8 +367,8 @@ private fun DrawScope.ruler(
 }
 
 /**
- * The filmstrip, dimmed outside the trim, with a handle at each end of it. While its frames are being made a hard-edged
- * scan band runs across it, at [sweep] (0 to 1) of its way, led by a brighter line.
+ * The filmstrip, dimmed outside the trim, with a handle at each end of it. While its frames are being made it shimmers,
+ * a light at [sweep] (0 to 1) of its way across, like a shine over metal.
  */
 private fun DrawScope.strip(
     item: VideoItem,
@@ -388,12 +389,16 @@ private fun DrawScope.strip(
             val to = minOf(size.width - pad, v.x(item.durationUs))
             if (to > from) {
                 val band = SHIMMER_BAND.dp.toPx()
-                val edge = CgStroke.Rule.toPx()
                 val at = pad - band + sweep * (size.width - 2 * pad + band)
-                clipRect(from, top, to, top + h) {
-                    drawRect(CgColors.Text.Primary.copy(alpha = 0.08f), Offset(at, top), Size(band, h))
-                    drawRect(CgColors.Text.Primary.copy(alpha = 0.4f), Offset(at + band - edge, top), Size(edge, h))
-                }
+                drawRect(
+                    Brush.horizontalGradient(
+                        listOf(Color.Transparent, CgColors.Text.Primary.copy(alpha = 0.12f), Color.Transparent),
+                        startX = at,
+                        endX = at + band,
+                    ),
+                    Offset(from, top),
+                    Size(to - from, h),
+                )
             }
         }
         if (thumbnails.isNotEmpty()) {
@@ -519,6 +524,6 @@ private const val TEXT_CACHE = 32
 
 /** A playhead move at least this long (µs) is a jump, and eases there; anything shorter is playback, and follows. */
 private const val JUMP_US = 250_000f
-/** One run of the scan band across the filmstrip while its frames are made, and the band's width. */
+/** One sweep of the light across the filmstrip while its frames are made, and the light's width. */
 private const val SHIMMER_MS = 1_200
 private const val SHIMMER_BAND = 96

@@ -7,6 +7,7 @@ kotlin = "2.4.21"
 agp = "9.3.2"
 compose-multiplatform = "1.12.1"
 haze = "2.0.1"
+compose-shimmer = "1.5.0"
 compose-hot-reload = "1.2.0"
 compose-material3 = "1.9.0"
 compose-adaptive = "1.3.0"
@@ -50,6 +51,7 @@ semver = { module = "io.github.z4kn4fein:semver", version.ref = "semver" }
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
 haze-glass = { module = "dev.chrisbanes.haze:haze-glass", version.ref = "haze" }
+compose-shimmer = { module = "com.valentinilk.shimmer:compose-shimmer", version.ref = "compose-shimmer" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }

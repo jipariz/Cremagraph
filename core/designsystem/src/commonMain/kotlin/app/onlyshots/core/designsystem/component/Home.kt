@@ -3,12 +3,9 @@ package app.onlyshots.core.designsystem.component
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,13 +29,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -65,6 +60,10 @@ import app.onlyshots.core.resources.core_library_count
 import app.onlyshots.core.resources.core_scale_connect
 import app.onlyshots.core.resources.core_scale_connected
 import app.onlyshots.core.resources.core_scale_connecting
+import com.valentinilk.shimmer.ShimmerBounds
+import com.valentinilk.shimmer.defaultShimmerTheme
+import com.valentinilk.shimmer.rememberShimmer
+import com.valentinilk.shimmer.shimmer
 import org.jetbrains.compose.resources.stringResource
 
 /*
@@ -302,15 +301,16 @@ fun ChoiceCard(
 }
 
 /**
- * Where the next search result will land, while the search runs; a scan band sweeps across it ([scanning]). An IDE
- * preview and the screenshot tests see it at rest, before the band comes in.
+ * Where the next search result will land, while the search runs; a light sweeps across it (compose-shimmer). An IDE
+ * preview draws it still; the screenshot tests catch the sweep's first frame, before the light arrives, every run.
  */
 @Composable
 fun SkeletonRow(modifier: Modifier = Modifier) {
+    val shimmer = rememberShimmer(ShimmerBounds.View, SkeletonShimmer)
     Row(
         modifier
             .fillMaxWidth()
-            .scanning()
+            .then(if (LocalInspectionMode.current) Modifier.alpha(0.6f) else Modifier.shimmer(shimmer))
             .background(CgColors.Surface.Bar)
             .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .padding(horizontal = CgSpace.S16, vertical = CgSpace.S14),
@@ -326,43 +326,13 @@ fun SkeletonRow(modifier: Modifier = Modifier) {
 }
 
 /**
- * Something being made or looked for: it rests at 60 % and a hard-edged band at full strength scans across it, left to
- * right at an even rate, every 1.2 s, like a scanner's bar. It starts off the left edge, so a still frame (an IDE
- * preview, a screenshot) shows it at rest.
+ * The row rests at 60 % and a soft light sweeps across it, bringing it to full: a shine running over brushed metal,
+ * rather than the library's 25 % that hides it on dark.
  */
-@Composable
-fun Modifier.scanning(): Modifier {
-    val still = LocalInspectionMode.current
-    val sweep =
-        rememberInfiniteTransition(label = "scan")
-            .animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(tween(ScanMs, easing = LinearEasing)),
-                label = "sweep",
-            )
-    return graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-        .drawWithContent {
-            drawContent()
-            val band = ScanBand.toPx()
-            val left = if (still) -band else -band + (size.width + band) * sweep.value
-            // Take 40 % out everywhere but the band.
-            val dim = Color.Black.copy(alpha = 0.4f)
-            if (left > 0f) drawRect(dim, size = Size(left, size.height), blendMode = BlendMode.DstOut)
-            val right = (left + band).coerceAtLeast(0f)
-            if (right < size.width) {
-                drawRect(
-                    dim,
-                    topLeft = Offset(right, 0f),
-                    size = Size(size.width - right, size.height),
-                    blendMode = BlendMode.DstOut,
-                )
-            }
-        }
-}
-
-private const val ScanMs = 1_200
-private val ScanBand = 48.dp
+private val SkeletonShimmer =
+    defaultShimmerTheme.copy(
+        shaderColors = listOf(Color.White.copy(alpha = 0.6f), Color.White, Color.White.copy(alpha = 0.6f))
+    )
 
 @Composable
 private fun Bar(width: Dp) {

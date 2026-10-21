@@ -13,6 +13,7 @@ kotlin {
             api(libs.compose.material3)
             api(projects.core.resources)
             api(projects.overlay.compose)
+            implementation(libs.compose.shimmer)
         }
     }
 }

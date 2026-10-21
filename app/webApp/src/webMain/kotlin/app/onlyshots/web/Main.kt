@@ -1,6 +1,8 @@
 package app.onlyshots.web
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
 import app.onlyshots.core.designsystem.loadOpenSans
@@ -55,6 +57,11 @@ fun main() {
         ComposeViewport(document.body!!) {
             val fileGone = stringResource(Res.string.core_web_file_gone)
             SideEffect { WebWords.fileGone = fileGone }
+            // The page's own splash (index.html) has been drawing until now: the editor is on screen, it can go.
+            LaunchedEffect(Unit) {
+                withFrameNanos {}
+                splashDone()
+            }
             EditorApp(
                 ExportWording.Web,
                 host =
@@ -70,6 +77,9 @@ fun main() {
         }
     }
 }
+
+/** Tells index.html's splash that the editor has drawn its first frame. */
+private fun splashDone(): Unit = js("globalThis.onlyshotsReady && globalThis.onlyshotsReady()")
 
 private val webModule = module {
     single<FileSystem> { WebFiles.fs }

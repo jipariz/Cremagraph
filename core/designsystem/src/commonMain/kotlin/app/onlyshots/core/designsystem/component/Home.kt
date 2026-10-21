@@ -51,6 +51,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -88,10 +90,26 @@ private val Tile = RoundedCornerShape(10.dp)
 private val Pill = RoundedCornerShape(10.dp)
 private val TileSize = 44.dp
 
-/** The app mark, 32 dp: the Viewfinder symbol in cream and orange, for the dark screens it sits on. */
+/**
+ * The app mark, 32 dp: the Viewfinder symbol in cream and orange, for the dark screens it sits on. With [splashTarget]
+ * it is where the splash's mark lands (the first screen's header): it says where it is and waits, unseen, until then.
+ */
 @Composable
-fun OnlyShotsMark(modifier: Modifier = Modifier) {
-    Image(CgIcons.OnlyShots, contentDescription = null, modifier = modifier.size(32.dp))
+fun OnlyShotsMark(modifier: Modifier = Modifier, splashTarget: Boolean = false) {
+    val target = LocalSplashTarget.current.takeIf { splashTarget }
+    Image(
+        CgIcons.OnlyShots,
+        contentDescription = null,
+        modifier =
+            modifier
+                .size(32.dp)
+                .then(
+                    if (target == null) Modifier
+                    else
+                        Modifier.onGloballyPositioned { target.bounds = it.boundsInRoot() }
+                            .graphicsLayer { alpha = if (target.hidden) 0f else 1f }
+                ),
+    )
 }
 
 /** "library · 12" in the Home header. */

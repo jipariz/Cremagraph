@@ -3,4 +3,12 @@
     <style name="Theme.OnlyShots" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/window_background</item>
     </style>
+
+    <!-- The cold start (design/splash/SPEC.md): espresso and the mark, which the app then carries on from. Android 12+
+         animates the icon (values-v31); the backport shows the finished mark still. -->
+    <style name="Theme.OnlyShots.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon_still</item>
+        <item name="postSplashScreenTheme">@style/Theme.OnlyShots</item>
+    </style>
 </resources>

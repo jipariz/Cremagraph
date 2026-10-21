@@ -36,7 +36,10 @@ import org.koin.compose.koinInject
  * desktop and the web run the editor alone (`EditorApp` in `:editor`).
  */
 @Composable
-fun OnlyShotsApp() {
+fun OnlyShotsApp(
+    /** The cold start's splash, carried on from the platform's own launch screen; null for none. */
+    splash: SplashState? = null
+) {
     CgTheme {
         val backStack = rememberNavBackStack(RouteSaving, StartRoute)
         // The machine connects while the app is in the foreground and lets go when it is not:
@@ -44,7 +47,7 @@ fun OnlyShotsApp() {
         val machine: SourceHolder = koinInject()
         LifecycleEventEffect(Lifecycle.Event.ON_START) { machine.resume() }
         LifecycleEventEffect(Lifecycle.Event.ON_STOP) { machine.pause() }
-        ProvideWindowLayout { SharedMotion { Graph(backStack) } }
+        SplashHost(splash) { ProvideWindowLayout { SharedMotion { Graph(backStack) } } }
     }
 }
 

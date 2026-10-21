@@ -281,7 +281,7 @@ private fun MobileHeader(store: Store, open: (() -> Unit)?) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            OnlyShotsMark(Modifier.size(26.dp))
+            OnlyShotsMark(Modifier.size(26.dp), splashTarget = true)
             Text(
                 stringResource(Res.string.app_name),
                 style = CgTheme.type.body.copy(fontSize = 19.sp),

@@ -24,6 +24,7 @@ androidx-camerax = "1.5.1"
 androidx-benchmark = "1.5.0"
 androidx-uiautomator = "2.4.0"
 androidx-profileinstaller = "1.4.1"
+androidx-splashscreen = "1.2.0"
 androidx-media3 = "1.8.0"
 coroutines = "1.11.0"
 serialization = "1.11.0"
@@ -106,6 +107,7 @@ androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "andro
 androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "androidx-benchmark" }
 androidx-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "androidx-uiautomator" }
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "androidx-profileinstaller" }
+androidx-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "androidx-splashscreen" }
 androidx-core = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-media3-common = { module = "androidx.media3:media3-common", version.ref = "androidx-media3" }
 androidx-window = { module = "androidx.window:window", version.ref = "androidx-window" }

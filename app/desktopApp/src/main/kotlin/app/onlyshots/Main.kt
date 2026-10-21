@@ -33,6 +33,8 @@ fun main() {
         Taskbar.getTaskbar().iconImage = icon
     }
     val windowIcon = BitmapPainter(icon.toComposeImageBitmap())
+    // The whole splash plays in the window as it opens, while the library is read.
+    val splash = SplashState(held = false)
     application {
         Window(
             onCloseRequest = ::exitApplication,
@@ -48,6 +50,8 @@ fun main() {
                         headerNote = stringResource(Res.string.core_desktop_header_note),
                         videosNote = stringResource(Res.string.core_desktop_videos_note),
                     ),
+                splash = splash,
+                ready = { Startup.ready },
             )
         }
     }

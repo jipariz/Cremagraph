@@ -12,24 +12,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.illus_phone_graph
 import app.onlyshots.core.resources.illus_store_apple
@@ -68,55 +66,53 @@ internal enum class Store {
 }
 
 /**
- * A store's button, as the design draws it: black, a grey hairline, the store's mark and its two lines ("GET IT ON /
- * Google Play", "Download on the / App Store").
+ * A store's key, as the stores ask it to be drawn: black, a hairline edge, the store's mark and its two lines ("GET IT
+ * ON / Google Play", "Download on the / App Store"). Square, like every key here.
  */
 @Composable
 internal fun StoreButton(store: Store, onClick: () -> Unit, modifier: Modifier = Modifier, height: Dp = 52.dp) {
-    val shape = RoundedCornerShape(12.dp)
     val label = stringResource(if (store == Store.Play) Res.string.open_store_play else Res.string.open_store_app_store)
     Row(
         modifier
             .heightIn(min = height)
-            .clip(shape)
-            .background(Color.Black)
-            .border(1.dp, CgColors.Text.Dim, shape)
+            .background(CgColors.Surface.Scrim)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = label }
-            .padding(start = 16.dp, end = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            .padding(start = CgSpace.S16, end = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S12, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (store == Store.Play) PlayMark(Modifier.size(22.dp, 24.dp)) else AppleMark(Modifier.size(20.dp, 24.dp))
+        if (store == Store.Play) PlayMark(Modifier.size(22.dp, 24.dp))
+        else AppleMark(Modifier.size(20.dp, 24.dp), CgColors.Text.Primary)
         Column {
             Text(
                 stringResource(
                     if (store == Store.Play) Res.string.open_store_play_top else Res.string.open_store_app_store_top
                 ),
-                style = CgTheme.type.body.copy(fontSize = 11.sp, lineHeight = 12.sp, letterSpacing = 0.03.em),
-                color = CgColors.Series.Weight,
+                style = CgTheme.type.micro,
+                color = CgColors.Text.Secondary,
             )
             Text(
                 stringResource(
                     if (store == Store.Play) Res.string.open_store_play_name else Res.string.open_store_app_store_name
                 ),
-                style = CgTheme.type.body.copy(fontSize = 18.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
-                color = Color.White,
+                style = CgTheme.type.cardTitle,
+                color = CgColors.Text.Primary,
             )
         }
     }
 }
 
 /**
- * The computer's (and tablet's) "Get the app" band, under the steps: what the app adds, and a button for each store
- * this browser has one for.
+ * The computer's (and tablet's) "Get the app" band, under the steps: a hairline cell with what the app adds, and a key
+ * for each store this browser has one for.
  */
 @Composable
 internal fun AppBand(stores: StoreLinks, wide: Boolean) {
-    val shape = RoundedCornerShape(20.dp)
     val buttons =
         @Composable {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
                 stores.onPlay?.let { StoreButton(Store.Play, it) }
                 stores.onAppStore?.let { StoreButton(Store.AppStore, it) }
             }
@@ -125,24 +121,21 @@ internal fun AppBand(stores: StoreLinks, wide: Boolean) {
         @Composable { mod: Modifier ->
             Row(
                 mod,
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                horizontalArrangement = Arrangement.spacedBy(CgSpace.S16),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(CgColors.Surface.Raised),
-                    Alignment.Center,
-                ) {
+                Box(Modifier.size(52.dp).border(CgStroke.Hairline, CgColors.Line.Hairline), Alignment.Center) {
                     PhoneGraphIcon(Modifier.size(26.dp))
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
                     Text(
-                        stringResource(Res.string.open_banner_title),
-                        style = CgTheme.type.body.copy(fontSize = 18.sp),
+                        stringResource(Res.string.open_banner_title).caps(),
+                        style = CgTheme.type.label,
                         color = CgColors.Text.Primary,
                     )
                     Text(
                         stringResource(Res.string.open_band_detail),
-                        style = CgTheme.type.body.copy(fontSize = 15.sp, lineHeight = 22.sp),
+                        style = CgTheme.type.bodySmall,
                         color = CgColors.Text.Secondary,
                     )
                 }
@@ -150,10 +143,9 @@ internal fun AppBand(stores: StoreLinks, wide: Boolean) {
         }
     val mod =
         Modifier.fillMaxWidth()
-            .clip(shape)
             .background(CgColors.Surface.Bar)
-            .border(1.dp, CgColors.Line.Hairline, shape)
-            .padding(horizontal = 28.dp, vertical = 24.dp)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .padding(horizontal = CgSpace.S24, vertical = 20.dp)
     if (wide) {
         Row(mod, horizontalArrangement = Arrangement.spacedBy(32.dp), verticalAlignment = Alignment.CenterVertically) {
             text(Modifier.weight(1f))
@@ -177,7 +169,7 @@ internal fun PlayMark(modifier: Modifier) {
 
 /** The Apple mark, in [color]. */
 @Composable
-internal fun AppleMark(modifier: Modifier, color: Color = Color.White) {
+internal fun AppleMark(modifier: Modifier, color: Color = CgColors.Text.Primary) {
     Image(
         painterResource(Res.drawable.illus_store_apple),
         null,

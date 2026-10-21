@@ -2,7 +2,6 @@ package app.onlyshots.open
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -17,13 +16,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,18 +32,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
-import app.onlyshots.core.designsystem.component.CgButton
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.ChoiceCard
 import app.onlyshots.core.designsystem.component.HeaderBack
@@ -60,7 +63,6 @@ import app.onlyshots.core.resources.app_name
 import app.onlyshots.core.resources.open_change
 import app.onlyshots.core.resources.open_choose
 import app.onlyshots.core.resources.open_drop_to_use
-import app.onlyshots.core.resources.open_editor
 import app.onlyshots.core.resources.open_from_file
 import app.onlyshots.core.resources.open_from_machine
 import app.onlyshots.core.resources.open_from_machine_detail
@@ -74,6 +76,7 @@ import app.onlyshots.core.resources.open_phone_video_title
 import app.onlyshots.core.resources.open_sheet_title
 import app.onlyshots.core.resources.open_shot_file_detail
 import app.onlyshots.core.resources.open_shot_from
+import app.onlyshots.core.resources.open_video
 import app.onlyshots.core.resources.source_scale
 import app.onlyshots.core.resources.start_title
 import app.onlyshots.core.resources.text
@@ -212,56 +215,64 @@ fun OpenBody(
     Page(onBack = onBack, modifier = modifier) {
         val opening = status?.takeIf { it == Opening }?.text()
         Column(
-            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = CgSpace.S16),
-            verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
+            Modifier.weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = CgSpace.S16)
+                .padding(top = CgSpace.S8),
+            verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
         ) {
             if (onBack == null) {
-                Text(stringResource(Res.string.start_title), style = CgTheme.type.sheetTitle)
+                Text(stringResource(Res.string.start_title), style = CgTheme.type.pivot)
                 Text(
                     stringResource(Res.string.open_phone_intro),
                     style = CgTheme.type.body,
                     color = CgColors.Text.Secondary,
                 )
             }
-            Step(
-                number = 1,
-                title = stringResource(Res.string.open_phone_video_title),
-                detail =
-                    opening
-                        ?: picked?.let(::videoDetail)
-                        ?: if (dragging) stringResource(Res.string.open_drop_to_use)
-                        else if (onBack == null) stringResource(Res.string.open_phone_video_drop)
-                        else stringResource(Res.string.open_phone_video_gallery),
-                action = stringResource(if (picked == null) Res.string.open_choose else Res.string.open_change),
-                done = picked != null,
-                highlighted = dragging,
-                onClick = onPickVideo,
-                modifier = Modifier.testTag(TestTags.OpenPickVideo),
-            )
-            Step(
-                number = 2,
-                title = stringResource(Res.string.open_phone_shot_title),
-                detail =
-                    shot?.let {
-                        if (it.from == "file") it.label
-                        else stringResource(Res.string.open_shot_from, it.label, it.from)
-                    }
-                        ?: if (fromMachine) stringResource(Res.string.open_phone_shot_machine)
-                        else stringResource(Res.string.open_shot_file_detail),
-                action = stringResource(if (shot == null) Res.string.open_choose else Res.string.open_change),
-                done = shot != null,
-                onClick = onPickShot,
-                modifier = Modifier.testTag(TestTags.OpenPickShot),
-            )
-            status
-                ?.takeIf { it != Opening }
-                ?.let { Text(it.text(), style = CgTheme.type.body, color = CgColors.Status.Highlight) }
+            StepFrame {
+                StepRow(
+                    number = 1,
+                    title = stringResource(Res.string.open_phone_video_title),
+                    detail =
+                        opening
+                            ?: picked?.let(::videoDetail)
+                            ?: if (dragging) stringResource(Res.string.open_drop_to_use)
+                            else if (onBack == null) stringResource(Res.string.open_phone_video_drop)
+                            else stringResource(Res.string.open_phone_video_gallery),
+                    action = stringResource(if (picked == null) Res.string.open_choose else Res.string.open_change),
+                    done = picked != null,
+                    next = picked == null,
+                    highlighted = dragging,
+                    onClick = onPickVideo,
+                    modifier = Modifier.testTag(TestTags.OpenPickVideo),
+                )
+                StepDivider()
+                StepRow(
+                    number = 2,
+                    title = stringResource(Res.string.open_phone_shot_title),
+                    detail =
+                        shot?.let {
+                            if (it.from == "file") it.label
+                            else stringResource(Res.string.open_shot_from, it.label, it.from)
+                        }
+                            ?: if (fromMachine) stringResource(Res.string.open_phone_shot_machine)
+                            else stringResource(Res.string.open_shot_file_detail),
+                    action = stringResource(if (shot == null) Res.string.open_choose else Res.string.open_change),
+                    done = shot != null,
+                    next = picked != null && shot == null,
+                    onClick = onPickShot,
+                    modifier = Modifier.testTag(TestTags.OpenPickShot),
+                )
+            }
+            status?.takeIf { it != Opening }?.let { StatusLine(it.text()) }
+            if (picked != null) PickedVideo(picked, pickedFile)
         }
-        CgButton(
-            stringResource(Res.string.open_editor),
+        OpenEditorKey(
+            ready = picked != null && shot != null,
             onClick = onOpenEditor,
-            enabled = picked != null && shot != null,
-            modifier = Modifier.testTag(TestTags.OpenEditor).fillMaxWidth().padding(CgSpace.S16),
+            fill = true,
+            modifier = Modifier.padding(CgSpace.S16),
         )
     }
 }
@@ -269,7 +280,7 @@ fun OpenBody(
 /** What the shot sheet offers: a file, and the machine where the host can reach one. */
 @Composable
 fun ShotSourceChoices(onFile: () -> Unit, onMachine: (() -> Unit)?) {
-    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
+    Column {
         ChoiceCard(
             icon = CgIcons.Film,
             tileColor = CgColors.Surface.Raised,
@@ -285,7 +296,8 @@ fun ShotSourceChoices(onFile: () -> Unit, onMachine: (() -> Unit)?) {
                 title = stringResource(Res.string.open_from_machine),
                 detail = stringResource(Res.string.open_from_machine_detail),
                 onClick = onMachine,
-                modifier = Modifier.testTag(TestTags.OpenFromMachine),
+                // The cells share their hairline, as the canvas stacks them.
+                modifier = Modifier.offset(y = -CgStroke.Hairline).testTag(TestTags.OpenFromMachine),
             )
         }
     }
@@ -305,11 +317,11 @@ private fun Page(onBack: (() -> Unit)?, modifier: Modifier, content: @Composable
             } else {
                 Row(
                     Modifier.fillMaxWidth().height(72.dp).padding(horizontal = CgSpace.S16),
-                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OnlyShotsMark(splashTarget = true)
-                    Text(stringResource(Res.string.app_name), style = CgTheme.type.screenTitle)
+                    Text(stringResource(Res.string.app_name).caps(), style = CgTheme.type.sheetTitle)
                 }
             }
             content()
@@ -317,67 +329,136 @@ private fun Page(onBack: (() -> Unit)?, modifier: Modifier, content: @Composable
     }
 }
 
-/** A numbered step: what it is, what was picked (or what to pick), and the button to pick it. */
+/** The steps' hairline frame: the two rows share it, with a hairline between them. */
 @Composable
-private fun Step(
+internal fun StepFrame(content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline), content = content)
+}
+
+@Composable
+internal fun StepDivider() {
+    Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
+}
+
+/**
+ * A numbered step on the phones, from the canvas's Open-Phone and Open-Ready: its number in a 36 dp square (signal when
+ * it is next, bone with a tick once done), what it is, what was picked (or what to pick), and the key. The next step
+ * carries a signal rule down its leading edge; the whole row takes the tap.
+ */
+@Composable
+internal fun StepRow(
     number: Int,
     title: String,
     detail: String,
     action: String,
     done: Boolean,
+    next: Boolean,
     onClick: () -> Unit,
-    highlighted: Boolean = false,
     modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
 ) {
-    val card = RoundedCornerShape(16.dp)
     // A step lights up as it is done or hovered with a file, rather than switching at once.
-    val ground by
-        animateColorAsState(if (highlighted) CgColors.Surface.Raised else CgColors.Surface.Bar, CgMotion.short())
-    val edge by
-        animateColorAsState(
-            when {
-                highlighted -> CgColors.Text.Primary
-                done -> CgColors.Text.Secondary
-                else -> CgColors.Line.Hairline
-            },
-            CgMotion.short(),
-        )
-    val edgeWidth by animateDpAsState(if (highlighted) 2.dp else 1.dp, CgMotion.short())
-    val disc by animateColorAsState(if (done) CgColors.Text.Primary else CgColors.Surface.Raised, CgMotion.medium())
-    val digit by animateColorAsState(if (done) CgColors.Text.OnLight else CgColors.Text.Primary, CgMotion.medium())
+    val ground by animateColorAsState(if (highlighted) CgColors.Surface.Raised else Color.Transparent, CgMotion.short())
+    val box by animateColorAsState(if (done) CgColors.Brand.Bone else Color.Transparent, CgMotion.medium())
+    val edge =
+        when {
+            done -> CgColors.Brand.Bone
+            next || highlighted -> CgColors.Brand.Signal
+            else -> CgColors.Line.Hairline
+        }
+    val digit =
+        when {
+            done -> CgColors.Text.OnLight
+            next -> CgColors.Brand.Signal
+            else -> CgColors.Text.Secondary
+        }
     Row(
         modifier
             .fillMaxWidth()
-            .clip(card)
             .background(ground)
-            .border(edgeWidth, edge, card)
             .clickable(role = Role.Button, onClick = onClick)
+            .drawBehind {
+                if (next || highlighted) {
+                    drawRect(CgColors.Brand.Signal, size = Size(LeadRule.toPx(), size.height))
+                }
+            }
             .padding(CgSpace.S16),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(32.dp).clip(CircleShape).background(disc),
+            Modifier.size(36.dp).background(box).border(CgStroke.Hairline, edge),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                "$number",
-                style = CgTheme.type.label,
+                if (done) "✓" else stepNumber(number),
+                style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em),
                 color = digit,
             )
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = CgTheme.type.body)
+            Text(title.caps(), style = CgTheme.type.label.copy(letterSpacing = 0.em))
             // "choose a video" → the picked file's name and length, with a fade.
             AnimatedContent(
                 detail,
                 transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) },
                 label = "detail",
             ) {
-                Text(it, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+                Text(
+                    it,
+                    style = if (done) CgTheme.type.data else CgTheme.type.bodySmall,
+                    color = CgColors.Text.Secondary,
+                )
             }
         }
-        Text(action, style = CgTheme.type.label, color = CgColors.Text.Secondary)
+        StepKey(action, signal = next && !done, onClick = null)
+    }
+}
+
+/** The signal rule down the leading edge of the step that is next. */
+private val LeadRule = 3.dp
+
+/**
+ * The picked video on the phones, from Open-Ready: a frame of it in 9:16 with its length on it, and beside it, its name
+ * and size.
+ */
+@Composable
+private fun PickedVideo(picked: VideoItem, file: PickedFile?) {
+    Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S16), verticalAlignment = Alignment.Bottom) {
+        Box(Modifier.size(158.dp, 280.dp)) {
+            VideoTile(file?.thumb, modifier = Modifier.fillMaxSize())
+            Text(
+                length(picked.trimmedDurationUs),
+                style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em),
+                modifier =
+                    Modifier.align(Alignment.BottomStart)
+                        .padding(6.dp)
+                        .background(CgColors.Surface.Base.copy(alpha = 0.85f))
+                        .padding(horizontal = 6.dp, vertical = 3.dp),
+            )
+        }
+        Column(Modifier.padding(bottom = CgSpace.S4), verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
+            Text(
+                stringResource(Res.string.open_video).caps(),
+                style = CgTheme.type.caption,
+                color = CgColors.Text.Secondary,
+            )
+            Text(
+                file?.name ?: stringResource(Res.string.open_video),
+                style = CgTheme.type.label.copy(letterSpacing = 0.em),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            file
+                ?.takeIf { it.widthPx > 0 && it.heightPx > 0 }
+                ?.let {
+                    Text(
+                        "${it.widthPx} × ${it.heightPx}",
+                        style = CgTheme.type.caption,
+                        color = CgColors.Text.Secondary,
+                    )
+                }
+        }
     }
 }
 

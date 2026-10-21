@@ -14,6 +14,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -36,7 +37,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,10 +54,12 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -81,7 +83,9 @@ import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
 import app.onlyshots.core.designsystem.component.Banner
 import app.onlyshots.core.designsystem.component.BannerKind
@@ -697,8 +701,8 @@ fun EditBody(
 private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions) {
     val video = ui.item
     Row(
-        Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
+        Modifier.fillMaxWidth().bottomRule().padding(CgSpace.S8),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BackButton(onClick = onBack)
@@ -899,7 +903,7 @@ private fun TimeBand(
     onZoom: (Float?) -> Unit,
     actions: EditActions,
 ) {
-    Column(Modifier.fillMaxWidth().background(CgColors.Surface.Bar).padding(bottom = CgSpace.S8)) {
+    Column(Modifier.fillMaxWidth().topRule().background(CgColors.Surface.Base).padding(bottom = CgSpace.S8)) {
         EditTimeline(
             item = video,
             playheadUs = { player.positionUs },
@@ -1020,13 +1024,13 @@ private val PanelPages = listOf(EditSheet.STYLE, EditSheet.DATA, EditSheet.TEXT)
 private fun WideTopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions) {
     val video = ui.item
     Row(
-        Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 10.dp),
+        Modifier.fillMaxWidth().bottomRule().padding(CgSpace.S8),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BackButton(onClick = onBack)
         Text(
-            video?.shot?.profileName ?: video?.file.orEmpty(),
+            (video?.shot?.profileName ?: video?.file.orEmpty()).caps(),
             style = CgTheme.type.label,
             color = CgColors.Text.Primary,
             maxLines = 1,
@@ -1110,7 +1114,7 @@ private fun VideoPanel(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("${shot.profileName} · ${machineLabel(shot.source)}", style = CgTheme.type.body)
+                        Text("${shot.profileName} · ${machineLabel(shot.source)}".caps(), style = CgTheme.type.label)
                         Text(shotDetail(video), style = CgTheme.type.caption, color = CgColors.Text.Secondary)
                     }
                     Pill(stringResource(Res.string.edit_change), onClick = { changingShot = true })
@@ -1157,7 +1161,7 @@ private fun VideoPanel(
             if (shot != null) {
                 Spacer(Modifier.height(CgSpace.S8))
                 PanelLabel(stringResource(Res.string.edit_graph))
-                Text(ui.style?.name ?: video.overlay.styleId, style = CgTheme.type.body)
+                Text((ui.style?.name ?: video.overlay.styleId).caps(), style = CgTheme.type.label)
                 Text(
                     stringResource(Res.string.edit_tap_graph_hint),
                     style = CgTheme.type.caption,
@@ -1183,7 +1187,7 @@ private fun shotDetail(video: VideoItem): String {
 
 @Composable
 private fun PanelLabel(text: String) {
-    Text(text.uppercase(), style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
+    Text(text.caps(), style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
 }
 
 /**
@@ -1205,7 +1209,7 @@ private fun PlayerHalf(
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
             BackButton(onClick = onBack)
             val shot = video.shot
-            Text(shot?.profileName ?: video.file, style = CgTheme.type.cardTitle, maxLines = 2)
+            Text((shot?.profileName ?: video.file).caps(), style = CgTheme.type.cardTitle, maxLines = 2)
             if (shot != null)
                 Text(
                     shotDetail(video).removePrefix(" · "),
@@ -1262,7 +1266,7 @@ private fun ToolChips(ui: EditUiState, video: VideoItem, actions: EditActions, o
         } else {
             Pill(stringResource(Res.string.edit_add_shot), onClick = { actions.openSheet(EditSheet.SHOT) })
         }
-        Pill(stringResource(LocalExportWording.current.save), onClick = onExport, light = true)
+        TopChip(stringResource(LocalExportWording.current.save), onClick = onExport, primary = true, caret = false)
     }
 }
 
@@ -1338,7 +1342,7 @@ private fun EditPanel(
             tags = listOf(TestTags.ToolbarStyle, TestTags.ToolbarData, TestTags.ToolbarText),
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
-            Text(title, style = CgTheme.type.sheetTitle, modifier = Modifier.weight(1f))
+            Text(title.caps(), style = CgTheme.type.sheetTitle, modifier = Modifier.weight(1f))
             tools()
             Pill(
                 stringResource(Res.string.edit_done),
@@ -1370,15 +1374,15 @@ private fun PlayMark(taps: Int, playing: Boolean, modifier: Modifier = Modifier)
     }
     Box(
         modifier
-            .size(64.dp)
+            .size(56.dp)
             .graphicsLayer {
                 alpha = fade.value
                 val grow = 1f + 0.25f * (1f - fade.value)
                 scaleX = grow
                 scaleY = grow
             }
-            .clip(CircleShape)
-            .background(CgColors.Surface.Scrim.copy(alpha = 0.55f)),
+            .background(CgColors.Surface.Base.copy(alpha = 0.6f))
+            .border(CgStroke.Hairline, CgColors.Brand.Bone),
         contentAlignment = Alignment.Center,
     ) {
         Text(if (playing) "▶" else "❚❚", style = CgTheme.type.cardTitle, color = CgColors.Text.Primary)
@@ -1386,3 +1390,14 @@ private fun PlayMark(taps: Int, playing: Boolean, modifier: Modifier = Modifier)
 }
 
 private const val PLAY_MARK_MS = 450
+
+/** A hairline along the bottom edge: under the top bars. */
+private fun Modifier.bottomRule(): Modifier = drawBehind {
+    val h = CgStroke.Hairline.toPx()
+    drawRect(CgColors.Line.Hairline, Offset(0f, size.height - h), Size(size.width, h))
+}
+
+/** A hairline along the top edge: over the timeline's band. */
+private fun Modifier.topRule(): Modifier = drawBehind {
+    drawRect(CgColors.Line.Hairline, Offset.Zero, Size(size.width, CgStroke.Hairline.toPx()))
+}

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.Arriving
@@ -98,7 +98,7 @@ fun MachineShotsBody(
                     SectionHeader(
                         stringResource(Res.string.home_machines_title),
                         trailing = foundNote(state.machines.size).text(),
-                        trailingColor = if (state.machines.isEmpty()) CgColors.Status.Highlight else CgColors.Text.Dim,
+                        trailingColor = if (state.machines.isEmpty()) CgColors.Brand.Signal else CgColors.Text.Primary,
                         searching = state.machines.isEmpty(),
                     )
                     val settled = rememberListSettled()
@@ -121,8 +121,8 @@ fun MachineShotsBody(
                     if (state.machines.isEmpty()) SkeletonRow()
                     Text(
                         stringResource(Res.string.home_shots_same_wifi),
-                        style = CgTheme.type.caption,
-                        color = CgColors.Text.Dim,
+                        style = CgTheme.type.bodySmall,
+                        color = CgColors.Text.Secondary,
                     )
                 } else {
                     val shots = state.shots
@@ -131,7 +131,7 @@ fun MachineShotsBody(
                         trailing =
                             state.busy?.text()
                                 ?: if (shots == null) stringResource(Res.string.home_shots_loading) else null,
-                        trailingColor = CgColors.Status.Highlight,
+                        trailingColor = CgColors.Brand.Signal,
                         searching = shots == null || state.busy != null,
                         modifier = Modifier.shareBounds(machineKey(shown), page, CardShape),
                     )
@@ -151,7 +151,8 @@ fun MachineShotsBody(
                         },
                         label = "shots",
                     ) { now ->
-                        Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                        // The shots as one list of cells meeting on their hairlines.
+                        Column {
                             when (now) {
                                 ShotsList.LOADING -> repeat(3) { SkeletonRow() }
                                 ShotsList.NONE ->
@@ -177,7 +178,7 @@ fun MachineShotsBody(
                     }
                     state.message
                         ?.takeIf { shots?.isNotEmpty() == true }
-                        ?.let { Text(it.text(), style = CgTheme.type.body, color = CgColors.Status.Highlight) }
+                        ?.let { Text(it.text(), style = CgTheme.type.bodySmall, color = CgColors.Status.Warning) }
                 }
             }
         }
@@ -193,7 +194,7 @@ private enum class ShotsList {
 /** A machine's row and the header of its shots: the same thing, one becoming the other. */
 private fun machineKey(found: FoundMachine): Any = "machine-${found.host}"
 
-private val CardShape = RoundedCornerShape(12.dp)
+private val CardShape = CgShape.Chip
 
 /** A back header over a phone column, centred on a tablet. */
 @Composable

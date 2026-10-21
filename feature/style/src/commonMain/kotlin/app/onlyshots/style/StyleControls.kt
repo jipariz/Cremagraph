@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
@@ -35,12 +34,14 @@ import app.onlyshots.connect.label
 import app.onlyshots.connect.labelRes
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgToggle
 import app.onlyshots.core.designsystem.component.ColorChip
 import app.onlyshots.core.designsystem.component.SegmentedControl
-import app.onlyshots.core.designsystem.component.SettingRow
 import app.onlyshots.core.model.style.CellLook
 import app.onlyshots.core.model.style.GraphStyle
 import app.onlyshots.core.model.style.GridMode
@@ -164,7 +165,7 @@ private typealias Pick = (ColorTarget) -> Unit
 @Composable
 internal fun PanelControls(s: GraphStyle, change: Change, pickColor: Pick) {
     val materials = listOf(Material.SOLID, Material.BLUR, Material.GLASS, Material.NONE)
-    SettingRow(stringResource(Res.string.style_material)) {
+    ChoiceRow(stringResource(Res.string.style_material)) {
         SegmentedControl(
             listOf(
                 stringResource(Res.string.style_solid),
@@ -173,6 +174,7 @@ internal fun PanelControls(s: GraphStyle, change: Change, pickColor: Pick) {
                 stringResource(Res.string.style_none),
             ),
             materials.indexOf(s.panel.material),
+            fill = true,
             onSelect = { i -> change { it.withMaterial(materials[i]) } },
         )
     }
@@ -206,7 +208,7 @@ internal fun PanelControls(s: GraphStyle, change: Change, pickColor: Pick) {
                 change { it.withPanelBlur(v.roundToInt().toFloat()) }
             }
             Corners(s, change)
-            SettingRow(stringResource(Res.string.style_tiles)) {
+            StyleRow(stringResource(Res.string.style_tiles)) {
                 CgToggle(
                     p.tiles != null,
                     onCheckedChange = { on -> change { it.withTiles(if (on) DefaultTiles else null) } },
@@ -251,7 +253,7 @@ internal fun PanelControls(s: GraphStyle, change: Change, pickColor: Pick) {
     SliderRow(stringResource(Res.string.style_padding), p.padding, 0f..14f, px(p.padding)) { v ->
         change { it.withPadding(v.roundToInt().toFloat()) }
     }
-    SettingRow(stringResource(Res.string.style_adapt_to_video)) {
+    StyleRow(stringResource(Res.string.style_adapt_to_video)) {
         CgToggle(s.adapt.enabled, onCheckedChange = { on -> change { it.withAdapt(on) } })
     }
     More(stringResource(Res.string.style_more_for_panel)) {
@@ -301,7 +303,7 @@ internal fun PanelControls(s: GraphStyle, change: Change, pickColor: Pick) {
             change,
             pickColor,
         )
-        SettingRow(stringResource(Res.string.style_glow)) {
+        StyleRow(stringResource(Res.string.style_glow)) {
             CgToggle(p.glow != null, onCheckedChange = { on -> change { it.withGlow(if (on) DefaultGlow else null) } })
         }
         p.glow?.let { g ->
@@ -346,9 +348,13 @@ private fun Corners(s: GraphStyle, change: Change) {
 internal fun LineControls(s: GraphStyle, change: Change, pickColor: Pick) {
     for (series in StyleSeries) {
         val c = s.series.of(series)
-        Row(Modifier.fillMaxWidth().heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(22.dp, 4.dp).clip(RoundedCornerShape(2.dp)).background(Color(c)))
-            Text(series.label, style = CgTheme.type.body, modifier = Modifier.weight(1f).padding(start = 10.dp))
+        Row(Modifier.fillMaxWidth().heightIn(min = CgSize.Touch), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(12.dp, 3.dp).background(Color(c)))
+            Text(
+                series.label.caps(),
+                style = CgTheme.type.labelStrong,
+                modifier = Modifier.weight(1f).padding(start = 10.dp),
+            )
             ColorChip(
                 Color(c),
                 colorName(c).text(),
@@ -371,10 +377,11 @@ internal fun LineControls(s: GraphStyle, change: Change, pickColor: Pick) {
     SliderRow(stringResource(Res.string.style_other_curves), l.secondary, 1f..4f, px1(l.secondary)) { v ->
         change { it.withLineWeights(it.lines.main, step(v, 0.1f)) }
     }
-    SettingRow(stringResource(Res.string.style_shape)) {
+    ChoiceRow(stringResource(Res.string.style_shape)) {
         SegmentedControl(
             listOf(stringResource(Res.string.style_smooth), stringResource(Res.string.style_stepped)),
             if (l.stepped) 1 else 0,
+            fill = true,
             onSelect = { i -> change { it.withStepped(i == 1) } },
         )
     }
@@ -387,7 +394,7 @@ internal fun LineControls(s: GraphStyle, change: Change, pickColor: Pick) {
         change { it.withArea(step(v, 0.02f)) }
     }
     val looks = listOf(TargetLook.DASHED, TargetLook.DOTTED, TargetLook.FAINT)
-    SettingRow(stringResource(Res.string.style_targets)) {
+    ChoiceRow(stringResource(Res.string.style_targets)) {
         SegmentedControl(
             listOf(
                 stringResource(Res.string.style_dashed),
@@ -395,6 +402,7 @@ internal fun LineControls(s: GraphStyle, change: Change, pickColor: Pick) {
                 stringResource(Res.string.style_faint),
             ),
             looks.indexOf(l.targets),
+            fill = true,
             onSelect = { i -> change { it.withTargets(looks[i]) } },
         )
     }
@@ -429,7 +437,7 @@ internal fun LineControls(s: GraphStyle, change: Change, pickColor: Pick) {
 @Composable
 internal fun GridControls(s: GraphStyle, change: Change, pickColor: Pick) {
     val modes = listOf(GridMode.NONE, GridMode.ROWS, GridMode.BOTH)
-    SettingRow(stringResource(Res.string.style_grid)) {
+    ChoiceRow(stringResource(Res.string.style_grid)) {
         SegmentedControl(
             listOf(
                 stringResource(Res.string.style_none),
@@ -437,6 +445,7 @@ internal fun GridControls(s: GraphStyle, change: Change, pickColor: Pick) {
                 stringResource(Res.string.style_rows_and_columns),
             ),
             modes.indexOf(s.grid.mode),
+            fill = true,
             onSelect = { i -> change { it.withGrid(modes[i]) } },
             tags = modes.map { TestTags.choice("grid", it.name) },
         )
@@ -453,7 +462,7 @@ internal fun GridControls(s: GraphStyle, change: Change, pickColor: Pick) {
             s,
             pickColor,
         )
-        SettingRow(stringResource(Res.string.style_dashed)) {
+        StyleRow(stringResource(Res.string.style_dashed)) {
             CgToggle(s.grid.dash != null, onCheckedChange = { on -> change { it.withGridDashed(on) } })
         }
     }
@@ -544,10 +553,11 @@ internal fun ReadingControls(s: GraphStyle, luma: Float, change: Change, pickCol
         addAll(listOf(CellLook.FILLED, CellLook.OUTLINED, CellLook.PLAIN, CellLook.GLOSSY))
         if (s.panel.tiles != null) add(CellLook.TILES)
     }
-    SettingRow(stringResource(Res.string.style_cells)) {
+    ChoiceRow(stringResource(Res.string.style_cells)) {
         SegmentedControl(
             looks.map { stringResource(it.label) },
             looks.indexOf(s.cells.look),
+            fill = true,
             onSelect = { i -> change { it.withCellLook(looks[i]) } },
         )
     }
@@ -604,7 +614,7 @@ internal fun ReadingControls(s: GraphStyle, luma: Float, change: Change, pickCol
             else -> 2
         }
     var custom by remember { mutableStateOf(mode == 2) }
-    SettingRow(stringResource(Res.string.style_values)) {
+    ChoiceRow(stringResource(Res.string.style_values)) {
         SegmentedControl(
             listOf(
                 stringResource(Res.string.style_series_colours),
@@ -612,6 +622,7 @@ internal fun ReadingControls(s: GraphStyle, luma: Float, change: Change, pickCol
                 stringResource(Res.string.style_custom),
             ),
             if (custom) 2 else mode,
+            fill = true,
             onSelect = { i ->
                 custom = i == 2
                 when (i) {
@@ -636,7 +647,7 @@ internal fun ReadingControls(s: GraphStyle, luma: Float, change: Change, pickCol
         }
     }
     val weights = listOf(300, 400, 600)
-    SettingRow(stringResource(Res.string.style_value_weight)) {
+    ChoiceRow(stringResource(Res.string.style_value_weight)) {
         SegmentedControl(
             listOf(
                 stringResource(Res.string.style_light),
@@ -644,13 +655,14 @@ internal fun ReadingControls(s: GraphStyle, luma: Float, change: Change, pickCol
                 stringResource(Res.string.style_semibold),
             ),
             weights.indexOf(c.valueWeight).coerceAtLeast(0),
+            fill = true,
             onSelect = { i -> change { it.withValueWeight(weights[i]) } },
         )
     }
     SliderRow(stringResource(Res.string.style_corners), c.radius, 0f..16f, px(c.radius)) { v ->
         change { it.withCellRadius(v.roundToInt().toFloat()) }
     }
-    SettingRow(stringResource(Res.string.style_adapt_to_video)) {
+    StyleRow(stringResource(Res.string.style_adapt_to_video)) {
         CgToggle(s.adapt.enabled, onCheckedChange = { on -> change { it.withAdapt(on) } })
     }
     if (s.adapt.enabled) {
@@ -723,18 +735,46 @@ private fun DarkControls(s: GraphStyle, change: Change, pickColor: Pick) {
     ) { e ->
         change { it.withDarkEffect(e) }
     }
-    SettingRow(stringResource(Res.string.style_scrim)) {
+    StyleRow(stringResource(Res.string.style_scrim)) {
         CgToggle(s.adapt.scrim, onCheckedChange = { on -> change { it.withScrim(on) } })
     }
 }
 
 // Shared rows ---------------------------------------------------------------------------------
 
+/** A control's name as the style editor sets it: small Mono capitals in secondary grey. */
+@Composable
+internal fun StyleLabel(text: String, modifier: Modifier = Modifier) {
+    Text(text.caps(), style = CgTheme.type.data, color = CgColors.Text.Secondary, modifier = modifier)
+}
+
+/** A setting of the style: its name on the left, its control (a switch, a colour) on the right; 44 dp tall at least. */
+@Composable
+private fun StyleRow(label: String, control: @Composable () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = CgSize.Touch),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+    ) {
+        StyleLabel(label, Modifier.weight(1f))
+        control()
+    }
+}
+
+/** A choice of the style: its name above, the segments across the whole width under it. */
+@Composable
+private fun ChoiceRow(label: String, segments: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
+        StyleLabel(label)
+        segments()
+    }
+}
+
 /** A colour of the style as a chip that opens the colour sheet. */
 @Composable
 private fun ColorRow(label: String, target: ColorTarget, s: GraphStyle, pickColor: Pick) {
     val c = target.get(s)
-    SettingRow(label) {
+    StyleRow(label) {
         ColorChip(
             Color(c),
             if (target.withOpacity) tintLabel(c, c.opacity).text() else colorName(c).text(),
@@ -754,7 +794,7 @@ private fun ToggleColorRow(
     change: Change,
     pickColor: Pick,
 ) {
-    SettingRow(label) {
+    StyleRow(label) {
         Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8), verticalAlignment = Alignment.CenterVertically) {
             if (value != 0) ColorChip(Color(value), tintLabel(value, value.opacity).text(), { pickColor(target) })
             CgToggle(value != 0, onCheckedChange = { on -> change { target.set(it, if (on) default else 0) } })
@@ -789,10 +829,11 @@ private fun EffectControls(
             halo && effect.dy == 0f -> 2
             else -> 1
         }
-    SettingRow(label) {
+    ChoiceRow(label) {
         SegmentedControl(
             kinds,
             kind,
+            fill = true,
             onSelect = { i ->
                 onChange(
                     when (i) {
@@ -831,7 +872,7 @@ private fun GlossControls(
     toggle: Boolean = true,
 ) {
     if (toggle) {
-        SettingRow(stringResource(label)) {
+        StyleRow(stringResource(label)) {
             CgToggle(gloss != null, onCheckedChange = { on -> change { set(it, if (on) fallback() else null) } })
         }
     }
@@ -863,22 +904,19 @@ private fun More(label: String, content: @Composable () -> Unit) {
     val turn by animateFloatAsState(if (open) 90f else 0f, CgMotion.settle(), label = "arrow")
     Row(
         Modifier.fillMaxWidth()
-            .heightIn(min = 36.dp)
+            .heightIn(min = CgSize.Touch)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .clickable(role = Role.Button) { open = !open }
-            .padding(top = CgSpace.S8)
+            .padding(horizontal = CgSpace.S12),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             "▸",
             style = CgTheme.type.labelStrong,
-            color = CgColors.Text.Secondary,
-            modifier = Modifier.alignByBaseline().graphicsLayer { rotationZ = turn },
+            color = CgColors.Text.Primary,
+            modifier = Modifier.graphicsLayer { rotationZ = turn },
         )
-        Text(
-            " $label",
-            style = CgTheme.type.labelStrong,
-            color = CgColors.Text.Secondary,
-            modifier = Modifier.alignByBaseline(),
-        )
+        Text(" ${label.caps()}", style = CgTheme.type.labelStrong, color = CgColors.Text.Primary)
     }
     AnimatedVisibility(
         open,

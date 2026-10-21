@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,13 +15,14 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,8 +32,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
 import app.onlyshots.TestTags
@@ -42,7 +44,9 @@ import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.CgButtonKind
 import app.onlyshots.core.designsystem.component.CgTextField
@@ -220,7 +224,7 @@ fun ShotSheetContent(
     if (shot != null) {
         ShotCard(item, shot, onMatchByClock = onMatchByClock, onUnlock = onUnlock)
         Text(
-            stringResource(Res.string.edit_use_another_shot),
+            stringResource(Res.string.edit_use_another_shot).caps(),
             style = CgTheme.type.labelStrong,
             color = CgColors.Text.Secondary,
         )
@@ -244,7 +248,7 @@ fun ShotSheetContent(
     }
     if (shots.isNotEmpty()) {
         Text(
-            stringResource(Res.string.edit_on_connected_machine),
+            stringResource(Res.string.edit_on_connected_machine).caps(),
             style = CgTheme.type.labelStrong,
             color = CgColors.Text.Secondary,
         )
@@ -261,23 +265,33 @@ fun ShotSheetContent(
 }
 
 /**
- * The attached shot: its name over a stripe in the machine's colour, its time, final weight and phases, how it is lined
- * up with the video, and what can be done about that.
+ * The attached shot, as a framed cell: its name and machine beside a bar in the machine's colour, its time, final
+ * weight and phases as a row of cells, how it is lined up with the video, and what can be done about that.
  */
 @Composable
 private fun ShotCard(item: VideoItem, shot: Shot, onMatchByClock: () -> Unit, onUnlock: () -> Unit) {
-    val card = RoundedCornerShape(16.dp)
-    // Outlined rather than filled, so the pills inside (on the raised surface) still read as buttons.
-    Row(Modifier.fillMaxWidth().clip(card).border(1.dp, CgColors.Line.Hairline, card).height(IntrinsicSize.Min)) {
-        Box(Modifier.width(4.dp).fillMaxHeight().background(machineColor(shot.source)))
-        Column(Modifier.padding(CgSpace.S16), verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(shot.profileName, style = CgTheme.type.cardTitle)
-                Text(machineLabel(shot.source), style = CgTheme.type.caption, color = CgColors.Text.Dim)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
+        Column(Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline)) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
+                horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.width(4.dp).height(36.dp).background(machineColor(shot.source)))
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(shot.profileName.caps(), style = CgTheme.type.cardTitle)
+                    Text(
+                        machineLabel(shot.source).caps(),
+                        style = CgTheme.type.data,
+                        color = CgColors.Text.Secondary,
+                    )
+                }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S24)) {
+            Rule()
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                 ShotNumber(stringResource(Res.string.edit_number_time), clock(shot.durationUs))
                 shot.finalWeight?.let {
+                    VerticalRule()
                     ShotNumber(
                         stringResource(Res.string.edit_number_weight),
                         "${(it * 10).roundToInt() / 10f} ${stringResource(Res.string.unit_grams)}",
@@ -285,32 +299,54 @@ private fun ShotCard(item: VideoItem, shot: Shot, onMatchByClock: () -> Unit, on
                 }
                 shot.phaseStartsUs.size
                     .takeIf { it > 0 }
-                    ?.let { ShotNumber(stringResource(Res.string.edit_number_phases), "$it") }
+                    ?.let {
+                        VerticalRule()
+                        ShotNumber(stringResource(Res.string.edit_number_phases), "$it")
+                    }
             }
-            Text(
-                stringResource(shotStatus(item)),
-                style = CgTheme.type.caption,
-                color =
-                    if (item.syncLocked || item.shotStartInVideoUs != null) CgColors.Status.Live
-                    else CgColors.Status.Highlight,
-            )
-            // The machine or scale may have started the take a little early or late: the start can still be moved.
-            // The camera's clock and the machine's agree on where the shot starts: one tap lines it up.
-            when {
-                item.syncLocked ->
-                    Pill(stringResource(Res.string.edit_graph_start), onClick = onUnlock, icon = CgIcons.Lock)
-                item.shotStartByClock() != null ->
-                    Pill(stringResource(Res.string.edit_match_by_clock), onClick = onMatchByClock)
+            Rule()
+            val inStep = item.syncLocked || item.shotStartInVideoUs != null
+            val tone = if (inStep) CgColors.Status.Success else CgColors.Status.Warning
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = CgSpace.S16, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(6.dp).background(tone))
+                Text(stringResource(shotStatus(item)), style = CgTheme.type.bodySmall, color = tone)
             }
+        }
+        // The machine or scale may have started the take a little early or late: the start can still be moved.
+        // The camera's clock and the machine's agree on where the shot starts: one tap lines it up.
+        when {
+            item.syncLocked ->
+                Pill(stringResource(Res.string.edit_graph_start), onClick = onUnlock, icon = CgIcons.Lock)
+            item.shotStartByClock() != null ->
+                Pill(stringResource(Res.string.edit_match_by_clock), onClick = onMatchByClock)
         }
     }
 }
 
+/** A hairline across a framed cell. */
 @Composable
-private fun ShotNumber(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(label, style = CgTheme.type.caption, color = CgColors.Text.Dim)
-        Text(value, style = CgTheme.type.body)
+private fun Rule() {
+    Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
+}
+
+/** A hairline between two cells of a row. */
+@Composable
+private fun VerticalRule() {
+    Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Line.Hairline))
+}
+
+@Composable
+private fun RowScope.ShotNumber(label: String, value: String) {
+    Column(
+        Modifier.weight(1f).padding(horizontal = CgSpace.S16, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(label.caps(), style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+        Text(value.caps(), style = CgTheme.type.valueReading)
     }
 }
 
@@ -339,7 +375,7 @@ fun TextSheetContent(item: VideoItem, onChange: (push: Boolean, (OverlaySettings
     val title = stringResource(Res.string.edit_title)
     val recipe = stringResource(Res.string.edit_recipe)
     val default = item.shot?.let { overlayTitleText(it, item.overlay.copy(title = null)) } ?: title
-    Text(title, style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
+    Text(title.caps(), style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
     CgTextField(
         value = item.overlay.title.orEmpty(),
         onValueChange = { text -> onChange(push()) { it.copy(title = text.ifEmpty { null }) } },
@@ -347,7 +383,7 @@ fun TextSheetContent(item: VideoItem, onChange: (push: Boolean, (OverlaySettings
         placeholder = default,
         modifier = Modifier.fillMaxWidth().testTag(TestTags.TextTitleField),
     )
-    Text(recipe, style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
+    Text(recipe.caps(), style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
     CgTextField(
         value = item.overlay.recipe.orEmpty(),
         onValueChange = { text -> onChange(push()) { it.copy(recipe = text.ifEmpty { null }) } },
@@ -404,12 +440,11 @@ fun ExportSheetContent(
                         style = CgTheme.type.bodySmall,
                         color = CgColors.Text.Secondary,
                     )
-                    Pill(
+                    CgButton(
                         stringResource(wording.next),
                         onClick = onNextShot,
+                        kind = CgButtonKind.Signal,
                         modifier = Modifier.fillMaxWidth().testTag(TestTags.ExportNext),
-                        light = true,
-                        fill = true,
                     )
                 }
                 ExportStep.MAKING -> {
@@ -429,20 +464,21 @@ fun ExportSheetContent(
                         style = CgTheme.type.caption,
                         color = CgColors.Text.Dim,
                     )
-                    Pill(
+                    CgButton(
                         stringResource(Res.string.edit_cancel),
                         onClick = onCancel,
+                        kind = CgButtonKind.Secondary,
                         modifier = Modifier.fillMaxWidth(),
-                        fill = true,
                     )
                 }
                 ExportStep.OPTIONS -> {
                     // With a choice beside each row, the quality is said there, not again in the line.
-                    ListRow(
+                    ExportChoice(
                         stringResource(wording.save),
-                        "${exportSummary(item, galleryQuality.takeUnless { choose }, sound, wording)} · " +
-                            stringResource(wording.saveWhere),
+                        stringResource(wording.saveWhere),
+                        exportSummary(item, galleryQuality.takeUnless { choose }, sound, wording),
                         onClick = onSaveToGallery,
+                        signal = true,
                         modifier = Modifier.testTag(TestTags.ExportSave),
                         trailing =
                             if (choose) {
@@ -454,10 +490,10 @@ fun ExportSheetContent(
                             } else null,
                     )
                     wording.share?.let { share ->
-                        val where = wording.shareWhere?.let { " · ${stringResource(it)}" }.orEmpty()
-                        ListRow(
+                        ExportChoice(
                             stringResource(share),
-                            exportSummary(item, shareQuality.takeUnless { choose }, sound, wording) + where,
+                            wording.shareWhere?.let { stringResource(it) },
+                            exportSummary(item, shareQuality.takeUnless { choose }, sound, wording),
                             onClick = onShare,
                             modifier = Modifier.testTag(TestTags.ExportShare),
                             trailing =
@@ -473,6 +509,48 @@ fun ExportSheetContent(
                     Text(stringResource(wording.footer), style = CgTheme.type.caption, color = CgColors.Text.Dim)
                 }
             }
+        }
+    }
+}
+
+/**
+ * One way out of the export sheet, as a framed block: its name and where it goes on a key across the top (the signal
+ * for the main one), and what it will make with the [trailing] quality choice under it.
+ */
+@Composable
+private fun ExportChoice(
+    title: String,
+    where: String?,
+    summary: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    signal: Boolean = false,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    val edge = if (signal) CgColors.Brand.Signal else CgColors.Line.Hairline
+    val ink = if (signal) CgColors.Text.OnLight else CgColors.Text.Primary
+    Column(Modifier.fillMaxWidth().border(CgStroke.Hairline, edge)) {
+        Column(
+            modifier
+                .fillMaxWidth()
+                .background(if (signal) CgColors.Brand.Signal else CgColors.Surface.Bar)
+                .clickable(role = Role.Button, onClick = onClick)
+                .padding(CgSpace.S16),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(title.caps(), style = CgTheme.type.label, color = ink)
+            if (where != null) {
+                Text(where, style = CgTheme.type.caption, color = if (signal) ink else CgColors.Text.Secondary)
+            }
+        }
+        if (!signal) Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(edge))
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = CgSpace.S16, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(summary, style = CgTheme.type.caption, color = CgColors.Text.Secondary, modifier = Modifier.weight(1f))
+            trailing?.invoke()
         }
     }
 }
@@ -527,6 +605,7 @@ fun ExportBar(
             CgButton(
                 stringResource(wording.save),
                 onClick = onSave,
+                kind = CgButtonKind.Signal,
                 modifier = Modifier.weight(1f).heightIn(min = 52.dp).fillMaxHeight().testTag(TestTags.ExportSave),
             )
             wording.share?.let {

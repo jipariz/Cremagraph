@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,13 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -55,6 +51,7 @@ import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.model.NormRect
 import app.onlyshots.core.model.OverlaySnap
 import app.onlyshots.core.model.VideoFormat
@@ -133,12 +130,13 @@ fun OverlayEditLayer(
                 .onGloballyPositioned { coords[0] = it }
                 .drawBehind {
                     if (chrome == 0f) return@drawBehind
-                    val stroke = (1.5f + 1.5f * grab).dp.toPx()
+                    // A signal outline, thicker while it is held.
+                    val stroke = (1f + 1f * grab).dp.toPx()
                     drawRect(
-                        Color.White.copy(alpha = 0.92f * chrome),
+                        CgColors.Brand.Signal.copy(alpha = chrome),
                         topLeft = Offset(stroke / 2, stroke / 2),
                         size = Size(size.width - stroke, size.height - stroke),
-                        style = Stroke(stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f))),
+                        style = Stroke(stroke),
                     )
                     // The corners that resize wear a thick bracket along the outline: where the finger lands.
                     val bracket = (4f + 2f * grab).dp.toPx()
@@ -153,7 +151,7 @@ fun OverlayEditLayer(
                             }
                         drawPath(
                             path,
-                            Color.White.copy(alpha = chrome),
+                            CgColors.Brand.Signal.copy(alpha = chrome),
                             style = Stroke(bracket, cap = StrokeCap.Square),
                         )
                     }
@@ -254,14 +252,13 @@ fun OverlayEditLayer(
             exit = fadeOut(CgMotion.short()),
         ) {
             Text(
-                lastName,
+                lastName.caps(),
                 style = CgTheme.type.labelStrong,
                 color = CgColors.Text.OnLight,
                 modifier =
                     Modifier.fillMaxWidth()
                         .wrapContentWidth()
                         .offset(y = (maxHeight * rect.bottom + 8.dp).coerceAtMost(maxHeight - 36.dp))
-                        .clip(RoundedCornerShape(14.dp))
                         .background(CgColors.Brand.Signal)
                         .padding(horizontal = CgSpace.S12, vertical = CgSpace.S6),
             )

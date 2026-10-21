@@ -37,8 +37,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -57,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -65,7 +64,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -79,6 +80,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -88,8 +90,12 @@ import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
+import app.onlyshots.core.designsystem.component.CgButton
+import app.onlyshots.core.designsystem.component.CgButtonKind
 import app.onlyshots.core.designsystem.component.CgDialog
 import app.onlyshots.core.designsystem.component.CgSlider
 import app.onlyshots.core.designsystem.component.CgTextField
@@ -98,9 +104,6 @@ import app.onlyshots.core.designsystem.component.CoffeeScene
 import app.onlyshots.core.designsystem.component.DialogRisk
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.EditorSheetSlot
-import app.onlyshots.core.designsystem.component.Pill
-import app.onlyshots.core.designsystem.component.SectionHeader
-import app.onlyshots.core.designsystem.component.SettingRow
 import app.onlyshots.core.model.NormRect
 import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.SourceKind
@@ -150,6 +153,7 @@ import app.onlyshots.core.resources.style_your_video
 import app.onlyshots.core.resources.text
 import app.onlyshots.edit.PlayerState
 import app.onlyshots.edit.VideoSurface
+import app.onlyshots.edit.machineColor
 import app.onlyshots.layout.LayoutKind
 import app.onlyshots.layout.LocalWindowLayout
 import app.onlyshots.layout.WidePanes
@@ -484,7 +488,12 @@ private fun Header(
         keyboard?.hide()
     }
     Row(
-        Modifier.fillMaxWidth().height(56.dp).padding(horizontal = CgSpace.S8),
+        Modifier.fillMaxWidth()
+            .drawBehind {
+                val h = CgStroke.Hairline.toPx()
+                drawRect(CgColors.Line.Hairline, Offset(0f, size.height - h), Size(size.width, h))
+            }
+            .padding(CgSpace.S8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BackButton(onClick = onBack, modifier = Modifier.padding(end = CgSpace.S8))
@@ -494,7 +503,7 @@ private fun Header(
                 text,
                 onValueChange = { text = it.copy(text = it.text.take(32)) },
                 singleLine = true,
-                textStyle = CgTheme.type.sheetTitle.copy(color = CgColors.Text.Primary),
+                textStyle = CgTheme.type.label.copy(color = CgColors.Text.Primary),
                 cursorBrush = SolidColor(CgColors.Brand.Signal),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { commit() }),
@@ -510,36 +519,43 @@ private fun Header(
             LaunchedEffect(Unit) { focus.requestFocus() }
         } else {
             Row(
-                Modifier.weight(1f).heightIn(min = CgSize.Touch).clickable(
-                    role = Role.Button,
-                    onClickLabel = stringResource(Res.string.style_rename),
-                ) {
-                    text = TextFieldValue(name, selection = TextRange(0, name.length))
-                    editing = true
-                },
+                Modifier.weight(1f)
+                    .heightIn(min = CgSize.Touch)
+                    .drawBehind { dashedRule(CgColors.Line.Hairline) }
+                    .clickable(role = Role.Button, onClickLabel = stringResource(Res.string.style_rename)) {
+                        text = TextFieldValue(name, selection = TextRange(0, name.length))
+                        editing = true
+                    },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    name,
-                    style = CgTheme.type.sheetTitle,
+                    name.caps(),
+                    style = CgTheme.type.label,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false).semantics { heading() },
+                    modifier =
+                        Modifier.weight(1f, fill = false).padding(horizontal = CgSpace.S4).semantics { heading() },
                 )
-                Text("  ✎", style = CgTheme.type.body, color = CgColors.Text.Dim)
+                Text("✎", style = CgTheme.type.labelStrong, color = CgColors.Text.Dim)
             }
         }
         Box(
-            Modifier.testTag(TestTags.StyleEditorSave)
+            Modifier.padding(start = CgSpace.S8)
+                .testTag(TestTags.StyleEditorSave)
                 .heightIn(min = CgSize.Touch)
+                .background(CgColors.Brand.Signal)
                 .clickable(role = Role.Button) {
                     if (editing) commit()
                     onSave()
                 }
-                .padding(horizontal = CgSpace.S8),
+                .padding(horizontal = CgSpace.S16),
             Alignment.Center,
         ) {
-            Text(stringResource(Res.string.style_save), style = CgTheme.type.body, color = CgColors.Brand.Signal)
+            Text(
+                stringResource(Res.string.style_save).caps(),
+                style = CgTheme.type.labelStrong,
+                color = CgColors.Text.OnLight,
+            )
         }
     }
 }
@@ -569,6 +585,11 @@ private fun Preview(
             // or a video, and the graph's blur needs its source.
             .then(if (sharedKey != null) Modifier.shareBounds(sharedKey, overlay = false) else Modifier)
             .clipToBounds()
+            .drawWithContent {
+                drawContent()
+                val h = CgStroke.Hairline.toPx()
+                drawRect(CgColors.Line.Hairline, Offset(0f, size.height - h), Size(size.width, h))
+            }
             .pointerInput(drag) {
                 if (!drag) return@pointerInput
                 var acc = 0f
@@ -623,14 +644,14 @@ private fun Preview(
                 live != null -> live.caption
                 frameCount > 1 -> stringResource(Res.string.style_preview_drag)
                 else -> stringResource(Res.string.style_preview_record)
-            },
-            style = CgTheme.type.caption,
+            }.caps(),
+            style = CgTheme.type.labelStrong,
             modifier =
-                Modifier.padding(10.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(CgColors.Status.Highlight.copy(alpha = 0.85f))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-            color = CgColors.Text.OnLight,
+                Modifier.padding(CgSpace.S8)
+                    .background(CgColors.Surface.Base.copy(alpha = 0.85f))
+                    .border(CgStroke.Hairline, CgColors.Line.Hairline)
+                    .padding(horizontal = CgSpace.S8, vertical = CgSpace.S4),
+            color = CgColors.Text.Primary,
         )
     }
 }
@@ -642,15 +663,17 @@ private fun Tabs(tab: StyleTab, onTab: (StyleTab) -> Unit) {
     LaunchedEffect(tab) { at.animateTo(tab.ordinal.toFloat(), CgMotion.settle()) }
     val count = StyleTab.entries.size
     Row(
-        Modifier.fillMaxWidth().height(44.dp).drawBehind {
+        Modifier.fillMaxWidth().height(CgSize.Touch).drawBehind {
             val w = size.width / count
-            val h = 3.dp.toPx()
-            drawRect(CgColors.Text.Primary, Offset(w * at.value, size.height - h), Size(w, h))
+            val line = CgStroke.Hairline.toPx()
+            drawRect(CgColors.Line.Hairline, Offset(0f, size.height - line), Size(size.width, line))
+            val h = CgStroke.Rule.toPx()
+            drawRect(CgColors.Brand.Signal, Offset(w * at.value, size.height - h), Size(w, h))
         }
     ) {
         for (t in StyleTab.entries) {
             val on = t == tab
-            val ink by animateColorAsState(if (on) CgColors.Text.Primary else CgColors.Text.Dim, CgMotion.short())
+            val ink by animateColorAsState(if (on) CgColors.Text.Primary else CgColors.Text.Secondary, CgMotion.short())
             Box(
                 Modifier.weight(1f).fillMaxSize().testTag(TestTags.styleTab(t.name.lowercase())).clickable(
                     role = Role.Tab
@@ -659,7 +682,7 @@ private fun Tabs(tab: StyleTab, onTab: (StyleTab) -> Unit) {
                 },
                 Alignment.Center,
             ) {
-                Text(stringResource(t.label), style = CgTheme.type.body, color = ink)
+                Text(stringResource(t.label).caps(), style = CgTheme.type.labelStrong, color = ink, maxLines = 1)
             }
         }
     }
@@ -678,16 +701,26 @@ internal fun SliderRow(
     text: String,
     onChange: (Float) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = CgTheme.type.body, modifier = Modifier.width(130.dp))
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+    ) {
+        StyleLabel(label, Modifier.width(SLIDER_LABEL))
         CgSlider(value.coerceIn(range), onChange, range, Modifier.weight(1f), label = label)
-        Text(text, style = CgTheme.type.label, modifier = Modifier.width(56.dp).padding(start = CgSpace.S8))
+        Text(
+            text.caps(),
+            style = CgTheme.type.labelStrong,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+            modifier = Modifier.width(SLIDER_VALUE),
+        )
     }
 }
 
 @Composable
 internal fun Note(text: String) {
-    Text(text, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+    Text(text, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
 }
 
 // Tabs ----------------------------------------------------------------------------------------
@@ -698,18 +731,18 @@ internal fun ReadabilityWarning(s: GraphStyle, luma: Float, change: ((GraphStyle
     s.readabilityIssue(luma)?.let { issue ->
         Column(
             Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(CgColors.Status.Highlight.copy(alpha = 0.22f))
-                .border(1.dp, CgColors.Status.Highlight, RoundedCornerShape(12.dp))
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(CgSpace.S4),
+                .border(CgStroke.Hairline, CgColors.Status.Warning)
+                .padding(horizontal = CgSpace.S12, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(CgSpace.S6),
         ) {
             Text(
                 stringResource(
-                    Res.string.style_readability_title,
-                    issue.reading.label().replaceFirstChar { it.uppercase() },
-                ),
-                style = CgTheme.type.body,
+                        Res.string.style_readability_title,
+                        issue.reading.label().replaceFirstChar { it.uppercase() },
+                    )
+                    .caps(),
+                style = CgTheme.type.labelStrong,
+                color = CgColors.Status.Warning,
             )
             Text(
                 stringResource(
@@ -721,14 +754,21 @@ internal fun ReadabilityWarning(s: GraphStyle, luma: Float, change: ((GraphStyle
                 style = CgTheme.type.caption,
                 color = CgColors.Text.Secondary,
             )
-            Text(
-                stringResource(Res.string.style_fix_it),
-                style = CgTheme.type.labelStrong,
-                modifier =
-                    Modifier.heightIn(min = 32.dp)
-                        .clickable(role = Role.Button) { change { it.fixReadability(luma) } }
-                        .padding(top = 6.dp),
-            )
+            Box(
+                Modifier.heightIn(min = CgSize.Touch).padding(top = CgSpace.S4),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    stringResource(Res.string.style_fix_it).caps(),
+                    style = CgTheme.type.labelStrong,
+                    color = CgColors.Text.OnLight,
+                    modifier =
+                        Modifier.heightIn(min = 36.dp)
+                            .background(CgColors.Status.Warning)
+                            .clickable(role = Role.Button) { change { it.fixReadability(luma) } }
+                            .padding(horizontal = CgSpace.S12, vertical = 10.dp),
+                )
+            }
         }
     }
 }
@@ -758,13 +798,11 @@ private fun ColorSheet(
             for (sw in presets) {
                 val on = (sw.color and 0xFFFFFF) == (current and 0xFFFFFF)
                 Box(
-                    Modifier.size(40.dp)
-                        .clip(CircleShape)
+                    Modifier.size(SWATCH)
                         .background(Color(sw.color))
                         .border(
-                            if (on) 3.dp else 1.dp,
-                            if (on) CgColors.Text.Primary else CgColors.Line.Divider,
-                            CircleShape,
+                            if (on) CgStroke.Rule else CgStroke.Hairline,
+                            if (on) CgColors.Brand.Signal else CgColors.Line.Hairline,
                         )
                         .clickable(role = Role.RadioButton) { set(sw.color) }
                 )
@@ -774,7 +812,8 @@ private fun ColorSheet(
         // With an opacity, the hex carries it too (#RRGGBBAA), so any exact colour can be typed.
         var text by
             remember(current) { mutableStateOf(if (target.withOpacity) hexWithAlpha(current) else hex(current)) }
-        Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8), verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S12), verticalAlignment = Alignment.CenterVertically) {
+            StyleLabel(stringResource(Res.string.style_hex_colour), Modifier.width(SLIDER_LABEL))
             CgTextField(
                 text,
                 onValueChange = { t ->
@@ -783,7 +822,7 @@ private fun ColorSheet(
                     else parseHex(t)?.let { set(it) }
                 },
                 label = stringResource(Res.string.style_hex_colour),
-                modifier = Modifier.width(140.dp),
+                modifier = Modifier.weight(1f),
             )
         }
         if (target.withOpacity) {
@@ -802,8 +841,8 @@ private fun HueStrip(current: Int, onPick: (Int) -> Unit) {
     val value = if (v0 < 0.3f) 0.9f else v0
     Canvas(
         Modifier.fillMaxWidth()
-            .height(20.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .height(32.dp)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .pointerInput(sat, value) {
                 fun pick(x: Float) = onPick(hsv((x / size.width).coerceIn(0f, 1f) * 360f, sat, value))
                 detectTapGestures { pick(it.x) }
@@ -829,31 +868,45 @@ fun SaveSheet(
     var text by remember { mutableStateOf(name) }
     var picked by remember { mutableStateOf(defaults) }
     EditorSheet(stringResource(Res.string.style_save_style), onDone = null) {
-        CgTextField(
-            text,
-            onValueChange = { text = it.take(32) },
-            label = stringResource(Res.string.style_name),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        SectionHeader(stringResource(Res.string.style_use_by_default_for))
-        for ((kind, label) in DefaultSources) {
-            SettingRow(label.text()) {
-                CgToggle(kind in picked, onCheckedChange = { on -> picked = if (on) picked + kind else picked - kind })
+        Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
+            StyleLabel(stringResource(Res.string.style_name))
+            CgTextField(
+                text,
+                onValueChange = { text = it.take(32) },
+                label = stringResource(Res.string.style_name),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        StyleLabel(stringResource(Res.string.style_use_by_default_for))
+        Column(Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline)) {
+            DefaultSources.forEachIndexed { i, (kind, label) ->
+                if (i > 0) Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Divider))
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = CgSpace.S12, vertical = CgSpace.S6),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+                ) {
+                    Box(Modifier.size(width = 4.dp, height = 20.dp).background(machineColor(kind)))
+                    Text(label.text().caps(), style = CgTheme.type.labelStrong, modifier = Modifier.weight(1f))
+                    CgToggle(
+                        kind in picked,
+                        onCheckedChange = { on -> picked = if (on) picked + kind else picked - kind },
+                    )
+                }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
-            Pill(
+            CgButton(
                 stringResource(Res.string.style_cancel),
                 onClick = onCancel,
                 modifier = Modifier.weight(1f),
-                fill = true,
+                kind = CgButtonKind.Secondary,
             )
-            Pill(
+            CgButton(
                 stringResource(Res.string.style_save),
                 onClick = { onSave(text, picked) },
                 modifier = Modifier.weight(1f).testTag(TestTags.StyleSaveConfirm),
-                light = true,
-                fill = true,
+                kind = CgButtonKind.Signal,
                 enabled = text.isNotBlank(),
             )
         }
@@ -939,6 +992,25 @@ private val DefaultSources: List<Pair<SourceKind, UiText>> =
 private const val SCENE_LUMA = 0.06f
 
 private val PREVIEW_HEIGHT = 330.dp
+
+/** A slider row's name and value columns, as the canvas sets them. */
+private val SLIDER_LABEL = 88.dp
+private val SLIDER_VALUE = 44.dp
+
+/** A preset colour in the colour sheet. */
+private val SWATCH = 44.dp
+
+/** The dashed rule under the style's name, which says it can be typed over. */
+private fun DrawScope.dashedRule(color: Color) {
+    val y = size.height - CgStroke.Hairline.toPx() / 2
+    drawLine(
+        color,
+        Offset(0f, y),
+        Offset(size.width, y),
+        CgStroke.Hairline.toPx(),
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())),
+    )
+}
 
 /** The controls' panel beside the preview on a wide window. */
 private val STYLE_PANEL_WIDTH = 420.dp

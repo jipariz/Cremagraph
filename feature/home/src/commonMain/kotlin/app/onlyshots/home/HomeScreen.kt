@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -22,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -36,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
@@ -48,6 +48,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.PRIVACY_URL
@@ -57,10 +58,13 @@ import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.AddRow
 import app.onlyshots.core.designsystem.component.Arriving
 import app.onlyshots.core.designsystem.component.CgButton
+import app.onlyshots.core.designsystem.component.CgButtonKind
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.CgStepper
 import app.onlyshots.core.designsystem.component.CgTextField
@@ -270,7 +274,7 @@ private fun Machines(state: HomeUiState, onMachine: (FoundMachine) -> Unit, onAd
     SectionHeader(
         stringResource(Res.string.home_machines_title),
         trailing = foundNote(state.machines.size).text(),
-        trailingColor = if (state.machines.isEmpty()) CgColors.Status.Highlight else CgColors.Text.Dim,
+        trailingColor = if (state.machines.isEmpty()) CgColors.Brand.Signal else CgColors.Text.Primary,
         searching = state.machines.isEmpty(),
     )
     // Machines turn up one by one as the search finds them: each slides open rather than pushing the list down.
@@ -313,7 +317,7 @@ private fun Scales(state: HomeUiState, onScale: (FoundBleDevice) -> Unit, onAllo
                 else -> foundNote(state.scales.size).text()
             },
         trailingColor =
-            if (state.scales.isEmpty() && !state.bluetoothOff) CgColors.Status.Highlight else CgColors.Text.Dim,
+            if (state.scales.isEmpty() && !state.bluetoothOff) CgColors.Brand.Signal else CgColors.Text.Primary,
         searching = state.scales.isEmpty() && !state.bluetoothOff && !state.bluetoothDenied,
     )
     if (scale != null) {
@@ -351,7 +355,7 @@ private fun Scales(state: HomeUiState, onScale: (FoundBleDevice) -> Unit, onAllo
     } else if (state.bluetoothOff) {
         Text(
             stringResource(Res.string.home_turn_on_bluetooth),
-            style = CgTheme.type.caption,
+            style = CgTheme.type.bodySmall,
             color = CgColors.Text.Secondary,
         )
     } else if (scale == null && others.isEmpty()) {
@@ -364,32 +368,37 @@ private fun dotOf(status: RowStatus) =
         RowStatus.Ready,
         RowStatus.Connected -> CgColors.Status.Live
         RowStatus.Connecting,
-        RowStatus.Busy -> CgColors.Status.Highlight
-        RowStatus.Offline -> CgColors.Text.Dim
+        RowStatus.Busy -> CgColors.Status.Warning
+        RowStatus.Offline -> CgColors.Text.Disabled
     }
 
 @Composable
 private fun AddressSheet(address: String, onAddress: (String) -> Unit, onConnect: () -> Unit, onDismiss: () -> Unit) {
     CgSheet(title = stringResource(Res.string.home_add_by_address), onDismiss = onDismiss) {
-        Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
+        Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S16)) {
             Text(
                 stringResource(Res.string.home_address_note),
-                style = CgTheme.type.caption,
+                style = CgTheme.type.bodySmall,
                 color = CgColors.Text.Secondary,
             )
-            CgTextField(
-                value = address,
-                onValueChange = onAddress,
-                label = stringResource(Res.string.home_address_label),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-                keyboardActions = KeyboardActions(onGo = { onConnect() }),
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.HomeAddressField),
-            )
+            val label = stringResource(Res.string.home_address_label)
+            Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
+                SectionLabel(label)
+                CgTextField(
+                    value = address,
+                    onValueChange = onAddress,
+                    label = label,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
+                    keyboardActions = KeyboardActions(onGo = { onConnect() }),
+                    modifier = Modifier.fillMaxWidth().testTag(TestTags.HomeAddressField),
+                )
+            }
             CgButton(
                 stringResource(Res.string.home_connect),
                 onClick = onConnect,
+                kind = CgButtonKind.Signal,
                 enabled = address.isNotBlank(),
-                modifier = Modifier.testTag(TestTags.HomeAddressConnect),
+                modifier = Modifier.fillMaxWidth().testTag(TestTags.HomeAddressConnect),
             )
         }
     }
@@ -426,7 +435,7 @@ private fun NextTakePane(
                         buildAnnotatedString {
                             append(state.saved?.name?.text() ?: stringResource(Res.string.home_take_camera_only))
                             state.saved?.let {
-                                withStyle(SpanStyle(color = CgColors.Text.Dim)) {
+                                withStyle(SpanStyle(color = CgColors.Text.Secondary)) {
                                     append(" · ")
                                     append(
                                         stringResource(
@@ -450,7 +459,7 @@ private fun NextTakePane(
                                 if (live) CgColors.Status.Live else CgColors.Text.Dim,
                                 CgMotion.medium(),
                             )
-                        Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
+                        Box(Modifier.size(CgSpace.S6).background(dot))
                         Text(
                             takeStatus(state, take.live).text(),
                             style = CgTheme.type.caption,
@@ -466,7 +475,8 @@ private fun NextTakePane(
                         enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
                         exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                        // One grid: the tiles meet on their hairlines.
+                        Row {
                             for (r in shown) {
                                 ReadingTile(
                                     stringResource(r.label),
@@ -575,7 +585,7 @@ private val COMPACT_PANEL_HEIGHT = 640.dp
 
 @Composable
 private fun SectionLabel(text: String) {
-    Text(text.uppercase(), style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
+    Text(text.caps(), style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
 }
 
 /** The colour the graph draws this quantity in, so a tile reads as its line. */
@@ -610,42 +620,68 @@ private fun SampleLink(onSample: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 fun HelpContent(modifier: Modifier = Modifier, onPrivacy: (() -> Unit)? = null, version: String = AppVersion.NAME) {
     val uri = LocalUriHandler.current
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(CgSpace.S16)) {
-        Text(stringResource(Res.string.home_about_text), style = CgTheme.type.body, color = CgColors.Text.Secondary)
-        HelpSection(
-            stringResource(Res.string.home_help_machines),
-            NetworkMachines.all.joinToString(" · ") { it.name },
-            stringResource(Res.string.home_help_machines_note),
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(CgSpace.S24)) {
+        Text(
+            stringResource(Res.string.home_about_text),
+            style = CgTheme.type.body.copy(lineHeight = CgTheme.type.body.fontSize * 1.55f),
         )
-        HelpSection(
-            stringResource(Res.string.home_scales_title),
-            SCALE_BRANDS,
-            stringResource(Res.string.home_help_scales_note),
-        )
-        // The app's own privacy screen where the host has one; the published page otherwise. Either ends with where to
-        // get help, so one link serves both.
-        FooterLink(stringResource(Res.string.home_privacy), modifier = Modifier.testTag(TestTags.HelpPrivacy)) {
-            onPrivacy?.invoke() ?: uri.openUri(PRIVACY_URL)
+        HelpSection(stringResource(Res.string.home_help_machines), stringResource(Res.string.home_help_machines_note)) {
+            for (machine in NetworkMachines.all) {
+                Row(
+                    Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline).padding(CgSpace.S12),
+                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(width = CgSpace.S4, height = CgSpace.S24).background(machineColor(machine.kind)))
+                    Text(machine.name.caps(), style = CgTheme.type.label)
+                }
+            }
         }
-        Text(stringResource(Res.string.core_version, version), style = CgTheme.type.caption, color = CgColors.Text.Dim)
+        HelpSection(stringResource(Res.string.home_scales_title), stringResource(Res.string.home_help_scales_note)) {
+            Text(
+                SCALE_BRANDS.caps(),
+                style = CgTheme.type.data.copy(lineHeight = CgTheme.type.data.fontSize * 1.6f),
+                modifier =
+                    Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline).padding(CgSpace.S12),
+            )
+        }
+        Column {
+            Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
+            Row(Modifier.fillMaxWidth().padding(top = CgSpace.S8), verticalAlignment = Alignment.CenterVertically) {
+                // The app's own privacy screen where the host has one; the published page otherwise. Either ends with
+                // where to get help, so one link serves both.
+                FooterLink(
+                    stringResource(Res.string.home_privacy),
+                    modifier = Modifier.weight(1f).testTag(TestTags.HelpPrivacy),
+                ) {
+                    onPrivacy?.invoke() ?: uri.openUri(PRIVACY_URL)
+                }
+                Text(
+                    stringResource(Res.string.core_version, version),
+                    style = CgTheme.type.data,
+                    color = CgColors.Text.Secondary,
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun HelpSection(title: String, names: String, note: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
+private fun HelpSection(title: String, note: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
         SectionLabel(title)
-        Text(names, style = CgTheme.type.body)
-        Text(note, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+        content()
+        Text(note, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
     }
 }
 
+/** A link in Mono, underlined, 44 dp tall to touch. */
 @Composable
 private fun FooterLink(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(
         label,
-        style = CgTheme.type.caption.copy(textDecoration = TextDecoration.Underline),
-        color = CgColors.Text.Secondary,
+        style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em, textDecoration = TextDecoration.Underline),
+        color = CgColors.Text.Primary,
         modifier =
             modifier.heightIn(min = CgSize.Touch).wrapContentHeight().clickable(role = Role.Button, onClick = onClick),
     )

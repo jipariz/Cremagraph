@@ -4,7 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,12 +16,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
@@ -33,15 +34,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -50,13 +52,16 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import app.onlyshots.SharedKeys
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
-import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgDialog
 import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CoffeeScene
@@ -127,7 +132,7 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                             close()
                             renaming = style
                         }
-                        Item(stringResource(Res.string.style_delete), TestTags.StyleMenuDelete) {
+                        Item(stringResource(Res.string.style_delete), TestTags.StyleMenuDelete, risky = true) {
                             close()
                             deleting = style
                         }
@@ -170,9 +175,7 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
             style = CgTheme.type.caption,
             color = CgColors.Text.Secondary,
             modifier =
-                Modifier.fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .padding(horizontal = CgSpace.S12, vertical = 10.dp),
+                Modifier.fillMaxWidth().heightIn(min = CgSize.Touch).wrapContentHeight(Alignment.CenterVertically),
         )
     }
     renaming?.let { style ->
@@ -214,9 +217,24 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
     }
 }
 
+/** A row of a style's long-press menu, as CgMenuItem draws them, with its test tag; [risky] in signal letters. */
 @Composable
-private fun Item(text: String, tag: String, onClick: () -> Unit) {
-    DropdownMenuItem(text = { Text(text) }, onClick = onClick, modifier = Modifier.testTag(tag))
+private fun Item(text: String, tag: String, risky: Boolean = false, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = {
+            Text(
+                text.caps(),
+                style = CgTheme.type.labelStrong,
+                color = if (risky) CgColors.Brand.Signal else CgColors.Text.Primary,
+            )
+        },
+        onClick = onClick,
+        modifier =
+            Modifier.testTag(tag).drawBehind {
+                val h = CgStroke.Hairline.toPx()
+                drawRect(CgColors.Line.Divider, Offset(0f, size.height - h), Size(size.width, h))
+            },
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -231,17 +249,19 @@ private fun StyleTile(
 ) {
     var open by remember { mutableStateOf(false) }
     val description = stringResource(Res.string.style_tile_description, style.name)
-    val name by animateColorAsState(if (picked) CgColors.Text.Primary else CgColors.Text.Secondary, CgMotion.short())
+    val edge by animateColorAsState(if (picked) CgColors.Brand.Signal else CgColors.Line.Hairline, CgMotion.short())
+    val edgeWidth by animateDpAsState(if (picked) CgStroke.Rule else CgStroke.Hairline, CgMotion.short())
     Column(
         modifier
             .then(if (width != null) Modifier.width(width) else Modifier.fillMaxWidth())
+            .border(edgeWidth, edge)
+            .padding(edgeWidth)
             .testTag(TestTags.styleTile(style.id))
             .semantics {
                 selected = picked
                 contentDescription = description
             }
-            .combinedClickable(role = Role.RadioButton, onLongClick = { open = true }, onClick = onPick),
-        verticalArrangement = Arrangement.spacedBy(CgSpace.S6),
+            .combinedClickable(role = Role.RadioButton, onLongClick = { open = true }, onClick = onPick)
     ) {
         Box {
             // The style editor's preview grows out of this tile when the style is edited (or copied), and shrinks back.
@@ -258,12 +278,14 @@ private fun StyleTile(
                 menu { open = false }
             }
         }
+        Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
         Text(
-            style.name,
-            style = CgTheme.type.caption,
-            color = name,
+            style.name.caps(),
+            style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em),
+            color = CgColors.Text.Primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = CgSpace.S8, vertical = CgSpace.S6),
         )
     }
 }
@@ -272,24 +294,18 @@ private fun StyleTile(
 private fun NewStyleTile(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val label = stringResource(Res.string.style_new_style)
     Column(
-        modifier.width(TILE_SMALL).testTag(TestTags.StyleNew).combinedClickableCompat(onClick).semantics {
-            contentDescription = label
-        },
-        verticalArrangement = Arrangement.spacedBy(CgSpace.S6),
+        modifier
+            .width(TILE_SMALL)
+            .heightIn(min = TILE_HEIGHT + NAME_STRIP)
+            .testTag(TestTags.StyleNew)
+            .drawDashedBorder()
+            .combinedClickableCompat(onClick)
+            .semantics { contentDescription = label },
+        verticalArrangement = Arrangement.spacedBy(CgSpace.S4, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val shape = RoundedCornerShape(10.dp)
-        Box(
-            Modifier.fillMaxWidth().height(TILE_HEIGHT).clip(shape).drawDashedBorder(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                CgIcons.Plus,
-                null,
-                colorFilter = ColorFilter.tint(CgColors.Text.Primary),
-                modifier = Modifier.size(24.dp),
-            )
-        }
-        Text(label, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+        Text("+", style = CgTheme.type.screenTitle.copy(letterSpacing = 0.em), color = CgColors.Brand.Signal)
+        Text(label.caps(), style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em))
     }
 }
 
@@ -298,10 +314,12 @@ private fun Modifier.combinedClickableCompat(onClick: () -> Unit): Modifier =
     combinedClickable(role = Role.Button, onClick = onClick)
 
 private fun Modifier.drawDashedBorder(): Modifier = drawBehind {
-    drawRoundRect(
-        CgColors.Text.Dim,
-        cornerRadius = CornerRadius(10.dp.toPx()),
-        style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))),
+    val w = CgStroke.Hairline.toPx()
+    drawRect(
+        CgColors.Line.Hairline,
+        topLeft = Offset(w / 2, w / 2),
+        size = Size(size.width - w, size.height - w),
+        style = Stroke(w, pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))),
     )
 }
 
@@ -312,10 +330,7 @@ private fun Modifier.drawDashedBorder(): Modifier = drawBehind {
  */
 @Composable
 fun StyleSwatch(style: GraphStyle, picked: Boolean, modifier: Modifier = Modifier) {
-    val shape = TileShape
-    val edge by animateColorAsState(if (picked) CgColors.Text.Primary else CgColors.Line.Hairline, CgMotion.short())
-    val edgeWidth by animateDpAsState(if (picked) 2.dp else 1.dp, CgMotion.short())
-    Box(modifier.clip(shape).border(edgeWidth, edge, shape)) {
+    Box(modifier.clipToBounds()) {
         CoffeeScene(Modifier.fillMaxSize(), progress = 0.6f)
         Canvas(Modifier.fillMaxSize()) {
             val inset = 6.dp.toPx()
@@ -368,12 +383,15 @@ fun StyleSwatch(style: GraphStyle, picked: Boolean, modifier: Modifier = Modifie
 }
 
 private val TILE_HEIGHT = 64.dp
-private val TILE_SMALL = 96.dp
+private val TILE_SMALL = 104.dp
 private const val MAX_NAME = 32
 
 /** A built-in style's tile is never narrower than this. */
 private val TILE_MIN = 110.dp
 
-private val TileShape = RoundedCornerShape(10.dp)
+private val TileShape = RectangleShape
+
+/** The name under a tile's picture. */
+private val NAME_STRIP = 30.dp
 
 private const val NEW_STYLE_KEY = "new-style"

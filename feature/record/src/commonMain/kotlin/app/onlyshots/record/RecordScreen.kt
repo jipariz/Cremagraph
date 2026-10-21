@@ -74,7 +74,6 @@ import app.onlyshots.core.designsystem.component.EditorSheetSlot
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.RecordButton
 import app.onlyshots.core.designsystem.component.RecordButtonState
-import app.onlyshots.core.designsystem.component.StatusChip
 import app.onlyshots.core.designsystem.component.TwoPane
 import app.onlyshots.core.model.Capabilities
 import app.onlyshots.core.model.NormRect
@@ -613,7 +612,7 @@ private fun CameraPane(
                     Pill(
                         stringResource(Res.string.record_focus_locked),
                         onClick = actions::unlockFocus,
-                        color = FocusYellow,
+                        color = CgColors.Status.Warning,
                         modifier = Modifier.belowFocusRing(it),
                     )
                 }
@@ -630,11 +629,7 @@ private fun CameraPane(
                 enter = fadeIn(CgMotion.medium()),
                 exit = fadeOut(CgMotion.short()),
             ) {
-                StatusChip(
-                    text = state.status.text(),
-                    recording = state.recording,
-                    dot = if (state.recording) CgColors.Text.Primary else null,
-                )
+                TakeStatus(state)
             }
             // The lenses step out of the way when recording starts, and back after.
             AnimatedVisibility(

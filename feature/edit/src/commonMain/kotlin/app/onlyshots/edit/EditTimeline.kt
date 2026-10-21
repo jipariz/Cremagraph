@@ -21,7 +21,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -37,17 +36,17 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.CgTypography
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.edit_snap_playhead
@@ -110,7 +109,7 @@ fun EditTimeline(
     // Every label of a frame (header, ruler ticks, snap label) fits, so none is laid out again on the next.
     val text = rememberTextMeasurer(cacheSize = TEXT_CACHE)
     val haptic = LocalHapticFeedback.current
-    val font = CgTheme.type.caption.fontFamily
+    val type = CgTheme.type
     var snapLabel by remember { mutableStateOf<StringResource?>(null) }
     var snapNonce by remember { mutableStateOf(0) }
     LaunchedEffect(snapNonce) {
@@ -275,14 +274,14 @@ fun EditTimeline(
                 pad,
                 shownZoom.value.takeIf { it > 1.001f },
             )
-        header(text, font, words, v)
+        header(text, type, words, v)
         overview(item, v, pad)
-        ruler(text, font, v, pad)
+        ruler(text, type, v, pad)
         strip(item, v, pad, thumbnails, sweep?.value)
         wave(v, pad, waveform, pumpUs, item.durationUs)
         flag(item, v)
         playheadMark(v)
-        if (labelAlpha > 0f) snapText?.let { label(text, font, it, v, labelAlpha) }
+        if (labelAlpha > 0f) snapText?.let { label(text, type, it, v, labelAlpha) }
     }
 }
 
@@ -291,11 +290,11 @@ private class HeaderWords(val trim: String, val zoom: String, val length: String
 
 private fun DrawScope.header(
     text: TextMeasurer,
-    font: androidx.compose.ui.text.font.FontFamily?,
+    type: CgTypography,
     words: HeaderWords,
     v: TimelineView,
 ) {
-    val style = TextStyle(fontFamily = font, fontSize = 12.sp, color = CgColors.Text.Dim)
+    val style = type.data.copy(color = CgColors.Text.Dim)
     val left =
         if (v.zoomed) "${clock(v.us(PAD.dp.toPx()))} – ${clock(v.us(size.width - PAD.dp.toPx()))}" else words.trim
     // A trim that cuts into the shot cuts the graph too: said in place of the length, where it is seen while dragging.
@@ -344,14 +343,14 @@ private fun DrawScope.overview(item: VideoItem, v: TimelineView, pad: Float) {
 
 private fun DrawScope.ruler(
     text: TextMeasurer,
-    font: androidx.compose.ui.text.font.FontFamily?,
+    type: CgTypography,
     v: TimelineView,
     pad: Float,
 ) {
     val step = TimelineMath.rulerStep(v.scale, 60.dp.toPx())
     val top = RULER_TOP.dp.toPx()
     // 10 sp, the smallest the app sets; marks are at least 60 dp apart, so the labels never touch.
-    val style = TextStyle(fontFamily = font, fontSize = 10.sp, color = CgColors.Text.Dim)
+    val style = type.micro.copy(color = CgColors.Text.Dim)
     val stepUs = (step * 1e6f).toLong()
     var t = (v.us(pad) / stepUs) * stepUs
     val end = v.us(size.width - pad)
@@ -482,21 +481,21 @@ private fun DrawScope.playheadMark(v: TimelineView) {
     drawPath(tri, CgColors.Text.Primary)
 }
 
-/** "snapped to playhead", in an orange box over the overview, centred on the playhead. */
+/** "snapped to playhead", in a signal box over the overview, centred on the playhead. */
 private fun DrawScope.label(
     text: TextMeasurer,
-    font: androidx.compose.ui.text.font.FontFamily?,
+    type: CgTypography,
     label: String,
     v: TimelineView,
     alpha: Float,
 ) {
-    val measured = text.measure(label, TextStyle(fontFamily = font, fontSize = 12.sp, color = CgColors.Text.Primary))
+    val measured = text.measure(label.caps(), type.labelStrong.copy(color = CgColors.Text.OnLight))
     val w = measured.size.width + 20.dp.toPx()
     val h = 20.dp.toPx()
     val pad = PAD.dp.toPx()
     val left = (v.x(v.playheadUs) - w / 2f).coerceIn(pad, (size.width - pad - w).coerceAtLeast(pad))
     val top = OVERVIEW.dp.toPx() - 7.dp.toPx()
-    drawRoundRect(CgColors.Brand.Signal, Offset(left, top), Size(w, h), CornerRadius(4.dp.toPx()), alpha = alpha)
+    drawRect(CgColors.Brand.Signal, Offset(left, top), Size(w, h), alpha = alpha)
     drawText(measured, topLeft = Offset(left + 10.dp.toPx(), top + (h - measured.size.height) / 2f), alpha = alpha)
 }
 

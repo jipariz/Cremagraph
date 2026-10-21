@@ -22,13 +22,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.ChoiceCard
 import app.onlyshots.core.designsystem.component.IconCircleButton
@@ -70,18 +75,21 @@ fun StartScreen(onRecord: () -> Unit, onEdit: () -> Unit, onPrivacy: (() -> Unit
 /** The start screen from plain callbacks, so the screenshot tests can draw it. */
 @Composable
 fun StartBody(onRecord: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Modifier, onHelp: () -> Unit = {}) {
-    Box(modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding(), Alignment.TopCenter) {
+    Box(
+        modifier.fillMaxSize().background(CgColors.Surface.Base).drawBehind { drawGrid() }.safeDrawingPadding(),
+        Alignment.TopCenter,
+    ) {
         // A phone column; on a tablet it stays one, centred.
-        Column(Modifier.widthIn(max = 480.dp).fillMaxSize()) {
+        Column(Modifier.widthIn(max = 480.dp).fillMaxSize().padding(horizontal = CgSpace.S16)) {
             Row(
-                Modifier.fillMaxWidth().height(60.dp).padding(start = CgSpace.S16, end = CgSpace.S12),
+                Modifier.fillMaxWidth().height(60.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OnlyShotsMark(splashTarget = true)
                 Text(
-                    stringResource(Res.string.app_name),
-                    style = CgTheme.type.cardTitle,
+                    stringResource(Res.string.app_name).caps(),
+                    style = CgTheme.type.label.copy(letterSpacing = CgTheme.type.labelStrong.letterSpacing),
                     modifier = Modifier.weight(1f),
                 )
                 IconCircleButton(
@@ -91,38 +99,60 @@ fun StartBody(onRecord: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Mod
                     modifier = Modifier.testTag(TestTags.StartHelp),
                 )
             }
+            // The headline scrolls if the window is short; the two choices stay at the bottom, where the thumb is.
             Column(
-                Modifier.weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = CgSpace.S16),
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
             ) {
                 Spacer(Modifier.height(CgSpace.S24))
-                Text(stringResource(Res.string.start_title), style = CgTheme.type.sheetTitle)
+                Text(stringResource(Res.string.start_title), style = CgTheme.type.pivot)
+            }
+            Column(
+                Modifier.fillMaxWidth().padding(top = CgSpace.S16, bottom = CgSpace.S24),
+                verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
+            ) {
                 Text(
-                    stringResource(Res.string.home_start_question),
-                    style = CgTheme.type.body,
+                    stringResource(Res.string.home_start_question).caps(),
+                    style = CgTheme.type.labelStrong,
                     color = CgColors.Text.Secondary,
                 )
-                Spacer(Modifier.height(CgSpace.S8))
-                ChoiceCard(
-                    icon = CgIcons.Record,
-                    tileColor = CgColors.Status.Record,
-                    title = stringResource(Res.string.home_start_record_title),
-                    detail = stringResource(Res.string.home_start_record_detail),
-                    onClick = onRecord,
-                    modifier = Modifier.testTag(TestTags.StartRecord),
-                )
-                ChoiceCard(
-                    icon = CgIcons.Film,
-                    tileColor = CgColors.Surface.Raised,
-                    title = stringResource(Res.string.home_start_edit_title),
-                    detail = stringResource(Res.string.home_start_edit_detail),
-                    onClick = onEdit,
-                    modifier = Modifier.testTag(TestTags.StartCompose),
-                )
+                // The two choices as one grid: cells meeting on a hairline.
+                Column {
+                    ChoiceCard(
+                        icon = CgIcons.Record,
+                        tileColor = CgColors.Status.Record,
+                        title = stringResource(Res.string.home_start_record_title),
+                        detail = stringResource(Res.string.home_start_record_detail),
+                        onClick = onRecord,
+                        signal = true,
+                        modifier = Modifier.testTag(TestTags.StartRecord),
+                    )
+                    ChoiceCard(
+                        icon = CgIcons.Film,
+                        tileColor = CgColors.Surface.Raised,
+                        title = stringResource(Res.string.home_start_edit_title),
+                        detail = stringResource(Res.string.home_start_edit_detail),
+                        onClick = onEdit,
+                        modifier = Modifier.testTag(TestTags.StartCompose),
+                    )
+                }
             }
         }
+    }
+}
+
+/** The instrument's faint ground: a 24 dp grid of bone lines at 4 %. */
+private fun DrawScope.drawGrid() {
+    val step = 24.dp.toPx()
+    val line = CgColors.Text.Primary.copy(alpha = 0.04f)
+    var x = 0f
+    while (x < size.width) {
+        drawLine(line, Offset(x, 0f), Offset(x, size.height), CgStroke.Hairline.toPx())
+        x += step
+    }
+    var y = 0f
+    while (y < size.height) {
+        drawLine(line, Offset(0f, y), Offset(size.width, y), CgStroke.Hairline.toPx())
+        y += step
     }
 }

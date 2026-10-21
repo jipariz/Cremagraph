@@ -159,7 +159,7 @@ class OpenViewModel(
     private suspend fun import(file: Path): Pair<VideoItem, VideoInfo> {
         val extension = file.name.substringAfterLast('.', "mp4").lowercase()
         val (id, name) = intake.import(file, extension)
-        // A copy that cannot be read leaves no file behind: there is no sidecar for reconcile to find it by.
+        // A copy that cannot be read leaves no file behind: without a sidecar nothing would ever find it.
         return try {
             val info = probe.info(store.videosDir / name)
             VideoItem(

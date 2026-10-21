@@ -51,7 +51,6 @@ fun main() {
                         videosNote = stringResource(Res.string.core_desktop_videos_note),
                     ),
                 splash = splash,
-                ready = { Startup.ready },
             )
         }
     }

@@ -1,6 +1,5 @@
 package app.onlyshots.di
 
-import app.cash.sqldelight.db.SqlDriver
 import app.onlyshots.camera.CameraController
 import app.onlyshots.camera.DesktopCameraController
 import app.onlyshots.core.designsystem.loadOpenSans
@@ -13,7 +12,6 @@ import app.onlyshots.platform.DesktopShare
 import app.onlyshots.platform.PlatformShare
 import app.onlyshots.platform.VideoGallery
 import app.onlyshots.storage.LibraryStore
-import app.onlyshots.storage.createLibraryDriver
 import app.onlyshots.video.FfmpegFrameSampler
 import app.onlyshots.video.FfmpegVideoExporter
 import app.onlyshots.video.FfmpegVideoProbe
@@ -43,7 +41,6 @@ actual val platformModule: Module = module {
     single<FileSystem> { FileSystem.SYSTEM }
     single<Path>(named(CACHE_DIR)) { root / "cache" }
     single<Path>(named(LIBRARY_DIR)) { root / "library" }
-    single<SqlDriver> { createLibraryDriver((root / "library.db").toFile()) }
     single<CameraController> { DesktopCameraController((root / "cache" / "camera").toFile()) }
     // The desktop editor plays, probes and exports through FFmpeg, drawing frames with the same Skia code as iOS.
     single<VideoExporter> {

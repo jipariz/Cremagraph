@@ -62,12 +62,10 @@ fun EditorApp(
     history: (@Composable (NavBackStack<NavKey>) -> Unit)? = null,
     /** The cold start's splash, played over the editor while it starts; null for none (the web's is in its page). */
     splash: SplashState? = null,
-    /** Whether the editor has started, for the splash to hand over; it never waits longer than that. */
-    ready: () -> Boolean = { true },
 ) {
     CgTheme {
         CompositionLocalProvider(LocalExportWording provides exportWording) {
-            SplashHost(splash, ready) { EditorNav(machineShots, host, stores, history) }
+            SplashHost(splash) { EditorNav(machineShots, host, stores, history) }
         }
     }
 }

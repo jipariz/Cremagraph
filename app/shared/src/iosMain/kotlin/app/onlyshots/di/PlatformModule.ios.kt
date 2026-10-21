@@ -1,6 +1,5 @@
 package app.onlyshots.di
 
-import app.cash.sqldelight.db.SqlDriver
 import app.onlyshots.camera.CameraController
 import app.onlyshots.camera.IosCameraController
 import app.onlyshots.core.designsystem.loadOpenSans
@@ -12,7 +11,6 @@ import app.onlyshots.platform.IosGallery
 import app.onlyshots.platform.PlatformShare
 import app.onlyshots.platform.VideoGallery
 import app.onlyshots.storage.LibraryStore
-import app.onlyshots.storage.createLibraryDriver
 import app.onlyshots.video.AvFoundationVideoExporter
 import app.onlyshots.video.AvFoundationVideoProbe
 import app.onlyshots.video.FrameSampler
@@ -41,7 +39,6 @@ actual val platformModule: Module = module {
     single<FileSystem> { FileSystem.SYSTEM }
     single<Path>(named(CACHE_DIR)) { directory(NSCachesDirectory) }
     single<Path>(named(LIBRARY_DIR)) { directory(NSDocumentDirectory) / "library" }
-    single<SqlDriver> { createLibraryDriver() }
     single<CameraController> { IosCameraController((directory(NSCachesDirectory) / "camera").toString()) }
     single<VideoExporter> {
         val videosDir = get<LibraryStore>().videosDir

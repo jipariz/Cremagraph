@@ -15,7 +15,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
@@ -37,7 +36,6 @@ import app.onlyshots.core.designsystem.component.SplashTarget
 import app.onlyshots.core.designsystem.component.SplashTimeline
 import app.onlyshots.core.designsystem.component.drawSplashMark
 import app.onlyshots.core.designsystem.component.rememberSplashGeometry
-import kotlin.concurrent.Volatile
 import kotlin.math.roundToInt
 
 /** How big the splash's mark is: Android's 240 dp splash icon box at 64 %, the size every platform shows it at. */
@@ -72,21 +70,13 @@ object SplashOnce {
 }
 
 /**
- * Whether the app has started: the library has been read. The desktop's splash holds its finished mark until then
- * (never longer than that); the phones' are ready by the time they draw.
- */
-object Startup {
-    // Set off the main thread when the library has been read; the splash looks each frame.
-    @Volatile var ready = false
-}
-
-/**
  * The app under its splash. The app is composed from the first frame, underneath; over it the mark records the shot
- * (unless [splash] is [SplashState.held]), always to the end of the draw, holds there until the app is [ready], pulses
- * once, then flies into the first screen's own mark ([SplashTarget]) or, without one, eases back and fades.
+ * (unless [splash] is [SplashState.held]), always to the end of the draw, holds there until the platform's splash has
+ * gone ([SplashState.release]), pulses once, then flies into the first screen's own mark ([SplashTarget]) or, without
+ * one, eases back and fades.
  */
 @Composable
-fun SplashHost(splash: SplashState?, ready: () -> Boolean = { true }, content: @Composable () -> Unit) {
+fun SplashHost(splash: SplashState?, content: @Composable () -> Unit) {
     val show = remember { splash != null && !SplashOnce.played }
     if (!show || splash == null) {
         content()
@@ -94,7 +84,6 @@ fun SplashHost(splash: SplashState?, ready: () -> Boolean = { true }, content: @
     }
     val target = remember { SplashTarget().apply { hidden = true } }
     val reduced = rememberReducedMotion()
-    val isReady by rememberUpdatedState(ready)
     val tl = splash.timeline
     var t by remember { mutableFloatStateOf(if (splash.held) tl.draw.endInclusive else 0f) }
     // Reduced motion: no clock, only these two fades.
@@ -119,12 +108,12 @@ fun SplashHost(splash: SplashState?, ready: () -> Boolean = { true }, content: @
         if (reduced) {
             // Already on screen when the platform's own splash showed it.
             if (!splash.held) animate(200f) { fadeIn = it }
-            waitUntil { splash.released && isReady() }
+            waitUntil { splash.released }
             animate(300f) { fadeOut = it }
         } else {
-            // The draw always plays to its end; then the finished mark waits, if it has to, for the app.
+            // The draw always plays to its end; then the finished mark waits, if it has to, for the platform's splash.
             advance(tl.draw.endInclusive)
-            waitUntil { splash.released && isReady() }
+            waitUntil { splash.released }
             advance(tl.pulse.start)
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             advance(tl.exit.endInclusive)

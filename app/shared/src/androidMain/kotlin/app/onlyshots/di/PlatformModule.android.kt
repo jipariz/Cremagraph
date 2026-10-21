@@ -8,12 +8,10 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
 import androidx.media3.common.util.UnstableApi
-import app.cash.sqldelight.db.SqlDriver
 import app.onlyshots.camera.AndroidCameraController
 import app.onlyshots.camera.CameraController
 import app.onlyshots.core.designsystem.loadOpenSans
 import app.onlyshots.storage.LibraryStore
-import app.onlyshots.storage.createLibraryDriver
 import app.onlyshots.platform.BackgroundWork
 import app.onlyshots.platform.ForegroundWork
 import app.onlyshots.platform.NsdBrowser
@@ -42,7 +40,6 @@ actual val platformModule: Module = module {
     single<FileSystem> { FileSystem.SYSTEM }
     single<Path>(named(CACHE_DIR)) { androidContext().cacheDir.toOkioPath() }
     single<Path>(named(LIBRARY_DIR)) { androidContext().filesDir.toOkioPath() / "library" }
-    single<SqlDriver> { createLibraryDriver(androidContext()) }
     single<CameraController> { AndroidCameraController(androidContext(), File(androidContext().cacheDir, "camera")) }
     single<VideoExporter> {
         val videosDir = get<LibraryStore>().videosDir

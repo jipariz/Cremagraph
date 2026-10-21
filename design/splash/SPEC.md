@@ -60,9 +60,8 @@ Fade exit, where there is no header mark to land on: scale 1 → 0.92 and fade o
 
 ### Desktop (macOS, Windows, Linux)
 
-- The editor's window opens on espresso and plays the full 1.75 s sequence while `initKoin` and the library reconcile
-  run, then fades to the Open screen (no header mark to land on).
-- If start-up finishes first, skip to the pulse.
+- The editor's window opens on espresso and plays the full 1.75 s sequence while `initKoin` runs, then fades to the
+  Open screen (no header mark to land on).
 
 ### Web
 

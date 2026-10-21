@@ -171,10 +171,9 @@ to replay in any build (how App Review tries app).
 not-reachable). Drives auto-start and stop rules from `:core:model`. Records from arm: pre-roll in file, `trimInUs`
 cuts idle head.
 
-**Storage: sidecars are truth.** JSON sidecar per video (schema `core/model/Sidecar.kt`, atomic writes). SQLDelight
-index (`SqlLibraryIndex`) = cache, rebuilt by `Library.reconcile()` at start in `initKoin`. Disagree? Sidecar wins.
-Web: no database (`LibraryIndex.None`). Picked video enters via `VideoImport`: copy on phones/desktop, alias of
-browser `File` on web.
+**Storage: sidecars are only truth.** JSON sidecar per video (schema `core/model/Sidecar.kt`, atomic writes) beside
+the video. No database: no screen lists the library. Picked video enters via `VideoImport`: copy on phones/desktop,
+alias of browser `File` on web.
 
 **Adaptive layout.** One function: `windowLayout(info, widthDp, heightDp, density)` → `Phone`/`Wide`/`Stacked`/`Tiny`
 + split. Input: `currentWindowAdaptiveInfo()` (size classes, Android hinges). iOS: `platformWindowAdaptiveInfo()` adds

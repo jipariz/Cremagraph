@@ -39,6 +39,8 @@ object TestTags {
     const val RecordSimulate = "record.simulate"
     const val RecordSettings = "record.settings"
     const val RecordStatus = "record.status"
+    const val RecordingEdge = "record.recordingEdge"
+    const val RecordAllowCamera = "record.allowCamera"
 
     // Open.
     const val OpenPickVideo = "open.pickVideo"
@@ -80,9 +82,12 @@ object TestTags {
     const val StyleSaveConfirm = "styleEditor.saveConfirm"
     const val StyleMenuEdit = "style.menu.edit"
     const val StyleMenuCopy = "style.menu.copy"
-    const val StyleMenuRename = "style.menu.rename"
     const val StyleMenuDelete = "style.menu.delete"
     const val StyleNameField = "style.nameField"
+    /** The selected style's keys under "your styles". */
+    const val StyleActionCopy = "style.action.copy"
+    const val StyleActionEdit = "style.action.edit"
+    const val StyleActionRemove = "style.action.remove"
 
     /** One choice of a segmented setting: `choice("grid", GridMode.ROWS.name)`. */
     fun choice(group: String, value: String) = "choice.$group.$value"

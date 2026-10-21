@@ -49,7 +49,7 @@
     <string name="edit_timeline_description">timeline: drag the ends to trim, drag the flag to place the shot</string>
     <string name="edit_timeline_trim">trim %1$s – %2$s</string>
     <string name="edit_timeline_zoom">zoom</string>
-    <string name="edit_timeline_seconds">%1$s s</string>
+    <string name="edit_timeline_seconds">%1$ss</string>
     <string name="edit_cut_both">graph cut at both ends</string>
     <string name="edit_cut_head">graph starts mid-shot</string>
     <string name="edit_cut_tail">graph ends mid-shot</string>
@@ -97,7 +97,7 @@
     <string name="edit_play">play</string>
     <string name="edit_pause">pause</string>
     <string name="edit_style_named">style · %1$s</string>
-    <string name="edit_opacity">opacity %1$s %</string>
+    <string name="edit_opacity">opacity %1$s%</string>
     <string name="edit_making_video">Making your video</string>
     <string name="edit_saved">Saved</string>
 

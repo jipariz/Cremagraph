@@ -861,7 +861,7 @@ private fun ColorSheet(
             )
         }
         if (target.withOpacity) {
-            SliderRow(stringResource(Res.string.style_opacity), alpha, 0f..1f, "${(alpha * 100).roundToInt()} %") { v ->
+            SliderRow(stringResource(Res.string.style_opacity), alpha, 0f..1f, "${(alpha * 100).roundToInt()}%") { v ->
                 change { target.set(it, current.withAlpha(step(v, 0.01f).coerceIn(0f, 1f))) }
             }
         }
@@ -1029,7 +1029,7 @@ internal fun GlassControls(g: GlassSettings, change: ((GlassSettings) -> GlassSe
     Demo(stringResource(Res.string.style_glass_saturation), g.saturation, 0f..2f, 100, twoPlaces(g.saturation)) {
         copy(saturation = it)
     }
-    Demo(stringResource(Res.string.style_glass_corner), g.corner, 0f..50f, 50, "${whole(g.corner)} %") {
+    Demo(stringResource(Res.string.style_glass_corner), g.corner, 0f..50f, 50, "${whole(g.corner)}%") {
         copy(corner = it)
     }
     Demo(stringResource(Res.string.style_glass_dispersion), g.dispersion, 0f..1f, 100, twoPlaces(g.dispersion)) {

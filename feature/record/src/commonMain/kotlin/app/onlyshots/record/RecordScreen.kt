@@ -10,6 +10,7 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -46,12 +47,14 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -70,13 +73,13 @@ import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.Banner
 import app.onlyshots.core.designsystem.component.BannerKind
 import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.CgButtonKind
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.EditorSheetSlot
-import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.RecordButton
 import app.onlyshots.core.designsystem.component.RecordButtonState
 import app.onlyshots.core.designsystem.component.TwoPane
@@ -276,6 +279,8 @@ fun RecordBody(
     }
     // What of the window the floating controls leave free, in root px: the graph is kept there.
     var clear by remember { mutableStateOf<Rect?>(null) }
+    // While the graph is moved the floating controls step aside, and it may go under them.
+    var graphMoving by remember { mutableStateOf(false) }
     val take =
         TakeInputs(
             state = state,
@@ -329,6 +334,7 @@ fun RecordBody(
                 graphSelected = graphSelected,
                 onGraphSelected = { graphSelected = it },
                 onGraphSheet = { graphSheet = it },
+                onGraphMoving = { graphMoving = it },
                 ownControls = ownControls,
                 modifier = modifier,
             )
@@ -372,8 +378,10 @@ fun RecordBody(
             LayoutKind.Phone,
             LayoutKind.Wide -> {
                 pane(Modifier.fillMaxSize(), false)
+                val controls by animateFloatAsState(if (graphMoving) 0f else 1f, CgMotion.short(), label = "controls")
                 FloatingControls(
                     take,
+                    modifier = Modifier.graphicsLayer { alpha = controls },
                     landscape = capture.landscape,
                     graphOnTop = settings.overlay.rect.let { it.y + it.h / 2f < 0.5f },
                     zoom = { modifier, vertical ->
@@ -451,7 +459,8 @@ fun RecordBody(
 /**
  * The picture and the overlay. The picture is what the camera films, its whole [capture] frame, covering the pane: on a
  * screen longer than the frame its edges are cut off here, though not in the video. The graph is kept where the screen
- * shows it, inside [clear] (root px) when floating controls cover the rest.
+ * shows it, under the floating controls too ([clear], root px, is only where the viewfinder's marks go); while it is
+ * moved, [onGraphMoving] says so, so the controls step aside.
  */
 @Composable
 private fun CameraPane(
@@ -470,6 +479,7 @@ private fun CameraPane(
     graphSelected: Boolean,
     onGraphSelected: (Boolean) -> Unit,
     onGraphSheet: (EditSheet) -> Unit,
+    onGraphMoving: (Boolean) -> Unit,
     /** The lenses and the status chip drawn here, where no floating controls have them. */
     ownControls: Boolean,
     modifier: Modifier = Modifier,
@@ -495,7 +505,9 @@ private fun CameraPane(
         val shownH = (maxHeight / frameH).coerceAtMost(1f)
         val shown = NormRect((1f - shownW) / 2f, (1f - shownH) / 2f, shownW, shownH)
         var frame by remember { mutableStateOf(Rect.Zero) }
-        val bounds = graphBounds(shown, clear, frame, capture)
+        // The graph may go anywhere the frame is on screen, under the floating controls too: they are the screen's,
+        // not the video's, and they step aside while it moves.
+        val bounds = graphBounds(shown, capture)
         val rect = settings.overlay.rect.within(bounds)
         // A graph the screen would cut off is moved where it shows, and kept there: the video draws it as placed.
         LaunchedEffect(bounds, settings.overlay.rect, state.recording, state.hasData) {
@@ -624,6 +636,7 @@ private fun CameraPane(
                     selected = graphSelected,
                     format = capture,
                     bounds = bounds,
+                    onDragging = onGraphMoving,
                     toolbar = {
                         GraphToolbar(
                             opacity = settings.overlay.opacity,
@@ -637,17 +650,22 @@ private fun CameraPane(
             }
             var ring by remember { mutableStateOf<Offset?>(null) }
             if (focusAt != null) ring = focusAt
-            // Under the ring, as the camera apps put their lock label: tap it to go back to continuous focus and
+            // Under the ring, as the camera apps put their lock label, in words alone: tap it to go back to continuous
+            // focus and
             // exposure. A held focus survives into the recording, as it should. It lights with the ring and goes out
             // with it, like a lamp: no motion of its own.
             if (camera.focusLocked && focusAt != null && granted && !tiny && !state.recording) {
                 Box(Modifier.matchParentSize()) {
                     ring?.let {
-                        Pill(
-                            stringResource(Res.string.record_focus_locked),
-                            onClick = actions::unlockFocus,
+                        // Just the words, no frame: the ring above already marks the spot.
+                        Text(
+                            stringResource(Res.string.record_focus_locked).caps(),
+                            style = CgTheme.type.labelStrong,
                             color = CgColors.Status.Warning,
-                            modifier = Modifier.belowFocusRing(it),
+                            modifier =
+                                Modifier.belowFocusRing(it)
+                                    .clickable(role = Role.Button, onClick = actions::unlockFocus)
+                                    .padding(horizontal = CgSpace.S8, vertical = CgSpace.S12),
                         )
                     }
                 }
@@ -679,21 +697,12 @@ private fun CameraPane(
     }
 }
 
-/**
- * Where the graph may go, in the frame's fractions: what of the frame is [shown], less what the floating controls cover
- * (everything outside [clear], in root px, the [frame] laid out there too), a side margin in.
- */
-private fun graphBounds(shown: NormRect, clear: Rect?, frame: Rect, capture: VideoFormat): NormRect {
+/** Where the graph may go, in the frame's fractions: what of the frame is [shown], a side margin in. */
+private fun graphBounds(shown: NormRect, capture: VideoFormat): NormRect {
     var left = shown.x
     var top = shown.y
     var right = shown.right
     var bottom = shown.bottom
-    if (clear != null && !frame.isEmpty) {
-        left = maxOf(left, (clear.left - frame.left) / frame.width)
-        top = maxOf(top, (clear.top - frame.top) / frame.height)
-        right = minOf(right, (clear.right - frame.left) / frame.width)
-        bottom = minOf(bottom, (clear.bottom - frame.top) / frame.height)
-    }
     val mx = NormRect.MARGIN_REF / capture.refW
     val my = NormRect.MARGIN_REF / capture.refH
     left += mx

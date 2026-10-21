@@ -1033,7 +1033,7 @@ internal fun step(v: Float, by: Float): Float {
     return kotlin.math.round(v * per) / per
 }
 
-private fun percent(v: Float) = "${(v * 100).roundToInt()} %"
+private fun percent(v: Float) = "${(v * 100).roundToInt()}%"
 
 private fun px(v: Float) = "${v.roundToInt()} px"
 

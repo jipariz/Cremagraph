@@ -93,7 +93,10 @@ class OverlaySceneTest {
         val at20 = shot.samples.first { it.tUs == 20_000_000L }
         assertTrue(at20.pressure!!.oneDecimal() in texts)
         assertTrue("bar" in texts && "ml/s" in texts && "g" in texts && "s" in texts)
-        assertTrue(texts.any { it.startsWith("target ") && it.endsWith(" g") }, "stop weight target")
+        assertTrue(
+            texts.any { it.startsWith("target ") && it.endsWith("g") && !it.endsWith(" g") },
+            "stop weight target",
+        )
         assertFalse(texts.any { it.startsWith("target") && it.endsWith("bar") }, "no pressure target in a flow profile")
     }
 
@@ -639,7 +642,10 @@ class OverlaySceneTest {
         // The readings are named by their units, in capitals, and the value stands alone; time keeps its word.
         for (label in listOf("TIME", "G", "BAR", "ML/S")) assertTrue(label in texts, "$label in $texts")
         assertFalse(texts.any { it in setOf("pressure", "flow", "weight", "time", "bar", "ml/s") }, texts.toString())
-        assertTrue(texts.any { it.startsWith("TARGET ") && it.endsWith(" G") }, "the weight target in capitals")
+        assertTrue(
+            texts.any { it.startsWith("TARGET ") && it.endsWith("G") && !it.endsWith(" G") },
+            "the weight target in capitals",
+        )
         assertTrue("PHASE 2" in texts || texts.none { it.startsWith("phase") }, "phase names in capitals")
 
         // A hairline under the title row, across the panel, in the grid's colour.

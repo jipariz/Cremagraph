@@ -7,21 +7,19 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,10 +49,7 @@ import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
-import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
-import app.onlyshots.core.designsystem.CgTheme
-import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.model.NormRect
 import app.onlyshots.core.model.OverlaySnap
 import app.onlyshots.core.model.VideoFormat
@@ -76,8 +71,8 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The graph made editable on a preview (record and edit), as in the web editor: drag inside to move it, drag a grip to
  * resize it (any of its four corners), tap it for its style. While it moves, the areas a sharing app covers are shaded
- * and it snaps to the lines around them, the middle and the side margins, with a guide, a label and a tick. Preview
- * only — nothing here reaches the recording or the export.
+ * and it snaps to the lines around them, the middle and the side margins, with a guide and a tick. Preview only —
+ * nothing here reaches the recording or the export.
  *
  * [selected] shows the outline, the four corner grips and the [toolbar]; on the record screen it is always on.
  *
@@ -99,6 +94,8 @@ fun OverlayEditLayer(
      */
     bounds: NormRect? = null,
     toolbar: (@Composable () -> Unit)? = null,
+    /** Told when a move or resize starts and ends, so the screen can clear its controls off the picture meanwhile. */
+    onDragging: (Boolean) -> Unit = {},
 ) {
     val change by rememberUpdatedState(onChange)
     val tap by rememberUpdatedState(onTap)
@@ -106,6 +103,8 @@ fun OverlayEditLayer(
     val inside by rememberUpdatedState(bounds)
     val haptic = LocalHapticFeedback.current
     var dragging by remember { mutableStateOf(false) }
+    val draggingChanged by rememberUpdatedState(onDragging)
+    LaunchedEffect(dragging) { draggingChanged(dragging) }
     var snap by remember { mutableStateOf<OverlaySnap.Snapped?>(null) }
     val description = stringResource(Res.string.edit_graph_description)
     val styleAction = stringResource(Res.string.edit_graph_style_action)
@@ -231,25 +230,6 @@ fun OverlayEditLayer(
                     }
                 }
         )
-
-        // The snap's name, in an orange pill under the graph: on while the graph sits snapped, off the moment it isn't.
-        val snapName =
-            snap
-                ?.let { s -> listOfNotNull(s.vertical?.place, s.horizontal?.place).map { stringResource(it.label) } }
-                ?.joinToString(" · ")
-        if (dragging && !snapName.isNullOrEmpty()) {
-            Text(
-                snapName.caps(),
-                style = CgTheme.type.labelStrong,
-                color = CgColors.Text.OnLight,
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .wrapContentWidth()
-                        .offset(y = (maxHeight * rect.bottom + 8.dp).coerceAtMost(maxHeight - 36.dp))
-                        .background(CgColors.Brand.Signal)
-                        .padding(horizontal = CgSpace.S12, vertical = CgSpace.S6),
-            )
-        }
 
         // The toolbar rises into its slot over the graph when it is picked, and drops out while it is dragged. As wide
         // as its keys, centred on the graph, over it, or under it where the graph is too near the top.

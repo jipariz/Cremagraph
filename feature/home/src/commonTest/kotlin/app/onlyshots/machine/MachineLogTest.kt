@@ -27,20 +27,20 @@ class MachineLogTest {
                 targetTemperature = 93f,
             )
         assertEquals(
-            "12.3 s · 8.9 bar · 2.1 ml/s · 30.1 g · 93.4 °C · target 2.0 ml/s, 93.0 °C",
+            "12.3s · 8.9bar · 2.1ml/s · 30.1g · 93.4°C · target 2.0ml/s, 93.0°C",
             MachineLog.line(s, shotStartUs = 0),
         )
         assertEquals(
-            "idle · 0.2 bar",
+            "idle · 0.2bar",
             MachineLog.line(Sample(tUs = 5, pressure = 0.2f, brewing = false), shotStartUs = null),
         )
-        assertEquals("brew ended at 34.2 s", MachineLog.line(BrewEvent.Ended(35_200_000), shotStartUs = 1_000_000))
+        assertEquals("brew ended at 34.2s", MachineLog.line(BrewEvent.Ended(35_200_000), shotStartUs = 1_000_000))
     }
 
     @Test
     fun formatsBluetoothReadings() {
         assertEquals(
-            "Lunar · 36.5 g · 1.8 g/s · battery 80 %",
+            "Lunar · 36.5g · 1.8g/s · battery 80%",
             MachineLog.line(
                 app.onlyshots.sources.ble.BleReading(weightG = 36.5f, weightFlowGps = 1.8f, batteryPercent = 80),
                 "Lunar",

@@ -108,7 +108,7 @@ fun parseHexWithAlpha(text: String): Argb? {
 
 /** "clear · 14 %": a colour with its opacity, as the editor's colour chips show a tint. */
 fun tintLabel(color: Argb, opacity: Float): UiText =
-    UiText.Joined(listOf(colorName(color), "${(opacity * 100).roundToInt()} %".raw()))
+    UiText.Joined(listOf(colorName(color), "${(opacity * 100).roundToInt()}%".raw()))
 
 /** Hue 0..360, saturation and value 0..1. */
 fun Argb.toHsv(): Triple<Float, Float, Float> {

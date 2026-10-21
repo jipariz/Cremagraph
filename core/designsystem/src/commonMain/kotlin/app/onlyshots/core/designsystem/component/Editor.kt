@@ -358,7 +358,7 @@ fun ExportOverlay(
                         ProgressLine(progress ?: 0f)
                         Row(Modifier.fillMaxWidth()) {
                             Text(
-                                "${((progress ?: 0f) * 100).toInt()} %",
+                                "${((progress ?: 0f) * 100).toInt()}%",
                                 style = CgTheme.type.label.copy(fontSize = 13.sp),
                                 modifier = Modifier.weight(1f),
                             )
@@ -467,7 +467,7 @@ private fun ExportScreen(
                         ProgressLine(progress ?: 0f)
                         Row(Modifier.fillMaxWidth()) {
                             Text(
-                                "${((progress ?: 0f) * 100).toInt()} %",
+                                "${((progress ?: 0f) * 100).toInt()}%",
                                 style = CgTheme.type.labelStrong.copy(fontSize = 13.sp),
                                 modifier = Modifier.weight(1f),
                             )

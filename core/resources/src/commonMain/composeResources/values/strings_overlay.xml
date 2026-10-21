@@ -9,7 +9,7 @@
     <string name="reading_temperature">temp</string>
     <string name="reading_target">target</string>
     <string name="overlay_phase">phase %1$s</string>
-    <string name="overlay_target_value">target %1$s %2$s</string>
+    <string name="overlay_target_value">target %1$s%2$s</string>
     <string name="unit_seconds">s</string>
     <string name="unit_grams">g</string>
     <string name="unit_bar">bar</string>

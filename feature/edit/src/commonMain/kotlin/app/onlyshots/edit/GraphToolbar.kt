@@ -39,7 +39,7 @@ fun GraphToolbar(
             caret = true,
         )
         CardBarButton(
-            "${(opacity * 100).roundToInt()} %",
+            "${(opacity * 100).roundToInt()}%",
             onClick = { onOpacity(nextOpacity(opacity)) },
             icon = CgIcons.Contrast,
         )

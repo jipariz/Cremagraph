@@ -479,7 +479,7 @@ fun ExportSheetContent(
                     val done = exporting ?: 1f
                     ProgressLine(done)
                     Row(Modifier.fillMaxWidth()) {
-                        Text("${(done * 100).toInt()} %", style = CgTheme.type.label, modifier = Modifier.weight(1f))
+                        Text("${(done * 100).toInt()}%", style = CgTheme.type.label, modifier = Modifier.weight(1f))
                         Text(
                             leftMs?.let { stringResource(Res.string.edit_time_left, clock(it * 1000)) }
                                 ?: stringResource(Res.string.edit_working_out),

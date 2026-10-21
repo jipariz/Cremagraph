@@ -18,18 +18,18 @@ import app.onlyshots.sources.machine.NetworkMachines
  */
 object MachineLog {
     fun line(sample: Sample, shotStartUs: Long?): String = buildString {
-        if (sample.brewing && shotStartUs != null) append("${((sample.tUs - shotStartUs) / 1_000_000f).oneDecimal()} s")
+        if (sample.brewing && shotStartUs != null) append("${((sample.tUs - shotStartUs) / 1_000_000f).oneDecimal()}s")
         else append("idle")
-        sample.pressure?.let { append(" · ${it.oneDecimal()} bar") }
-        sample.flow?.let { append(" · ${it.oneDecimal()} ml/s") }
-        sample.weight?.let { append(" · ${it.oneDecimal()} g") }
-        sample.weightFlow?.let { append(" · ${it.oneDecimal()} g/s") }
-        sample.temperature?.let { append(" · ${it.oneDecimal()} °C") }
+        sample.pressure?.let { append(" · ${it.oneDecimal()}bar") }
+        sample.flow?.let { append(" · ${it.oneDecimal()}ml/s") }
+        sample.weight?.let { append(" · ${it.oneDecimal()}g") }
+        sample.weightFlow?.let { append(" · ${it.oneDecimal()}g/s") }
+        sample.temperature?.let { append(" · ${it.oneDecimal()}°C") }
         val targets =
             listOfNotNull(
-                sample.targetPressure?.takeIf { it > 0f }?.let { "${it.oneDecimal()} bar" },
-                sample.targetFlow?.takeIf { it > 0f }?.let { "${it.oneDecimal()} ml/s" },
-                sample.targetTemperature?.let { "${it.oneDecimal()} °C" },
+                sample.targetPressure?.takeIf { it > 0f }?.let { "${it.oneDecimal()}bar" },
+                sample.targetFlow?.takeIf { it > 0f }?.let { "${it.oneDecimal()}ml/s" },
+                sample.targetTemperature?.let { "${it.oneDecimal()}°C" },
             )
         if (targets.isNotEmpty()) append(" · target ${targets.joinToString(", ")}")
     }
@@ -38,14 +38,14 @@ object MachineLog {
         when (event) {
             is BrewEvent.Started -> "brew started"
             is BrewEvent.Ended ->
-                "brew ended at ${shotStartUs?.let { ((event.atUs - it) / 1_000_000f).oneDecimal() } ?: "?"} s"
+                "brew ended at ${shotStartUs?.let { ((event.atUs - it) / 1_000_000f).oneDecimal() } ?: "?"}s"
         }
 
     fun line(r: BleReading, from: String): String = buildString {
         append(from)
-        r.weightG?.let { append(" · ${it.oneDecimal()} g") }
-        r.weightFlowGps?.let { append(" · ${it.oneDecimal()} g/s") }
-        r.batteryPercent?.let { append(" · battery $it %") }
+        r.weightG?.let { append(" · ${it.oneDecimal()}g") }
+        r.weightFlowGps?.let { append(" · ${it.oneDecimal()}g/s") }
+        r.batteryPercent?.let { append(" · battery $it%") }
     }
 
     /** The live sources this version can connect to: every network machine, then a scale. */

@@ -61,9 +61,9 @@ fun StopRule.stepped(delta: Int): StopRule =
 val StopRule.stepLabel: String?
     get() =
         when (this) {
-            is StopRule.ShotEndPlusTail -> "$tailSeconds s"
-            is StopRule.WeightSettles -> "$seconds s"
-            is StopRule.Fixed -> "$seconds s"
+            is StopRule.ShotEndPlusTail -> "${tailSeconds}s"
+            is StopRule.WeightSettles -> "${seconds}s"
+            is StopRule.Fixed -> "${seconds}s"
             StopRule.Manual -> null
         }
 

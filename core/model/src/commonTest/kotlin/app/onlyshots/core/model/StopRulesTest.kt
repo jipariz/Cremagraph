@@ -161,9 +161,9 @@ class StopRulesTest {
 
     @Test
     fun onlyTheRulesWithAParameterShowOne() {
-        assertEquals("5 s", StopRule.ShotEndPlusTail(5).stepLabel)
-        assertEquals("3 s", StopRule.WeightSettles(3).stepLabel)
-        assertEquals("45 s", StopRule.Fixed(45).stepLabel)
+        assertEquals("5s", StopRule.ShotEndPlusTail(5).stepLabel)
+        assertEquals("3s", StopRule.WeightSettles(3).stepLabel)
+        assertEquals("45s", StopRule.Fixed(45).stepLabel)
         assertNull(StopRule.Manual.stepLabel)
     }
 }

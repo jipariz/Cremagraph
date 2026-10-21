@@ -593,7 +593,7 @@ fun EditBody(
                                     onDone = { graphSelected = false },
                                     tools = {
                                         Pill(
-                                            "${(video.overlay.opacity * 100).roundToInt()} %",
+                                            "${(video.overlay.opacity * 100).roundToInt()}%",
                                             icon = CgIcons.Contrast,
                                             onClick = { actions.overlay { it.withOpacity(nextOpacity(it.opacity)) } },
                                         )
@@ -813,6 +813,9 @@ private fun Picture(
     val sheetOpen by rememberUpdatedState(ui.sheet != null)
     // Each tap that plays or pauses, for the mark that answers it.
     var taps by remember { mutableIntStateOf(0) }
+    // While the graph is moved, the keys over the picture step aside, so it can go where they are.
+    var graphMoving by remember { mutableStateOf(false) }
+    val keys by animateFloatAsState(if (graphMoving) 0f else 1f, CgMotion.short(), label = "keys")
     BoxWithConstraints(
         modifier.fillMaxWidth().background(CgColors.Surface.Scrim),
         contentAlignment = Alignment.Center,
@@ -898,6 +901,7 @@ private fun Picture(
                                     )
                                 }
                             },
+                        onDragging = { graphMoving = it },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -907,7 +911,7 @@ private fun Picture(
             if (ui.busy != null) busy = ui.busy
             AnimatedVisibility(
                 ui.busy != null,
-                Modifier.align(Alignment.TopStart).padding(CgSpace.S12),
+                Modifier.align(Alignment.TopStart).padding(CgSpace.S12).graphicsLayer { alpha = keys },
                 enter = fadeIn(CgMotion.medium()),
                 exit = fadeOut(CgMotion.medium()),
             ) {
@@ -956,6 +960,7 @@ private fun Picture(
                         modifier =
                             Modifier.align(BiasAlignment(1f, bias))
                                 .padding(horizontal = CgSpace.S8)
+                                .graphicsLayer { alpha = keys }
                                 .testTag(TestTags.EditFrame),
                     )
                 }

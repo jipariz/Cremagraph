@@ -317,6 +317,7 @@ fun HomeBody(
                     caption = action.caption.text(),
                     enabled = action.enabled,
                     onClick = onOpenCamera,
+                    modifier = Modifier.testTag(TestTags.HomeRecordAction),
                 )
                 SampleLink(onSample)
             }

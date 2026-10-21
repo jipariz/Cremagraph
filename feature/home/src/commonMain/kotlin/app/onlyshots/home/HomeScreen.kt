@@ -165,7 +165,11 @@ fun HomeScreen(
         onScale = viewModel::connectScale,
         onAddByAddress = viewModel::openAddress,
         onAllowBluetooth = askBluetooth,
-        onOpenCamera = onOpenCamera,
+        // Recording without data is just that: whatever the sample left behind is put back first.
+        onOpenCamera = {
+            viewModel.endSample()
+            onOpenCamera()
+        },
         // The sample needs nothing to be picked: the camera opens and the shot plays as soon as it is armed.
         onSample = {
             viewModel.useSample()

@@ -77,10 +77,41 @@ class SourceHolder(private val scope: CoroutineScope, private val initial: ShotS
 
     override suspend fun prepareForShot() = _current.value.prepareForShot()
 
-    /** Remembers how to build the chosen source and connects it now. */
+    /** Remembers how to build the chosen source and connects it now. A chosen source ends the sample. */
     fun use(factory: suspend (CoroutineScope) -> ShotSource?) {
+        sampling = false
+        beforeSample = null
         this.factory = factory
         resume()
+    }
+
+    /** Whether the sample shot is the source ("try a sample shot"), until [endSample]. */
+    var sampling = false
+        private set
+
+    /** What the sample stood in for: put back when it ends. */
+    private var beforeSample: (suspend (CoroutineScope) -> ShotSource?)? = null
+
+    /**
+     * The replayed sample shot ([sample]) as the source, for one take: the only way to a simulated shot. The source it
+     * replaces comes back with [endSample].
+     */
+    fun useSample(sample: suspend (CoroutineScope) -> ShotSource?) {
+        val before = if (sampling) beforeSample else factory
+        use(sample)
+        sampling = true
+        beforeSample = before
+    }
+
+    /**
+     * The sample is over: the source it stood in for is set up again, or none. Until (unless) that one connects, the
+     * app is on the disconnected source it starts on, never on the sample.
+     */
+    fun endSample() {
+        if (!sampling) return
+        val back = beforeSample
+        useInitial()
+        back?.let(::use)
     }
 
     /** Reconnects whatever [use] last set up; nothing happens if no machine is configured. */
@@ -109,6 +140,8 @@ class SourceHolder(private val scope: CoroutineScope, private val initial: ShotS
 
     /** Back to the source the app starts on with nothing set up, forgetting whatever [use] was given. */
     fun useInitial() {
+        sampling = false
+        beforeSample = null
         factory = null
         stopConnection()
         _current.value = initial

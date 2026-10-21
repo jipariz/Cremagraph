@@ -45,6 +45,37 @@ private class TestSource(
 @OptIn(ExperimentalCoroutinesApi::class)
 class SourceHolderTest {
     @Test
+    fun theSampleIsForOneTakeAndPutsBackWhatItStoodInFor() = runTest {
+        val none = TestSource().apply { connection.value = ConnectionState.Unreachable("no machine set up") }
+        val holder = SourceHolder(backgroundScope, none)
+        holder.useSample { FakeShotSource() }
+        runCurrent()
+        assertTrue(holder.sampling)
+        assertIs<FakeShotSource>(holder.current.value)
+
+        holder.endSample()
+        runCurrent()
+        assertTrue(!holder.sampling)
+        assertEquals(none, holder.current.value)
+    }
+
+    @Test
+    fun aSavedMachineOutOfReachNeverLeavesTheSampleBehind() = runTest {
+        val none = TestSource().apply { connection.value = ConnectionState.Unreachable("no machine set up") }
+        val holder = SourceHolder(backgroundScope, none)
+        holder.use { error("the machine is off") }
+        runCurrent()
+        holder.useSample { FakeShotSource() }
+        runCurrent()
+
+        holder.endSample()
+        runCurrent()
+        // The machine is tried again; failing, the app is back on the disconnected source, not on the replay.
+        assertEquals(none, holder.current.value)
+        assertIs<ConnectionState.Unreachable>(holder.connection.value)
+    }
+
+    @Test
     fun eventsFollowTheSourceInUse() = runTest {
         val first = TestSource()
         val second = TestSource()

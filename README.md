@@ -19,8 +19,9 @@ No setup. No secrets. Clone, build.
 cd app/iosApp && xcodegen generate                           # iOS: then build scheme iosApp in Xcode
 ```
 
-Debug build with no machine runs `FakeShotSource`. It replays the Zer0 sample shot. Tap **simulate shot** while
-armed. Release build starts disconnected. Home's "no machine? try a sample shot" link plays the sample in any build.
+Every build starts disconnected: "record without data" records without data. Home's "no machine? try a sample shot"
+link replays the Zer0 sample shot (`FakeShotSource`) for one take, in any build; tap **simulate shot** while armed to
+pull it by hand.
 
 ## Layout
 

@@ -168,9 +168,9 @@ proved by barcode test clip (`Media3ExportTest`, `AvFoundationExportTest`, `Ffmp
 (today only Gaggiuino). Home, saved settings, machine log go through registry. `NetworkScan` finds machines (mDNS on
 Android, /24 sweep, fixed `.local` names last), confirms each with `identify`. `SourceKind.GAGGIMATE/DECENT` stay on
 purpose: old sidecars and settings name them. Each decoder pinned to upstream commit in doc comment: check before
-changing format. `SourceHolder` swaps live source under every screen. Debug with nothing set up: `FakeShotSource`
-replays Zer0 (tap **simulate shot** while armed). Release starts disconnected. Home's "try a sample shot" switches
-to replay in any build (how App Review tries app).
+changing format. `SourceHolder` swaps live source under every screen. Every build starts disconnected. Only
+Home's "try a sample shot" switches to the Zer0 replay (`SourceHolder.useSample`, any build, how App Review tries app),
+for one take: saving it or recording without data ends it (`endSample`). **Simulate shot** only then.
 
 **New machine?** Follow README "Add a new machine":
 

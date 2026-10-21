@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,6 +62,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -96,6 +98,7 @@ import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
 import app.onlyshots.core.designsystem.component.Banner
 import app.onlyshots.core.designsystem.component.BannerKind
+import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.CgDialog
 import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.DialogRisk
@@ -345,13 +348,15 @@ fun EditBody(
     // On a wide window the export is an overlay over everything, while it runs and until its result is seen.
     val exportDone = ui.savedToGallery || ui.exported
     val overlay = wide && (ui.exporting != null || exportDone)
+    // On a phone it takes the whole screen once it runs, until the saved video is seen to (shared, it goes on at once).
+    val phoneOverlay = !wide && video != null && (ui.exporting != null || ui.savedToGallery)
     val keys =
         Modifier.focusRequester(focus)
             .focusable()
             .editorKeys(
                 actions,
                 export,
-                blocked = { overlay },
+                blocked = { overlay || phoneOverlay },
                 onEscape = {
                     when {
                         overlay -> if (exportDone) actions.acknowledgeExport()
@@ -621,43 +626,7 @@ fun EditBody(
                 )
             }
             // The export fades in over the editor, and out once its result is seen.
-            AnimatedVisibility(overlay, enter = fadeIn(CgMotion.medium()), exit = fadeOut(CgMotion.medium())) {
-                val wording = LocalExportWording.current
-                val detail =
-                    listOfNotNull(
-                            (ui.exportingQuality ?: ui.galleryQuality).size(video.format).let {
-                                "${it.width} × ${it.height}"
-                            },
-                            clock(video.trimmedDurationUs),
-                            video.shot?.profileName,
-                        )
-                        .joinToString(" · ")
-                val doneNow =
-                    when {
-                        ui.exporting != null -> null
-                        ui.savedToGallery -> stringResource(wording.saved)
-                        else -> wording.shared?.let { stringResource(it) } ?: ""
-                    }
-                // While it fades out the export is over and acknowledged: it keeps saying what it said.
-                var done by remember { mutableStateOf(doneNow) }
-                if (overlay) done = doneNow
-                ExportOverlay(
-                    detail = detail,
-                    footer = stringResource(wording.footer),
-                    progress = ui.exporting,
-                    left = ui.exportLeftMs?.let { clock(it * 1000) },
-                    done = done,
-                    still = ui.thumbnails.getOrNull(ui.thumbnails.size / 2),
-                    stillRatio = video.format.ratio,
-                    onCancel = actions::cancelExport,
-                    onKeepEditing = actions::acknowledgeExport,
-                    next = stringResource(wording.next),
-                    onNext = {
-                        actions.acknowledgeExport()
-                        onExported()
-                    },
-                )
-            }
+            ExportOver(overlay, ui, video, actions, onExported, fullScreen = false)
         }
         return
     }
@@ -682,16 +651,41 @@ fun EditBody(
                     selected = graphSelected,
                     onSelected = { graphSelected = it },
                     reframing = reframing,
+                    formatStrip = false,
                     onReframing = setReframing,
+                    doneOnPicture = false,
                     modifier = Modifier.fillMaxSize(),
                 )
                 MessageBanner(ui.message, actions::clearMessage, Modifier.align(Alignment.TopCenter))
             }
-            TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions)
+            if (reframing) {
+                // Framing: the formats under the picture, and "done" at the bottom right, where the timeline was.
+                FormatPicker(
+                    FORMAT_OPTIONS,
+                    VideoFormat.entries.indexOf(video.format),
+                    onPick = { actions.setFormat(VideoFormat.entries[it]) },
+                )
+                Box(Modifier.fillMaxWidth().padding(CgSpace.S16), contentAlignment = Alignment.CenterEnd) {
+                    CgButton(
+                        stringResource(Res.string.edit_done),
+                        onClick = { setReframing(false) },
+                        modifier = Modifier.widthIn(min = 112.dp).testTag(TestTags.EditFrame),
+                    )
+                }
+            } else {
+                // With the graph picked, only the filmstrip stays under the picture, so the picture gets the room.
+                TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions, tools = !graphSelected)
+            }
         }
 
         if (video != null) {
-            EditorSheetSlot(ui.sheet, Modifier.align(Alignment.BottomCenter)) { sheet ->
+            // The export's own screen stands in for its sheet while it runs and until it is seen to.
+            EditorSheetSlot(
+                ui.sheet.takeUnless { phoneOverlay },
+                Modifier.align(Alignment.BottomCenter),
+                scrim = true,
+                onScrimTap = actions::closeSheet.takeIf { ui.exporting == null },
+            ) { sheet ->
                 EditorSheet(
                     title = sheetTitle(sheet, ui),
                     onDone = actions::closeSheet.takeIf { ui.exporting == null },
@@ -700,13 +694,68 @@ fun EditBody(
                     sheetBody(sheet, video)
                 }
             }
+            ExportOver(phoneOverlay, ui, video, actions, onExported, fullScreen = true)
         }
     }
 }
 
 /**
- * Back, the shot with its status dot, undo and redo while there is something to take back or bring back, and the orange
- * export. The reframe switch sits on the picture ([Picture]), so the bar keeps room for the shot's name.
+ * The export over the editor while it runs and until its result is seen: a card over the dimmed window on a wide one,
+ * the whole screen on a phone ([fullScreen]). Keep editing puts it down, and the export sheet with it.
+ */
+@Composable
+private fun ExportOver(
+    visible: Boolean,
+    ui: EditUiState,
+    video: VideoItem,
+    actions: EditActions,
+    onExported: () -> Unit,
+    fullScreen: Boolean,
+) {
+    AnimatedVisibility(visible, enter = fadeIn(CgMotion.medium()), exit = fadeOut(CgMotion.medium())) {
+        val wording = LocalExportWording.current
+        val detail =
+            listOfNotNull(
+                    (ui.exportingQuality ?: ui.galleryQuality).size(video.format).let { "${it.width} × ${it.height}" },
+                    clock(video.trimmedDurationUs),
+                    video.shot?.profileName,
+                )
+                .joinToString(" · ")
+        val doneNow =
+            when {
+                ui.exporting != null -> null
+                ui.savedToGallery -> stringResource(wording.saved)
+                else -> wording.shared?.let { stringResource(it) } ?: ""
+            }
+        // While it fades out the export is over and acknowledged: it keeps saying what it said.
+        var done by remember { mutableStateOf(doneNow) }
+        if (visible) done = doneNow
+        ExportOverlay(
+            detail = detail,
+            footer = stringResource(wording.footer),
+            progress = ui.exporting,
+            left = ui.exportLeftMs?.let { clock(it * 1000) },
+            done = done,
+            still = ui.thumbnails.getOrNull(ui.thumbnails.size / 2),
+            stillRatio = video.format.ratio,
+            onCancel = actions::cancelExport,
+            onKeepEditing = {
+                actions.acknowledgeExport()
+                actions.closeSheet()
+            },
+            next = stringResource(wording.next),
+            onNext = {
+                actions.acknowledgeExport()
+                onExported()
+            },
+            fullScreen = fullScreen,
+        )
+    }
+}
+
+/**
+ * Back, the shot with its status dot filling the rest of the bar, the sound key and the orange export. The reframe
+ * switch sits on the picture ([Picture]), so the bar keeps room for the shot's name.
  */
 @Composable
 private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions, player: PlayerState) {
@@ -720,7 +769,7 @@ private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions, pl
         TopChip(
             text = video?.shot?.profileName ?: stringResource(Res.string.edit_add_shot),
             onClick = { actions.openSheet(EditSheet.SHOT) },
-            modifier = Modifier.testTag(TestTags.EditShotChip),
+            modifier = Modifier.weight(1f).testTag(TestTags.EditShotChip),
             dot =
                 when {
                     video?.shot == null -> CgColors.Text.Dim
@@ -728,7 +777,6 @@ private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions, pl
                     else -> CgColors.Status.Highlight
                 },
         )
-        Spacer(Modifier.weight(1f))
         SoundToggle(ui.item, player)
         TopChip(
             stringResource(Res.string.edit_export),
@@ -756,6 +804,8 @@ private fun Picture(
     toolbar: Boolean = true,
     /** The reframe switch over the picture: the phone's; a wide window has it in its panel. */
     onReframing: ((Boolean) -> Unit)? = null,
+    /** The switch's "done" on the picture while framing; false where the screen puts it under the picture. */
+    doneOnPicture: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     // The video is Haze's source, so styles that blur what is behind the graph blur the video.
@@ -807,6 +857,8 @@ private fun Picture(
                 // The whole picture around the frame, moved and zoomed by the reframe, as the exporters draw it.
                 Box(Modifier.fillMaxSize().reframed(video.reframe)) { picture(Modifier.coverOf(ui.sourceAspect)) }
             }
+            // Framing: the frame's edge in the signal and its thirds, to line the cup up on.
+            if (reframing) FrameGuides(Modifier.fillMaxSize())
             // The graph steps aside while the picture is framed, and comes back when framing is done.
             AnimatedVisibility(
                 !reframing,
@@ -850,7 +902,7 @@ private fun Picture(
                     )
                 }
             }
-            PlayMark(taps, player.playing, Modifier.align(Alignment.Center))
+            PlayMark(taps, player.playing, idle = !selected && !reframing, Modifier.align(Alignment.Center))
             var busy by remember { mutableStateOf(ui.busy) }
             if (ui.busy != null) busy = ui.busy
             AnimatedVisibility(
@@ -873,37 +925,48 @@ private fun Picture(
             }
             AnimatedVisibility(
                 reframing,
-                Modifier.align(if (onReframing != null) Alignment.BottomStart else Alignment.BottomCenter)
-                    .padding(CgSpace.S12)
+                Modifier.align(
+                        when {
+                            !doneOnPicture -> Alignment.TopStart
+                            onReframing != null -> Alignment.BottomStart
+                            else -> Alignment.BottomCenter
+                        }
+                    )
+                    .padding(CgSpace.S8)
                     .clipToBounds(),
-                enter = slideInVertically(CgMotion.offsetSpec) { it },
-                exit = slideOutVertically(CgMotion.offsetSpec) { it },
+                enter = slideInVertically(CgMotion.offsetSpec) { if (doneOnPicture) it else -it },
+                exit = slideOutVertically(CgMotion.offsetSpec) { if (doneOnPicture) it else -it },
             ) {
                 StatusChip(stringResource(Res.string.edit_reframe_hint), recording = false)
             }
             // Top right while the graph is being edited, so it never covers the toolbar; bottom right beside the hint
             // while framing, clear of the formats along the top.
-            onReframing?.let { set ->
-                // It travels between the two rather than jumping.
-                val bias by animateFloatAsState(if (reframing) 1f else -1f, CgMotion.settle(), label = "switch")
-                Pill(
-                    if (reframing) stringResource(Res.string.edit_done)
-                    else stringResource(Res.string.edit_frame_switch),
-                    onClick = { set(!reframing) },
-                    light = reframing,
-                    icon = if (reframing) null else CgIcons.Frame,
-                    overVideo = true,
-                    modifier =
-                        Modifier.align(BiasAlignment(1f, bias))
-                            .padding(horizontal = CgSpace.S8)
-                            .testTag(TestTags.EditFrame),
-                )
-            }
+            onReframing
+                ?.takeIf { doneOnPicture || !reframing }
+                ?.let { set ->
+                    // It travels between the two rather than jumping.
+                    val bias by animateFloatAsState(if (reframing) 1f else -1f, CgMotion.settle(), label = "switch")
+                    Pill(
+                        if (reframing) stringResource(Res.string.edit_done)
+                        else stringResource(Res.string.edit_frame_switch),
+                        onClick = { set(!reframing) },
+                        light = reframing,
+                        icon = if (reframing) null else CgIcons.Frame,
+                        overVideo = true,
+                        modifier =
+                            Modifier.align(BiasAlignment(1f, bias))
+                                .padding(horizontal = CgSpace.S8)
+                                .testTag(TestTags.EditFrame),
+                    )
+                }
         }
     }
 }
 
-/** The timeline and its tools: place the shot's start, find it by ear, step a frame, zoom. */
+/**
+ * The timeline and its tools: place the shot's start, find it by ear, step a frame, zoom. Without [tools], only the
+ * filmstrip (the phone while the graph is picked).
+ */
 @Composable
 private fun TimeBand(
     video: VideoItem,
@@ -912,6 +975,7 @@ private fun TimeBand(
     zoom: Float?,
     onZoom: (Float?) -> Unit,
     actions: EditActions,
+    tools: Boolean = true,
 ) {
     Column(Modifier.fillMaxWidth().topRule().background(CgColors.Surface.Base).padding(bottom = CgSpace.S8)) {
         EditTimeline(
@@ -934,7 +998,9 @@ private fun TimeBand(
                     shotStart = { us, push -> actions.setShotStart(us, push) },
                     zoom = onZoom,
                 ),
+            compact = !tools,
         )
+        if (!tools) return@Column
         // A narrow pane (a book foldable's page) has no room for the gap between the two groups: the row scrolls
         // instead.
         BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -1323,7 +1389,7 @@ private fun ToolChips(ui: EditUiState, video: VideoItem, actions: EditActions, o
         } else {
             Pill(stringResource(Res.string.edit_add_shot), onClick = { actions.openSheet(EditSheet.SHOT) })
         }
-        TopChip(stringResource(LocalExportWording.current.save), onClick = onExport, primary = true, caret = false)
+        TopChip(stringResource(LocalExportWording.current.save), onClick = onExport, primary = true)
     }
 }
 
@@ -1360,6 +1426,20 @@ private fun FormatStrip(format: VideoFormat, onPick: (VideoFormat) -> Unit, modi
                 )
             }
         }
+    }
+}
+
+/** The frame being framed: a signal hairline round it and bone hairlines on its thirds. */
+@Composable
+private fun FrameGuides(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = CgStroke.Hairline.toPx()
+        val thirds = CgColors.Text.Primary.copy(alpha = 0.25f)
+        for (i in 1..2) {
+            drawRect(thirds, Offset(size.width * i / 3f - w / 2, 0f), Size(w, size.height))
+            drawRect(thirds, Offset(0f, size.height * i / 3f - w / 2), Size(size.width, w))
+        }
+        drawRect(CgColors.Brand.Signal, Offset(w / 2, w / 2), Size(size.width - w, size.height - w), style = Stroke(w))
     }
 }
 
@@ -1443,16 +1523,20 @@ private fun EditPanel(
 }
 
 /**
- * The answer to a tap on the picture: a play or pause mark in the middle, held a moment and then gone, so a tap that
- * starts or stops the video is seen to. Nothing until the first tap ([taps] counts them).
+ * The play key in the middle of the picture: there while the video stands paused (tap the picture to play it); a tap
+ * that starts it holds the key a moment and then cuts it out, so the tap is seen to. Off while something else is being
+ * worked on ([idle] false: the graph picked, the picture framed).
  */
 @Composable
-private fun PlayMark(taps: Int, playing: Boolean, modifier: Modifier = Modifier) {
-    val shown = remember { Animatable(0f) }
-    LaunchedEffect(taps) {
-        if (taps == 0) return@LaunchedEffect
-        shown.snapTo(1f)
-        shown.animateTo(0f, tween(CgMotion.SHORT, delayMillis = PLAY_MARK_HOLD_MS, easing = CgMotion.Linear))
+private fun PlayMark(taps: Int, playing: Boolean, idle: Boolean, modifier: Modifier = Modifier) {
+    val rest = !playing && idle
+    val shown = remember { Animatable(if (rest) 1f else 0f) }
+    LaunchedEffect(taps, rest) {
+        if (rest) shown.snapTo(1f)
+        else if (taps > 0 && idle) {
+            shown.snapTo(1f)
+            shown.animateTo(0f, tween(CgMotion.SHORT, delayMillis = PLAY_MARK_HOLD_MS, easing = CgMotion.Linear))
+        } else shown.snapTo(0f)
     }
     Box(
         modifier
@@ -1462,7 +1546,7 @@ private fun PlayMark(taps: Int, playing: Boolean, modifier: Modifier = Modifier)
             .border(CgStroke.Hairline, CgColors.Brand.Bone),
         contentAlignment = Alignment.Center,
     ) {
-        CgIcon(if (playing) CgIcons.Play else CgIcons.Pause, size = 24.dp)
+        CgIcon(CgIcons.Play, size = 24.dp)
     }
 }
 

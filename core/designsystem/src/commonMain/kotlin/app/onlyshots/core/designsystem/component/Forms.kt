@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -105,7 +106,9 @@ enum class DialogRisk {
 /**
  * The one dialog: a square card in the sheets' colour under a signal rule, a title in Mono capitals, the [text] or
  * [content] under it, and its two choices as cells across the bottom: [dismiss] plain on the left, [confirm] bone on
- * the right. The [risk]y one, if any, is drawn in signal letters instead. Tapping outside is [onDismiss].
+ * the right. The [risk]y one, if any, is drawn in signal letters instead and always sits on the right, so the safe one
+ * keeps the left (keep editing | leave); a dialog whose confirm is the risk (a delete) wears the record red rule.
+ * Tapping outside is [onDismiss].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,7 +143,10 @@ fun CgDialogCard(
         Modifier.widthIn(max = 480.dp)
             .background(CgColors.Surface.Bar)
             .border(CgStroke.Hairline, CgColors.Line.Hairline)
-            .drawBehind { drawRect(CgColors.Brand.Signal, Offset.Zero, Size(size.width, CgStroke.Rule.toPx())) }
+            .drawBehind {
+                val rule = if (risk == DialogRisk.Confirm) CgColors.Status.Record else CgColors.Brand.Signal
+                drawRect(rule, Offset.Zero, Size(size.width, CgStroke.Rule.toPx()))
+            }
     ) {
         Column(
             Modifier.padding(CgSpace.S16).padding(top = CgStroke.Rule),
@@ -158,24 +164,38 @@ fun CgDialogCard(
         }
         Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-            dismiss?.let { (label, onClick) ->
+            val dismissCell: (@Composable RowScope.() -> Unit)? = dismiss?.let { (label, onClick) ->
+                {
+                    DialogChoice(
+                        label,
+                        onClick,
+                        filled = false,
+                        risky = risk == DialogRisk.Dismiss,
+                        modifier = Modifier.weight(1f).testTag(TestTags.DialogDismiss),
+                    )
+                }
+            }
+            val confirmCell: @Composable RowScope.() -> Unit = {
                 DialogChoice(
-                    label,
-                    onClick,
-                    filled = false,
-                    risky = risk == DialogRisk.Dismiss,
-                    modifier = Modifier.weight(1f).testTag(TestTags.DialogDismiss),
+                    confirm.first,
+                    confirm.second,
+                    filled = risk != DialogRisk.Confirm,
+                    risky = risk == DialogRisk.Confirm,
+                    enabled = confirmEnabled,
+                    modifier = Modifier.weight(1f).testTag(TestTags.DialogConfirm),
                 )
+            }
+            val divider: @Composable () -> Unit = {
                 Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Line.Hairline))
             }
-            DialogChoice(
-                confirm.first,
-                confirm.second,
-                filled = risk != DialogRisk.Confirm,
-                risky = risk == DialogRisk.Confirm,
-                enabled = confirmEnabled,
-                modifier = Modifier.weight(1f).testTag(TestTags.DialogConfirm),
-            )
+            // The risky choice on the right; the safe one, on the left.
+            val cells =
+                if (risk == DialogRisk.Dismiss) listOfNotNull(confirmCell, dismissCell)
+                else listOfNotNull(dismissCell, confirmCell)
+            cells.forEachIndexed { i, cell ->
+                if (i > 0) divider()
+                cell()
+            }
         }
     }
 }

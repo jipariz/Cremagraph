@@ -1,6 +1,7 @@
 package app.onlyshots.core.designsystem.component
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
@@ -9,6 +10,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -22,6 +25,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +33,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +42,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -115,15 +121,17 @@ import org.jetbrains.compose.resources.stringResource
 
 /*
  * The editor's controls in the Instrument look: square keys with hairline edges, Mono capitals, hairline grids between
- * cells, a bottom sheet without a scrim (so the picture stays in view while it is open) topped by the signal rule. Keys
- * are 40 dp to look at and 44 dp to touch.
+ * cells, a bottom sheet over a dimmed screen topped by the signal rule. Keys are 44 dp.
  */
 
 /** The small keys' letters: Mono SemiBold 12, set in capitals. */
 private val KeyStyle
     @Composable get() = CgTheme.type.labelStrong.copy(letterSpacing = 0.02.em)
 
-/** A chip in the editor's top bar: a name, an optional status dot, and a caret for the sheet it opens. */
+/**
+ * A key in the editor's top bar: a name, cut short with an ellipsis where there is no room, an optional status dot, and
+ * a caret only when asked for. Give it a weight and it fills the bar, the name at its start.
+ */
 @Composable
 fun TopChip(
     text: String,
@@ -131,7 +139,7 @@ fun TopChip(
     modifier: Modifier = Modifier,
     dot: Color? = null,
     primary: Boolean = false,
-    caret: Boolean = true,
+    caret: Boolean = false,
 ) {
     Row(
         modifier
@@ -150,7 +158,7 @@ fun TopChip(
             color = if (primary) CgColors.Text.OnLight else CgColors.Text.Primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = 180.dp),
+            modifier = Modifier.weight(1f, fill = false),
         )
         if (caret) {
             CgIcon(
@@ -238,9 +246,10 @@ fun CgMenuItem(text: String, detail: String? = null, onClick: () -> Unit) {
 }
 
 /**
- * The wide editor's export, over everything: the window dimmed and closed to clicks, and a card in the middle with a
- * [still] of the video, the [progress] (0..1) and the time [left] while it renders, or [done] (where the video went)
- * once it finished. [detail] says what is being made; [footer] what to keep in mind while it runs.
+ * The editor's export, over everything: the window closed to clicks, with a [still] of the video, the [progress] (0..1)
+ * and the time [left] while it renders, or [done] (where the video went) once it finished. [detail] says what is being
+ * made; [footer] what to keep in mind while it runs. A wide window dims and shows it as a card in the middle; a phone
+ * ([fullScreen]) gives it the whole screen, its keys along the bottom.
  */
 @Composable
 fun ExportOverlay(
@@ -257,7 +266,25 @@ fun ExportOverlay(
     modifier: Modifier = Modifier,
     /** The video's width over height, for the still. */
     stillRatio: Float = 9f / 16f,
+    fullScreen: Boolean = false,
 ) {
+    if (fullScreen) {
+        ExportScreen(
+            detail,
+            footer,
+            progress,
+            left,
+            done,
+            still,
+            onCancel,
+            onKeepEditing,
+            next,
+            onNext,
+            modifier,
+            stillRatio,
+        )
+        return
+    }
     Box(
         modifier
             .fillMaxSize()
@@ -351,6 +378,116 @@ fun ExportOverlay(
                             modifier = Modifier.fillMaxWidth().padding(top = CgSpace.S8),
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/** [ExportOverlay] on a phone: the whole screen, the still at the top, the keys along the bottom. */
+@Composable
+private fun ExportScreen(
+    detail: String,
+    footer: String,
+    progress: Float?,
+    left: String?,
+    done: String?,
+    still: ImageBitmap?,
+    onCancel: () -> Unit,
+    onKeepEditing: () -> Unit,
+    next: String,
+    onNext: () -> Unit,
+    modifier: Modifier,
+    stillRatio: Float,
+) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .background(CgColors.Surface.Base)
+            .pointerInput(Unit) { awaitEachGesture { awaitFirstDown().consume() } }
+            .safeDrawingPadding()
+            .padding(start = CgSpace.S24, end = CgSpace.S24, top = CgSpace.S24, bottom = CgSpace.S24),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        Box(
+            Modifier.align(Alignment.CenterHorizontally)
+                .height(if (stillRatio > 1f) 180.dp else 320.dp)
+                .aspectRatio(stillRatio)
+                .border(CgStroke.Hairline, if (done != null) CgColors.Status.Success else CgColors.Line.Hairline)
+        ) {
+            still?.let {
+                Image(
+                    it,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        AnimatedContent(done != null, Modifier.weight(1f), transitionSpec = { tick() }, label = "export") { finished ->
+            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                if (finished) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(28.dp).background(CgColors.Status.Success), Alignment.Center) {
+                            CgIcon(CgIcons.Check, tint = CgColors.Text.OnLight, size = 20.dp)
+                        }
+                        Text(done.orEmpty().caps(), style = CgTheme.type.screenTitle)
+                    }
+                    Text(detail, style = CgTheme.type.data, color = CgColors.Text.Secondary)
+                    Spacer(Modifier.weight(1f))
+                    CgButton(
+                        stringResource(Res.string.core_export_keep_editing),
+                        onClick = onKeepEditing,
+                        kind = CgButtonKind.Secondary,
+                        modifier = Modifier.fillMaxWidth().testTag(TestTags.ExportKeepEditing),
+                    )
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .heightIn(min = 56.dp)
+                            .background(CgColors.Brand.Signal)
+                            .clickable(role = Role.Button, onClick = onNext)
+                            .testTag(TestTags.ExportNext)
+                            .padding(horizontal = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            next.caps(),
+                            style = CgTheme.type.label.copy(fontSize = 15.sp),
+                            color = CgColors.Text.OnLight,
+                            modifier = Modifier.weight(1f),
+                        )
+                        CgIcon(CgIcons.ArrowRight, tint = CgColors.Text.OnLight, size = 16.dp)
+                    }
+                } else {
+                    Text(stringResource(Res.string.core_export_making).caps(), style = CgTheme.type.screenTitle)
+                    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                        ProgressLine(progress ?: 0f)
+                        Row(Modifier.fillMaxWidth()) {
+                            Text(
+                                "${((progress ?: 0f) * 100).toInt()} %",
+                                style = CgTheme.type.labelStrong.copy(fontSize = 13.sp),
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                left?.let { stringResource(Res.string.core_export_left, it) }
+                                    ?: stringResource(Res.string.core_export_estimating),
+                                style = CgTheme.type.data.copy(fontSize = 13.sp),
+                                color = CgColors.Text.Secondary,
+                            )
+                        }
+                    }
+                    Text(detail, style = CgTheme.type.data, color = CgColors.Text.Secondary)
+                    Text(footer, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+                    Spacer(Modifier.weight(1f))
+                    CgButton(
+                        stringResource(Res.string.core_cancel),
+                        onClick = onCancel,
+                        kind = CgButtonKind.Secondary,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }
@@ -549,7 +686,7 @@ fun ListRow(
 
 /**
  * The toolbar that floats over a selected graph: its keys side by side in a frame of the signal, with hairlines between
- * them.
+ * them. Given a width (the graph's), its keys share it ([CardBarButton] with a weight).
  */
 @Composable
 fun CardBar(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
@@ -578,11 +715,11 @@ fun CardBarButton(
     Row(
         modifier
             .fillMaxHeight()
-            .heightIn(min = 40.dp)
+            .heightIn(min = CgSize.Touch)
             .background(CgColors.Surface.Base)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = CgSpace.S12),
-        horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S6, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) CgIcon(icon, size = 16.dp)
@@ -592,8 +729,8 @@ fun CardBarButton(
 }
 
 /**
- * The editor's bottom sheet: no scrim, so the picture stays in view; a title, a "done", and contents that scroll inside
- * at most [maxHeightFraction] of the screen. A plain layout rather than a dialog window, so it can be drawn by the
+ * The editor's bottom sheet (its scrim is [EditorSheetSlot]'s): a title, a "done", and contents that scroll inside at
+ * most [maxHeightFraction] of the screen. A plain layout rather than a dialog window, so it can be drawn by the
  * screenshot tests like anything else. Drag it down to close it, as [CgSheet]: by its top, or from the contents once
  * they are scrolled to the top. Without [onDone] it stays put.
  */
@@ -690,6 +827,9 @@ fun EditorSheet(
     }
 }
 
+/** How dark the screen goes behind a sheet. */
+private const val SCRIM_ALPHA = 0.6f
+
 /** A sheet let go this far down its height, or flicked down this fast, closes; otherwise it snaps back. */
 private const val DISMISS_FRACTION = 0.3f
 private val DISMISS_VELOCITY = 1000.dp
@@ -699,13 +839,37 @@ private const val DISMISS_MS = CgMotion.MEDIUM
  * Where an [EditorSheet] shows: none while [sheet] is null; one slides up from the bottom when it is set and back down
  * when it is cleared (the last one stays drawn while it leaves); a switch from one sheet to another cuts in place as
  * the height moves. Shown at once on the first frame, so a screenshot finds it open.
+ *
+ * With [scrim], the screen behind it dims to 60 % while a sheet is up, as the canvas draws every sheet, and a tap on
+ * the dimmed part is [onScrimTap] (closing the sheet, usually); it fills the slot's parent, so place the slot in a box
+ * as large as the screen.
  */
 @Composable
 fun <T : Any> EditorSheetSlot(
     sheet: T?,
     modifier: Modifier = Modifier,
+    scrim: Boolean = false,
+    onScrimTap: (() -> Unit)? = null,
     content: @Composable (T) -> Unit,
 ) {
+    if (scrim) {
+        val tap by rememberUpdatedState(onScrimTap)
+        AnimatedVisibility(
+            sheet != null,
+            Modifier.fillMaxSize(),
+            enter = fadeIn(CgMotion.short()),
+            exit = fadeOut(CgMotion.short()),
+        ) {
+            Box(
+                Modifier.fillMaxSize().background(CgColors.Surface.Scrim.copy(alpha = SCRIM_ALPHA)).pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown().consume()
+                        if (waitForUpOrCancellation() != null) tap?.invoke()
+                    }
+                }
+            )
+        }
+    }
     AnimatedContent(
         sheet,
         modifier,

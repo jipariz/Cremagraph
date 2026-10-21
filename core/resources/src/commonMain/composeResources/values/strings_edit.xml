@@ -131,4 +131,6 @@
     <string name="edit_no_sound">no sound</string>
     <string name="edit_with_sound">with sound</string>
     <string name="edit_sound_muted">muted</string>
+    <string name="edit_data_series">series</string>
+    <string name="edit_data_show">show</string>
 </resources>

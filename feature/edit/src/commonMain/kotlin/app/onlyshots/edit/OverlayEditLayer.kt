@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +32,9 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -49,6 +52,7 @@ import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.model.NormRect
@@ -65,6 +69,7 @@ import app.onlyshots.core.resources.snap_middle
 import app.onlyshots.core.resources.snap_right
 import app.onlyshots.core.resources.snap_top
 import app.onlyshots.core.resources.snap_top_below_header
+import kotlin.math.sqrt
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -112,6 +117,9 @@ fun OverlayEditLayer(
         // The outline and grips fade in on selection and thicken under the finger, instead of popping.
         val chrome by animateFloatAsState(if (selected || dragging) 1f else 0f, CgMotion.short(), label = "chrome")
         val grab by animateFloatAsState(if (dragging) 1f else 0f, CgMotion.short(), label = "grab")
+
+        // While it moves, the bands a sharing app covers (its header, its captions) are hatched.
+        AnimatedVisibility(dragging, enter = fadeIn(CgMotion.short()), exit = fadeOut(CgMotion.short())) { SafeBands() }
 
         // The guides fade in where the graph snapped and out when it lets go.
         var lastSnap by remember { mutableStateOf<OverlaySnap.Snapped?>(null) }
@@ -243,13 +251,17 @@ fun OverlayEditLayer(
             )
         }
 
-        // The toolbar rises into its slot over the graph when it is picked, and drops out while it is dragged.
+        // The toolbar rises into its slot over the graph when it is picked, and drops out while it is dragged. As wide
+        // as the graph and over it, or under it where the graph is too near the top.
         if (toolbar != null) {
+            val above = maxHeight * rect.y - TOOLBAR_GAP - CgSize.Touch
             AnimatedVisibility(
                 selected && !dragging,
-                Modifier.fillMaxWidth()
-                    .wrapContentWidth()
-                    .offset(y = (maxHeight * rect.y - 52.dp).coerceAtLeast(8.dp))
+                Modifier.offset(
+                        x = maxWidth * rect.x,
+                        y = if (above >= 0.dp) above else maxHeight * rect.bottom + TOOLBAR_GAP,
+                    )
+                    .width(maxWidth * rect.w)
                     .clipToBounds(),
                 enter = slideInVertically(CgMotion.offsetSpec) { it },
                 exit = slideOutVertically(CgMotion.offsetSpec) { it },
@@ -260,24 +272,56 @@ fun OverlayEditLayer(
     }
 }
 
-/** Orange lines across the frame where the graph snapped. */
+/** Dashed orange hairlines across the frame where the graph snapped. */
 @Composable
 private fun Guides(snap: OverlaySnap.Snapped) {
     Canvas(Modifier.fillMaxSize()) {
-        val w = 3.dp.toPx()
+        val w = CgStroke.Hairline.toPx()
+        val dash = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))
         snap.vertical?.let {
-            drawRect(CgColors.Brand.Signal, Offset(0f, it.guide * size.height - w / 2), Size(size.width, w))
+            val y = it.guide * size.height
+            drawLine(CgColors.Brand.Signal, Offset(0f, y), Offset(size.width, y), w, pathEffect = dash)
         }
         snap.horizontal?.let {
-            drawRect(CgColors.Brand.Signal, Offset(it.guide * size.width - w / 2, 0f), Size(w, size.height))
+            val x = it.guide * size.width
+            drawLine(CgColors.Brand.Signal, Offset(x, 0f), Offset(x, size.height), w, pathEffect = dash)
         }
     }
 }
 
-/** How close, in dp, a moving graph has to come to a snap target before it is pulled onto it. */
+/**
+ * The frame's top and bottom bands that a sharing app's header and captions cover (where the graph snaps below and
+ * above), hatched with bone stripes at 45°: 6 dp on, 6 dp off.
+ */
+@Composable
+private fun SafeBands() {
+    Canvas(Modifier.fillMaxSize()) {
+        val stripe = HATCH.dp.toPx()
+        val step = stripe * 2 * sqrt(2f)
+        val ink = CgColors.Text.Primary.copy(alpha = 0.10f)
+        fun band(top: Float, bottom: Float) =
+            clipRect(0f, top, size.width, bottom) {
+                var x = -size.height
+                while (x < size.width + size.height) {
+                    drawLine(ink, Offset(x, size.height), Offset(x + size.height, 0f), stripe)
+                    x += step
+                }
+            }
+        band(0f, OverlaySnap.SAFE_TOP * size.height)
+        band((1f - OverlaySnap.SAFE_BOTTOM) * size.height, size.height)
+    }
+}
+
+/** A hatch stripe's width, and the gap after it, dp. */
+private const val HATCH = 6
+
 /** A corner grip's side, dp: the canvas's 11 px square. */
 private const val GRIP = 11f
 
+/** Between the graph and its toolbar. */
+private val TOOLBAR_GAP = 12.dp
+
+/** How close, in dp, a moving graph has to come to a snap target before it is pulled onto it. */
 private const val SNAP_PULL = 8
 
 /** The pill's name for a snap place. */

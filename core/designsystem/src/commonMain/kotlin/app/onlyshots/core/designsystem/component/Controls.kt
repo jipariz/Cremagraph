@@ -109,6 +109,8 @@ fun CgToggle(
 /**
  * Figma "Series chip": a cell with the series' colour as a short bar and its name in Mono capitals. Chosen, the cell is
  * raised; a series the source cannot provide stays visible but greyed, so the reason can be explained next to it.
+ * [dashed]: the bar is drawn dashed, as the targets' lines are. [framed] false inside a [HairlineGrid], which draws the
+ * lines between cells.
  */
 @Composable
 fun SeriesChip(
@@ -118,6 +120,8 @@ fun SeriesChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    dashed: Boolean = false,
+    framed: Boolean = true,
 ) {
     val bg by
         animateColorAsState(
@@ -134,13 +138,23 @@ fun SeriesChip(
         modifier
             .defaultMinSize(minHeight = 48.dp)
             .background(bg)
-            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .then(if (framed) Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline) else Modifier)
             .toggleable(selected, enabled = enabled, role = Role.Checkbox, onValueChange = { onClick() })
             .padding(horizontal = CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
     ) {
-        Box(Modifier.size(width = 12.dp, height = 3.dp).background(if (enabled) color else CgColors.Line.Hairline))
+        val bar = if (enabled) color else CgColors.Line.Hairline
+        Box(
+            Modifier.size(width = 12.dp, height = 3.dp).drawBehind {
+                if (!dashed) drawRect(bar)
+                else {
+                    val dash = size.width / 3
+                    drawRect(bar, size = Size(dash, 2.dp.toPx()))
+                    drawRect(bar, Offset(dash * 2, 0f), Size(dash, 2.dp.toPx()))
+                }
+            }
+        )
         Text(
             label.caps(),
             style = CgTheme.type.labelStrong.copy(letterSpacing = CgTheme.type.data.letterSpacing),
@@ -336,6 +350,20 @@ fun SettingRow(
             if (hint != null) Text(hint, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
         }
         control()
+    }
+}
+
+/**
+ * A settings list in one hairline frame: each of [rows] (a [SettingRow], say) padded 12 across and 8 down, with a
+ * divider between them, as the canvas's sheets list their switches.
+ */
+@Composable
+fun SettingsList(rows: List<@Composable () -> Unit>, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline)) {
+        rows.forEachIndexed { i, row ->
+            if (i > 0) Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Divider))
+            Box(Modifier.padding(horizontal = CgSpace.S12, vertical = CgSpace.S8)) { row() }
+        }
     }
 }
 

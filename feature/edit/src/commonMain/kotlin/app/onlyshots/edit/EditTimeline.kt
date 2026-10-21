@@ -20,6 +20,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
@@ -45,6 +47,7 @@ import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.CgTypography
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.edit_timeline_description
@@ -71,6 +74,8 @@ class TimelineActions(
  * Drag a trim handle or the flag to move it (a handle snaps to the playhead and the shot's start and end, the flag to
  * the playhead and the pump start); the header says when the trim cuts into the shot. Drag anywhere else to scrub; tap
  * the overview line to jump; pinch to zoom, which keeps the playhead in the middle.
+ *
+ * [compact]: only the filmstrip with its handles, flag and playhead, 60 dp (the phone, while the graph is picked).
  */
 @Composable
 fun EditTimeline(
@@ -84,6 +89,7 @@ fun EditTimeline(
     actions: TimelineActions,
     modifier: Modifier = Modifier,
     loading: Boolean = false,
+    compact: Boolean = false,
 ) {
     // While the frames are being made, a light sweeps across the empty strip. Only then: an endless animation would
     // keep the canvas drawing, and the screenshots from settling.
@@ -124,26 +130,29 @@ fun EditTimeline(
     val current by rememberUpdatedState(item)
     val zoom by rememberUpdatedState(zoomFactor)
     val act by rememberUpdatedState(actions)
+    // Compact, the strip is drawn [COMPACT_SHIFT] higher: gestures read where they would land on the full timeline.
+    val shift by rememberUpdatedState(if (compact) COMPACT_SHIFT else 0)
     val description = stringResource(Res.string.edit_timeline_description)
     val words =
         HeaderWords(
-            trim = stringResource(Res.string.edit_timeline_trim, clock(item.trimInUs), clock(item.trimOutUs)),
-            zoom = stringResource(Res.string.edit_timeline_zoom),
+            trim = stringResource(Res.string.edit_timeline_trim, clock(item.trimInUs), clock(item.trimOutUs)).caps(),
+            zoom = stringResource(Res.string.edit_timeline_zoom).caps(),
             length = stringResource(Res.string.edit_timeline_seconds, seconds(item.trimmedDurationUs)),
-            cut = TimelineMath.shotCut(item)?.let { stringResource(it) },
+            cut = TimelineMath.shotCut(item)?.let { stringResource(it).caps() },
         )
 
     Canvas(
         modifier
             .fillMaxWidth()
-            .height(HEIGHT.dp)
+            .height(if (compact) COMPACT_HEIGHT.dp else HEIGHT.dp)
+            .clipToBounds()
             .semantics { contentDescription = description }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     val pad = PAD.dp.toPx()
                     fun view() = timelineView(size.width.toFloat(), current.durationUs, playheadNow(), pad, zoom)
-                    val y = down.position.y
+                    val y = down.position.y + shift.dp.toPx()
                     val inOverview = y < RULER_TOP.dp.toPx()
                     if (inOverview && y < (OVERVIEW - 8).dp.toPx()) return@awaitEachGesture
                     fun overviewUs(x: Float): Long =
@@ -271,13 +280,21 @@ fun EditTimeline(
                 pad,
                 shownZoom.value.takeIf { it > 1.001f },
             )
-        header(text, type, words, v)
-        overview(item, v, pad)
-        ruler(text, type, v, pad)
-        strip(item, v, pad, thumbnails, sweep?.value)
-        wave(v, pad, waveform, pumpUs, item.durationUs)
-        flag(item, v)
-        playheadMark(v)
+        if (compact) {
+            translate(top = -COMPACT_SHIFT.dp.toPx()) {
+                strip(item, v, pad, thumbnails, sweep?.value)
+                flag(item, v)
+                playheadMark(v)
+            }
+        } else {
+            header(text, type, words, v)
+            overview(item, v, pad)
+            ruler(text, type, v, pad)
+            strip(item, v, pad, thumbnails, sweep?.value)
+            wave(v, pad, waveform, pumpUs, item.durationUs)
+            flag(item, v)
+            playheadMark(v)
+        }
     }
 }
 
@@ -290,7 +307,9 @@ private fun DrawScope.header(
     words: HeaderWords,
     v: TimelineView,
 ) {
-    val style = type.data.copy(color = CgColors.Text.Dim)
+    // The trim in Mono capitals, in full; the length beside it dimmer.
+    val style = type.data.copy(color = CgColors.Text.Primary)
+    val dim = style.copy(color = CgColors.Text.Dim)
     val left =
         if (v.zoomed) "${clock(v.us(PAD.dp.toPx()))} – ${clock(v.us(size.width - PAD.dp.toPx()))}" else words.trim
     // A trim that cuts into the shot cuts the graph too: said in place of the length, where it is seen while dragging.
@@ -303,21 +322,21 @@ private fun DrawScope.header(
         }
     val top = (HEADER_BASELINE - 13).dp.toPx()
     drawText(text, left, Offset(PAD.dp.toPx(), top), style)
-    val r = text.measure(right, if (cut != null) style.copy(color = CgColors.Status.Highlight) else style)
+    val r = text.measure(right, if (cut != null) style.copy(color = CgColors.Status.Warning) else dim)
     drawText(r, topLeft = Offset(size.width - PAD.dp.toPx() - r.size.width, top))
     val c =
         text.measure(clock(v.playheadUs), style.copy(color = CgColors.Text.Primary, fontWeight = FontWeight.SemiBold))
     drawText(c, topLeft = Offset((size.width - c.size.width) / 2f, top))
 }
 
-/** The whole clip in one 6 dp line: the trim lighter, the shot's span in orange. */
+/** The whole clip in one 4 dp line: the trim a hairline lighter, the shot's span in orange. */
 private fun DrawScope.overview(item: VideoItem, v: TimelineView, pad: Float) {
     val y = OVERVIEW.dp.toPx()
-    val h = 6.dp.toPx()
+    val h = 4.dp.toPx()
     val w = size.width - 2 * pad
     fun x(us: Long) = pad + us.toFloat() / item.durationUs.coerceAtLeast(1) * w
     drawRect(CgColors.Line.Divider, Offset(pad, y), Size(w, h))
-    drawRect(CgColors.Text.Dim, Offset(x(item.trimInUs), y), Size(x(item.trimOutUs) - x(item.trimInUs), h))
+    drawRect(CgColors.Line.Hairline, Offset(x(item.trimInUs), y), Size(x(item.trimOutUs) - x(item.trimInUs), h))
     val start = item.shotStartInVideoUs
     val shot = item.shot
     if (start != null && shot != null) {
@@ -507,6 +526,9 @@ private fun rulerClock(us: Long): String {
 private fun seconds(us: Long): String = ((us / 100_000) / 10f).toString()
 
 private const val HEIGHT = 128
+/** Compact: the strip from the flag's top (44) to its bottom (104), at the top of the canvas. */
+private const val COMPACT_SHIFT = 44
+private const val COMPACT_HEIGHT = 60
 private const val PAD = 16
 private const val HEADER_BASELINE = 18
 private const val OVERVIEW = 28

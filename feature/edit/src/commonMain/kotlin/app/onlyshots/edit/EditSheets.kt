@@ -7,8 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -47,12 +45,14 @@ import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.CgButtonKind
 import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CgToggle
+import app.onlyshots.core.designsystem.component.HairlineGrid
 import app.onlyshots.core.designsystem.component.ListRow
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.ProgressLine
 import app.onlyshots.core.designsystem.component.SegmentedControl
 import app.onlyshots.core.designsystem.component.SeriesChip
 import app.onlyshots.core.designsystem.component.SettingRow
+import app.onlyshots.core.designsystem.component.SettingsList
 import app.onlyshots.core.designsystem.component.ShotRow
 import app.onlyshots.core.model.Layout
 import app.onlyshots.core.model.OverlaySettings
@@ -63,6 +63,8 @@ import app.onlyshots.core.model.ShotSummary
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.edit_cancel
+import app.onlyshots.core.resources.edit_data_series
+import app.onlyshots.core.resources.edit_data_show
 import app.onlyshots.core.resources.edit_file
 import app.onlyshots.core.resources.edit_from_machine
 import app.onlyshots.core.resources.edit_from_machine_detail
@@ -121,10 +123,10 @@ fun seriesIn(shot: Shot?): Set<Series> {
 }
 
 /**
- * The data sheet: one chip per series, then whether the graph, the readings, the legend and the phase lines show. The
- * phase lines are offered only where the shot has phases ([hasPhases]).
+ * The data sheet: SERIES, one chip per series in a grid of three meeting on hairlines; then SHOW, whether the graph,
+ * the readings, the legend and the phase lines show, in one framed list. The phase lines are offered only where the
+ * shot has phases ([hasPhases]).
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DataSheetContent(
     settings: OverlaySettings,
@@ -132,22 +134,22 @@ fun DataSheetContent(
     hasPhases: Boolean = true,
     onChange: ((OverlaySettings) -> OverlaySettings) -> Unit,
 ) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
-        verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
-    ) {
-        for (series in Series.entries) {
-            SeriesChip(
-                label = series.label,
-                color = series.color,
-                selected = series in settings.series,
-                enabled = series in available,
-                modifier = Modifier.testTag(TestTags.series(series.name)),
-                onClick = {
-                    onChange { s -> s.copy(series = if (series in s.series) s.series - series else s.series + series) }
-                },
-            )
-        }
+    SheetSection(stringResource(Res.string.edit_data_series))
+    val all = Series.entries
+    HairlineGrid(all.size, columns = 3, color = CgColors.Line.Hairline) { i, cell ->
+        val series = all[i]
+        SeriesChip(
+            label = series.label,
+            color = series.color,
+            selected = series in settings.series,
+            enabled = series in available,
+            dashed = series == Series.TARGETS,
+            framed = false,
+            modifier = cell.fillMaxHeight().testTag(TestTags.series(series.name)),
+            onClick = {
+                onChange { s -> s.copy(series = if (series in s.series) s.series - series else s.series + series) }
+            },
+        )
     }
     val missing = Series.entries.filter { it !in available }
     if (missing.isNotEmpty() && available.isNotEmpty()) {
@@ -165,34 +167,62 @@ fun DataSheetContent(
             g -> Layout.GRAPH_ONLY
             else -> Layout.READINGS_ONLY
         }
-    // The last of the two that is on cannot be turned off: a graph with neither would draw nothing.
-    SettingRow(stringResource(Res.string.edit_graph)) {
-        CgToggle(
-            graph,
-            enabled = !graph || readings,
-            onCheckedChange = { onChange { s -> s.copy(layout = layoutOf(it, readings)) } },
+    SheetSection(stringResource(Res.string.edit_data_show), Modifier.padding(top = CgSpace.S8))
+    val graphTitle = stringResource(Res.string.edit_graph)
+    val readingsTitle = stringResource(Res.string.edit_readings)
+    val legendTitle = stringResource(Res.string.edit_legend)
+    val phasesTitle = stringResource(Res.string.edit_phase_lines)
+    SettingsList(
+        listOfNotNull(
+            // The last of the two that is on cannot be turned off: a graph with neither would draw nothing.
+            {
+                SettingRow(graphTitle) {
+                    CgToggle(
+                        graph,
+                        enabled = !graph || readings,
+                        onCheckedChange = { onChange { s -> s.copy(layout = layoutOf(it, readings)) } },
+                    )
+                }
+            },
+            {
+                SettingRow(readingsTitle) {
+                    CgToggle(
+                        readings,
+                        enabled = !readings || graph,
+                        onCheckedChange = { onChange { s -> s.copy(layout = layoutOf(graph, it)) } },
+                    )
+                }
+            },
+            // The legend sits in the graph's header: without the graph there is none to hide.
+            {
+                SettingRow(legendTitle) {
+                    CgToggle(
+                        settings.legend && graph,
+                        enabled = graph,
+                        onCheckedChange = { onChange { s -> s.copy(legend = it) } },
+                    )
+                }
+            },
+            if (!hasPhases) null
+            else {
+                {
+                    SettingRow(phasesTitle) {
+                        CgToggle(
+                            settings.phases && graph,
+                            enabled = graph,
+                            onCheckedChange = { onChange { s -> s.copy(phases = it) } },
+                        )
+                    }
+                }
+            },
         )
-    }
-    SettingRow(stringResource(Res.string.edit_readings)) {
-        CgToggle(
-            readings,
-            enabled = !readings || graph,
-            onCheckedChange = { onChange { s -> s.copy(layout = layoutOf(graph, it)) } },
-        )
-    }
-    // The legend sits in the graph's header: without the graph there is none to hide.
-    SettingRow(stringResource(Res.string.edit_legend)) {
-        CgToggle(settings.legend && graph, enabled = graph, onCheckedChange = { onChange { s -> s.copy(legend = it) } })
-    }
-    if (hasPhases) {
-        SettingRow(stringResource(Res.string.edit_phase_lines)) {
-            CgToggle(
-                settings.phases && graph,
-                enabled = graph,
-                onCheckedChange = { onChange { s -> s.copy(phases = it) } },
-            )
-        }
-    }
+    )
+}
+
+/** A sheet's section name: Mono capitals in the secondary grey, as SERIES and SHOW. */
+@Composable
+private fun SheetSection(text: String, modifier: Modifier = Modifier) {
+    Text(text.caps(), style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary, modifier = modifier)
 }
 
 /**
@@ -203,7 +233,7 @@ val LocalFromMachine = staticCompositionLocalOf<(() -> Unit)?> { null }
 
 /**
  * The editor's shot sheet. With a shot attached, the shot leads: a card with its name, numbers and how it is lined up,
- * and the ways to use another one as small pills under it. Without one, those ways are the sheet.
+ * and the ways to use another one as keys on one line under it. Without one, those ways are the sheet.
  */
 @Composable
 fun ShotSheetContent(
@@ -219,12 +249,18 @@ fun ShotSheetContent(
     val shot = item.shot
     if (shot != null) {
         ShotCard(item, shot, onMatchByClock = onMatchByClock, onUnlock = onUnlock)
-        Text(
-            stringResource(Res.string.edit_use_another_shot).caps(),
-            style = CgTheme.type.labelStrong,
-            color = CgColors.Text.Secondary,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+        // The other ways in, on one line: the words, then a key each.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(Res.string.edit_use_another_shot).caps(),
+                style = CgTheme.type.labelStrong,
+                color = CgColors.Text.Secondary,
+                modifier = Modifier.weight(1f),
+            )
             Pill(stringResource(Res.string.edit_file), onClick = onFile)
             if (onFromMachine != null) Pill(stringResource(Res.string.edit_machine), onClick = onFromMachine)
         }

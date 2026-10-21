@@ -1,8 +1,11 @@
 package app.onlyshots.uitests
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import app.onlyshots.TestTags
 import app.onlyshots.core.model.Series
 import app.onlyshots.editor.EditorApp
@@ -10,6 +13,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * The desktop and web editor, start to finish, on a desktop window: pick a video and its shot, open the editor, restyle
@@ -37,6 +41,7 @@ class EditorAppTest {
         onDevice(Device.Phone, app.pickers, { EditorApp() }) {
             openTheEditor()
             tap(TestTags.Graph)
+            dragGraphCorners()
             tap(TestTags.ToolbarStyle)
             tap(TestTags.styleTile("metro"))
             tap(TestTags.SheetDone)
@@ -91,3 +96,35 @@ fun ComposeUiTest.openTheEditor() {
 
 /** An FFmpeg render of the test clip, with margin for a busy machine. */
 const val EXPORT_TIMEOUT = 120_000L
+
+/**
+ * Every corner of the selected graph resizes it while the opposite edges stay put: drag the top-left corner in, then
+ * the bottom-right one.
+ */
+@OptIn(ExperimentalTestApi::class)
+fun ComposeUiTest.dragGraphCorners() {
+    val graph = await(TestTags.Graph)
+    val before = graph.getUnclippedBoundsInRoot()
+    graph.performTouchInput {
+        down(Offset(2f, 2f))
+        moveBy(Offset(20f, 20f))
+        moveBy(Offset(20f, 0f))
+        up()
+    }
+    waitForIdle()
+    val afterTopLeft = graph.getUnclippedBoundsInRoot()
+    assertTrue(afterTopLeft.left > before.left, "the left edge followed the top-left corner")
+    assertEquals(before.right.value, afterTopLeft.right.value, 1f, "the right edge stayed")
+    assertEquals(before.bottom.value, afterTopLeft.bottom.value, 1f, "the bottom edge stayed")
+    graph.performTouchInput {
+        down(Offset(width - 2f, height - 2f))
+        moveBy(Offset(-20f, -10f))
+        moveBy(Offset(-20f, 0f))
+        up()
+    }
+    waitForIdle()
+    val afterBottomRight = graph.getUnclippedBoundsInRoot()
+    assertTrue(afterBottomRight.right < afterTopLeft.right, "the right edge followed the bottom-right corner")
+    assertEquals(afterTopLeft.left.value, afterBottomRight.left.value, 1f, "the left edge stayed")
+    assertEquals(afterTopLeft.top.value, afterBottomRight.top.value, 1f, "the top edge stayed")
+}

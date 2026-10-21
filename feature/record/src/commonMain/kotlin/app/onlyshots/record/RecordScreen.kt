@@ -608,7 +608,6 @@ private fun CameraPane(
                     onChange = { moved, _ -> actions.updateOverlay { it.copy(rect = moved) } },
                     onTap = { onGraphSelected(!graphSelected) },
                     selected = graphSelected,
-                    leftGrip = true,
                     format = capture,
                     bounds = bounds,
                     toolbar = {

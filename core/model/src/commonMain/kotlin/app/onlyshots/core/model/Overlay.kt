@@ -26,20 +26,32 @@ data class NormRect(val x: Float, val y: Float, val w: Float, val h: Float) {
     fun movedBy(dx: Float, dy: Float): NormRect =
         copy(x = (x + dx).coerceIn(0f, 1f - w), y = (y + dy).coerceIn(0f, 1f - h))
 
-    /** Resize from the bottom-right corner, keeping the minimum size and staying inside the frame. */
-    fun resizedBy(dw: Float, dh: Float, format: VideoFormat = VideoFormat.PORTRAIT_9_16): NormRect =
-        copy(
-            w = (w + dw).coerceIn(minW(format).coerceAtMost(1f - x), 1f - x),
-            h = (h + dh).coerceIn(minH(format).coerceAtMost(1f - y), 1f - y),
-        )
+    /** A corner of the rect, the one a resize drags. */
+    enum class Corner(val left: Boolean, val top: Boolean) {
+        TOP_LEFT(true, true),
+        TOP_RIGHT(false, true),
+        BOTTOM_LEFT(true, false),
+        BOTTOM_RIGHT(false, false),
+    }
 
     /**
-     * Resize from the bottom-left corner: the right edge stays put while the left one follows [dx]. Same limits as
-     * [resizedBy].
+     * Resize by dragging [corner] by ([dx], [dy]): the opposite corner stays put, the size keeps the format's minimum,
+     * and the dragged edges stay inside [within] (the whole frame by default).
      */
-    fun resizedFromLeftBy(dx: Float, dh: Float, format: VideoFormat = VideoFormat.PORTRAIT_9_16): NormRect {
-        val left = (x + dx).coerceIn(0f, right - minW(format).coerceAtMost(right))
-        return copy(x = left, w = right - left, h = (h + dh).coerceIn(minH(format).coerceAtMost(1f - y), 1f - y))
+    fun resizedFrom(
+        corner: Corner,
+        dx: Float,
+        dy: Float,
+        format: VideoFormat = VideoFormat.PORTRAIT_9_16,
+        within: NormRect = Frame,
+    ): NormRect {
+        val (l, r) =
+            if (corner.left) (x + dx).coerceIn(within.x, (right - minW(format)).coerceAtLeast(within.x)) to right
+            else x to (right + dx).coerceIn((x + minW(format)).coerceAtMost(within.right), within.right)
+        val (t, b) =
+            if (corner.top) (y + dy).coerceIn(within.y, (bottom - minH(format)).coerceAtLeast(within.y)) to bottom
+            else y to (bottom + dy).coerceIn((y + minH(format)).coerceAtMost(within.bottom), within.bottom)
+        return NormRect(l, t, r - l, b - t)
     }
 
     /** Same size, clamped into the frame and to the minimum size. */
@@ -118,6 +130,9 @@ data class NormRect(val x: Float, val y: Float, val w: Float, val h: Float) {
 
         /** Default placement from the Record screen: bottom, full width minus margins. */
         val Default: NormRect = ofReference(14f, 440f, 362f, 170f)
+
+        /** The whole frame. */
+        val Frame: NormRect = NormRect(0f, 0f, 1f, 1f)
     }
 }
 

@@ -17,25 +17,48 @@ class OverlayAndVideoTest {
     @Test
     fun resizeKeepsMinimumAndFrame() {
         val r = NormRect(0.6f, 0.85f, 0.35f, 0.12f)
-        val small = r.resizedBy(-1f, -1f)
+        val small = r.resizedFrom(NormRect.Corner.BOTTOM_RIGHT, -1f, -1f)
         assertEquals(NormRect.MIN_W, small.w, 1e-6f)
         assertEquals(NormRect.MIN_H, small.h, 1e-6f)
-        val big = r.resizedBy(1f, 1f)
+        val big = r.resizedFrom(NormRect.Corner.BOTTOM_RIGHT, 1f, 1f)
         assertEquals(1f, big.right, 1e-6f)
         assertEquals(1f, big.bottom, 1e-6f)
     }
 
     @Test
-    fun resizeFromTheLeftKeepsTheRightEdge() {
-        val r = NormRect(0.6f, 0.5f, 0.35f, 0.2f)
-        val wider = r.resizedFromLeftBy(-0.2f, 0.1f)
-        assertEquals(0.4f, wider.x, 1e-6f)
-        assertEquals(r.right, wider.right, 1e-6f)
-        assertEquals(0.3f, wider.h, 1e-6f)
-        val narrow = r.resizedFromLeftBy(1f, 0f)
-        assertEquals(NormRect.MIN_W, narrow.w, 1e-6f)
-        assertEquals(r.right, narrow.right, 1e-6f)
-        assertEquals(0f, r.resizedFromLeftBy(-1f, 0f).x, 1e-6f)
+    fun everyCornerResizesAndTheOppositeOneStays() {
+        val r = NormRect(0.3f, 0.4f, 0.4f, 0.2f)
+        for (corner in NormRect.Corner.entries) {
+            val sx = if (corner.left) -1f else 1f
+            val sy = if (corner.top) -1f else 1f
+            val grown = r.resizedFrom(corner, 0.1f * sx, 0.05f * sy)
+            assertEquals(0.5f, grown.w, 1e-6f, "$corner w")
+            assertEquals(0.25f, grown.h, 1e-6f, "$corner h")
+            if (corner.left) assertEquals(r.right, grown.right, 1e-6f) else assertEquals(r.x, grown.x, 1e-6f)
+            if (corner.top) assertEquals(r.bottom, grown.bottom, 1e-6f) else assertEquals(r.y, grown.y, 1e-6f)
+
+            val shrunk = r.resizedFrom(corner, -sx, -sy)
+            assertEquals(NormRect.MIN_W, shrunk.w, 1e-6f, "$corner min w")
+            assertEquals(NormRect.MIN_H, shrunk.h, 1e-6f, "$corner min h")
+            if (corner.left) assertEquals(r.right, shrunk.right, 1e-6f) else assertEquals(r.x, shrunk.x, 1e-6f)
+            if (corner.top) assertEquals(r.bottom, shrunk.bottom, 1e-6f) else assertEquals(r.y, shrunk.y, 1e-6f)
+
+            val out = r.resizedFrom(corner, sx, sy)
+            if (corner.left) assertEquals(0f, out.x, 1e-6f) else assertEquals(1f, out.right, 1e-6f)
+            if (corner.top) assertEquals(0f, out.y, 1e-6f) else assertEquals(1f, out.bottom, 1e-6f)
+        }
+    }
+
+    @Test
+    fun resizeStaysInsideBounds() {
+        val r = NormRect(0.3f, 0.4f, 0.4f, 0.2f)
+        val bounds = NormRect(0.2f, 0.3f, 0.6f, 0.5f)
+        val topLeft = r.resizedFrom(NormRect.Corner.TOP_LEFT, -1f, -1f, within = bounds)
+        assertEquals(0.2f, topLeft.x, 1e-6f)
+        assertEquals(0.3f, topLeft.y, 1e-6f)
+        val bottomRight = r.resizedFrom(NormRect.Corner.BOTTOM_RIGHT, 1f, 1f, within = bounds)
+        assertEquals(0.8f, bottomRight.right, 1e-6f)
+        assertEquals(0.8f, bottomRight.bottom, 1e-6f)
     }
 
     @Test

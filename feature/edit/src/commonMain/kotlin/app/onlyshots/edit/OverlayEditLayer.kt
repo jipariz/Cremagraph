@@ -31,8 +31,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -72,12 +70,11 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * The graph made editable on a preview (record and edit), as in the web editor: drag inside to move it, drag a grip to
- * resize it, tap it for its style. While it moves, the areas a sharing app covers are shaded and it snaps to the lines
- * around them, the middle and the side margins, with a guide, a label and a tick. Preview only — nothing here reaches
- * the recording or the export.
+ * resize it (any of its four corners), tap it for its style. While it moves, the areas a sharing app covers are shaded
+ * and it snaps to the lines around them, the middle and the side margins, with a guide, a label and a tick. Preview
+ * only — nothing here reaches the recording or the export.
  *
- * [selected] shows the outline, the grips and the [toolbar]; on the record screen it is always on. [leftGrip] adds a
- * second grip in the bottom-left corner, for the record screen, where the camera rail covers the right-hand one.
+ * [selected] shows the outline, the four corner grips and the [toolbar]; on the record screen it is always on.
  *
  * The frame follows the finger, so drags are measured in root coordinates; a move keeps its own unsnapped rect, so a
  * snap lets go as soon as the finger is past the pull distance.
@@ -89,7 +86,6 @@ fun OverlayEditLayer(
     onTap: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Boolean = true,
-    leftGrip: Boolean = false,
     /** The frame's shape: its minimum graph size and where the graph snaps. */
     format: VideoFormat = VideoFormat.PORTRAIT_9_16,
     /**
@@ -139,25 +135,15 @@ fun OverlayEditLayer(
                         size = Size(size.width - stroke, size.height - stroke),
                         style = Stroke(stroke),
                     )
-                    // The corners that resize wear a thick bracket along the outline: where the finger lands.
-                    val bracket = (4f + 2f * grab).dp.toPx()
-                    val arm = 18.dp.toPx()
-                    val y = size.height - bracket / 2
-                    fun corner(x: Float, inward: Float) {
-                        val path =
-                            Path().apply {
-                                moveTo(x, y - arm)
-                                lineTo(x, y)
-                                lineTo(x + inward * arm, y)
-                            }
-                        drawPath(
-                            path,
+                    // Every corner resizes: a filled signal square centred on it, a size larger while held.
+                    val grip = (GRIP + 4f * grab).dp.toPx()
+                    for (cx in floatArrayOf(0f, size.width)) for (cy in floatArrayOf(0f, size.height)) {
+                        drawRect(
                             CgColors.Brand.Signal.copy(alpha = chrome),
-                            style = Stroke(bracket, cap = StrokeCap.Square),
+                            topLeft = Offset(cx - grip / 2, cy - grip / 2),
+                            size = Size(grip, grip),
                         )
                     }
-                    corner(size.width - bracket / 2, -1f)
-                    if (leftGrip) corner(bracket / 2, 1f)
                 }
                 .testTag(TestTags.Graph)
                 .semantics {
@@ -168,16 +154,27 @@ fun OverlayEditLayer(
                         true
                     }
                 }
-                .pointerInput(frameW, frameH, leftGrip) {
+                .pointerInput(frameW, frameH) {
                     val touch = CgSize.Touch.toPx()
                     val pullX = SNAP_PULL.dp.toPx() / frameW
                     val pullY = SNAP_PULL.dp.toPx() / frameH
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         val at = coords[0] ?: return@awaitEachGesture
-                        val bottom = down.position.y > size.height - touch
-                        val rightGrip = bottom && down.position.x > size.width - touch
-                        val leftHit = leftGrip && bottom && !rightGrip && down.position.x < touch
+                        // The nearest corner within half a touch target, else a move; so a small graph still moves.
+                        val corner =
+                            NormRect.Corner.entries
+                                .map { c ->
+                                    val at =
+                                        Offset(
+                                            if (c.left) 0f else size.width.toFloat(),
+                                            if (c.top) 0f else size.height.toFloat(),
+                                        )
+                                    c to (down.position - at).getDistance()
+                                }
+                                .filter { it.second <= touch / 2 }
+                                .minByOrNull { it.second }
+                                ?.first
                         val start = at.localToRoot(down.position)
                         var last = start
                         var moving = false
@@ -204,20 +201,8 @@ fun OverlayEditLayer(
                             val limit = inside
                             val next =
                                 when {
-                                    rightGrip ->
-                                        current.resizedBy(dx, dy, format).let { r ->
-                                            if (limit == null) r
-                                            else
-                                                r.copy(
-                                                    w = r.w.coerceAtMost(limit.right - r.x),
-                                                    h = r.h.coerceAtMost(limit.bottom - r.y),
-                                                )
-                                        }
-                                    leftHit ->
-                                        current.resizedFromLeftBy(dx, dy, format).let { r ->
-                                            if (limit == null || r.x >= limit.x) r
-                                            else r.copy(x = limit.x, w = r.right - limit.x)
-                                        }
+                                    corner != null ->
+                                        current.resizedFrom(corner, dx, dy, format, limit ?: NormRect.Frame)
                                     else -> {
                                         free = free.copy(x = free.x + dx, y = free.y + dy)
                                         val s = OverlaySnap.snap(free.clamped(format), pullX, pullY, format)
@@ -290,6 +275,9 @@ private fun Guides(snap: OverlaySnap.Snapped) {
 }
 
 /** How close, in dp, a moving graph has to come to a snap target before it is pulled onto it. */
+/** A corner grip's side, dp: the canvas's 11 px square. */
+private const val GRIP = 11f
+
 private const val SNAP_PULL = 8
 
 /** The pill's name for a snap place. */

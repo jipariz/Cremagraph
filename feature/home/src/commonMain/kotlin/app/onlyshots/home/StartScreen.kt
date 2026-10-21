@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import app.onlyshots.SharedKeys
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgSpace
@@ -42,12 +40,11 @@ import app.onlyshots.core.resources.home_start_question
 import app.onlyshots.core.resources.home_start_record_detail
 import app.onlyshots.core.resources.home_start_record_title
 import app.onlyshots.core.resources.start_title
-import app.onlyshots.shareBounds
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The phones' first screen: record a shot live (Home, then the camera) or edit a video already filmed (pick it and its
- * shot file, then the editor). The ? opens the same sheet as Home's.
+ * The phones' first screen: record a shot live (Home, then the camera) or compose a video from one already filmed (pick
+ * it and its shot file, then the editor). The ? opens the same sheet as Home's.
  */
 @Composable
 fun StartScreen(onRecord: () -> Unit, onEdit: () -> Unit, onPrivacy: (() -> Unit)? = null) {
@@ -108,8 +105,6 @@ fun StartBody(onRecord: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Mod
                     title = stringResource(Res.string.home_start_record_title),
                     detail = stringResource(Res.string.home_start_record_detail),
                     onClick = onRecord,
-                    // The card opens into the screen it leads to: it becomes that screen's header.
-                    modifier = Modifier.shareBounds(SharedKeys.START_RECORD, clip = StartCardShape),
                 )
                 ChoiceCard(
                     icon = CgIcons.Film,
@@ -117,12 +112,8 @@ fun StartBody(onRecord: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Mod
                     title = stringResource(Res.string.home_start_edit_title),
                     detail = stringResource(Res.string.home_start_edit_detail),
                     onClick = onEdit,
-                    modifier = Modifier.shareBounds(SharedKeys.START_EDIT, clip = StartCardShape),
                 )
             }
         }
     }
 }
-
-/** The start cards' corners, kept while they fly into the next screen's header. */
-private val StartCardShape = RoundedCornerShape(12.dp)

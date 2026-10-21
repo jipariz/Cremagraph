@@ -248,7 +248,7 @@ internal fun ShotSheetEmpty() = Sheet {
     ShotSheetContent(sampleVideo.copy(shot = null), shots = emptyList(), onPick = {}, onFile = {}, onFromMachine = {})
 }
 
-/** "Edit a video"'s shot sheet: from a file, or from the machine. */
+/** "Compose a video"'s shot sheet: from a file, or from the machine. */
 @Mugshot
 @MugshotShrink
 @Preview

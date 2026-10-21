@@ -134,7 +134,8 @@ class EditViewModel(
             val qualities = availableQualities(info?.shortSidePx ?: 0, probe.supports4k())
             _ui.update { it.copy(qualities = qualities, sourceAspect = info?.aspect) }
             analyse(item)
-            // A shot handed over with the video but not placed (the phones' "edit a video") is lined up as one picked
+            // A shot handed over with the video but not placed (the phones' "compose a video") is lined up as one
+            // picked
             // here would be; not an undo step, since the video never was without it here.
             val unplaced = item.shot
             if (unplaced != null && item.shotStartInVideoUs == null && !item.syncLocked) {

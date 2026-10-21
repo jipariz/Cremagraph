@@ -392,7 +392,7 @@ internal fun StyleEditorTiles() = Screen {
     )
 }
 
-// Open: the start of the editor on desktop and web, "edit a video" on the phones --------------
+// Open: the start of the editor on desktop and web, "compose a video" on the phones --------------
 
 private val webHost =
     OpenHost(

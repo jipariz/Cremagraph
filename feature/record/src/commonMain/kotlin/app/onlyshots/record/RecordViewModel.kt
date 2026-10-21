@@ -161,7 +161,9 @@ class RecordViewModel(
         prepareSource()
         viewModelScope.launch {
             camera.setMic(micGranted)
-            camera.setFourK(camera.state.value.supports4k)
+            // Asked for, not read from the camera's state: before the camera is open that says "no 4K", which made the
+            // first take after launch 1080p. The controller falls back to 1080p where the camera has no 4K.
+            camera.setFourK(true)
             camera.setFormat(captureFormat.value)
             camera.arm(settings.value.preRollSeconds)
         }

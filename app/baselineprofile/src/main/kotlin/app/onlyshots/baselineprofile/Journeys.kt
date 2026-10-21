@@ -58,6 +58,44 @@ fun MacrobenchmarkScope.recordAndExportTheSampleShot() {
     waitFor(By.textContains(SAVED), timeoutMs = EXPORT_TIMEOUT_MS)
 }
 
+/** Into the record screen with the sample shot, which starts filming by itself once the camera is armed. */
+fun MacrobenchmarkScope.filmTheSampleShot() {
+    tap(By.text(RECORD_A_SHOT))
+    tap(By.text(TRY_A_SAMPLE_SHOT))
+}
+
+/** The sample take filmed to its end, and the editor it lands in. */
+fun MacrobenchmarkScope.recordTheSampleShotIntoTheEditor() {
+    filmTheSampleShot()
+    waitFor(By.text(EXPORT), timeoutMs = TAKE_TIMEOUT_MS)
+}
+
+/**
+ * The editor at work: the video played with its graph drawn over it, the timeline scrubbed back and forth, played
+ * again. Taps the picture to play and pause, drags along the timeline's strip.
+ */
+fun MacrobenchmarkScope.playAndScrubInTheEditor() {
+    val timeline = device.wait(Until.findObject(By.desc(TIMELINE)), UI_TIMEOUT_MS) ?: error("No timeline on screen")
+    val strip = timeline.visibleBounds
+    // The picture sits above the timeline: its middle is free of the graph's toolbar.
+    val pictureX = device.displayWidth / 2
+    val pictureY = strip.top / 2
+    device.click(pictureX, pictureY)
+    Thread.sleep(PLAY_MS)
+    device.click(pictureX, pictureY)
+    // The strip's middle band: the filmstrip, away from the trim handles at its ends.
+    val y = strip.top + strip.height() * 2 / 3
+    val left = strip.left + strip.width() / 6
+    val right = strip.right - strip.width() / 6
+    repeat(SCRUBS) {
+        device.swipe(left, y, right, y, SCRUB_STEPS)
+        device.swipe(right, y, left, y, SCRUB_STEPS)
+    }
+    device.click(pictureX, pictureY)
+    Thread.sleep(PLAY_MS)
+    device.click(pictureX, pictureY)
+}
+
 private val PERMISSIONS =
     listOf(
         "android.permission.CAMERA",
@@ -68,14 +106,20 @@ private val PERMISSIONS =
     )
 
 // The words the journeys look for (core/resources: home_start_record_title, home_try_sample, edit_export,
-// edit_phone_save, edit_phone_saved).
+// edit_phone_save, edit_phone_saved, edit_timeline_description).
 private const val RECORD_A_SHOT = "Record a shot"
 private const val TRY_A_SAMPLE_SHOT = "no machine? try a sample shot"
 private const val EXPORT = "export"
 private const val SAVE_TO_GALLERY = "save to gallery"
 private const val SAVED = "In your gallery, in the OnlyShots album"
+private const val TIMELINE = "timeline: drag the ends to trim, drag the flag to place the shot"
 
 private const val UI_TIMEOUT_MS = 10_000L
+
+/** How long the editor plays each time, and the timeline drags: back and forth, each over this many 5 ms steps. */
+private const val PLAY_MS = 6_000L
+private const val SCRUBS = 3
+private const val SCRUB_STEPS = 200
 
 /** The sample shot runs about 45 s with its pre-roll and tail, then saves. */
 private const val TAKE_TIMEOUT_MS = 120_000L

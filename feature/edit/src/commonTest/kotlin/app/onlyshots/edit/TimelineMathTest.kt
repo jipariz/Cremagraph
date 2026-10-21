@@ -57,6 +57,27 @@ class TimelineMathTest {
     }
 
     @Test
+    fun aFlagOnATrimHandleIsGrabbedByItsTab() {
+        val atStart = item.copy(shot = app.onlyshots.core.model.sample.SampleShots.zer0, shotStartInVideoUs = 0)
+        val x = fitted.x(0)
+        assertEquals(TimelineHandle.TRIM_IN, TimelineMath.hitHandle(x, atStart, fitted, grabPx = 22f))
+        assertEquals(TimelineHandle.SHOT_FLAG, TimelineMath.hitHandle(x, atStart, fitted, 22f, onFlagTab = true))
+    }
+
+    @Test
+    fun aShotStartingBeforeTheClipKeepsItsFlagAtTheEdgeAndDragsBack() {
+        val before = item.copy(shot = app.onlyshots.core.model.sample.SampleShots.zer0, shotStartInVideoUs = -8_000_000)
+        assertEquals(fitted.padPx, TimelineMath.flagX(fitted, -8_000_000))
+        assertEquals(
+            TimelineHandle.SHOT_FLAG,
+            TimelineMath.hitHandle(fitted.padPx, before, fitted, 22f, onFlagTab = true),
+        )
+        // The drag is relative: 10 px to the left from 0:00 is a second before the clip on a 10 px/s strip.
+        assertEquals(-1_000_000L, TimelineMath.flagDrag(fitted, 0L, -10f))
+        assertEquals(-7_000_000L, TimelineMath.flagDrag(fitted, -8_000_000L, 10f))
+    }
+
+    @Test
     fun theShotFlagIsOnlyGrabbableWithAShotThatIsNotLocked() {
         val x = fitted.x(15_000_000)
         assertEquals(TimelineHandle.PLAYHEAD, TimelineMath.hitHandle(x, item, fitted, grabPx = 22f))

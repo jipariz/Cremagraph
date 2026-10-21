@@ -62,21 +62,39 @@ object TimelineMath {
 
     /**
      * What a press at [xPx] grabs: the nearest trim handle, or the shot flag when there is one to move, within
-     * [grabPx]. Anything else scrubs the playhead.
+     * [grabPx]. Anything else scrubs the playhead. A press [onFlagTab] (the flag's tab, above the strip) takes the flag
+     * over a trim handle under it, so a flag at a clip's end can always be moved.
      */
-    fun hitHandle(xPx: Float, item: VideoItem, view: TimelineView, grabPx: Float): TimelineHandle {
+    fun hitHandle(
+        xPx: Float,
+        item: VideoItem,
+        view: TimelineView,
+        grabPx: Float,
+        onFlagTab: Boolean = false,
+    ): TimelineHandle {
+        val flag = item.shotStartInVideoUs?.takeIf { item.shot != null && !item.syncLocked }?.let { flagX(view, it) }
+        if (onFlagTab && flag != null && abs(flag - xPx) <= grabPx) return TimelineHandle.SHOT_FLAG
         val candidates = buildList {
-            add(TimelineHandle.TRIM_IN to item.trimInUs)
-            add(TimelineHandle.TRIM_OUT to item.trimOutUs)
-            if (item.shot != null && !item.syncLocked)
-                item.shotStartInVideoUs?.let { add(TimelineHandle.SHOT_FLAG to it) }
+            add(TimelineHandle.TRIM_IN to view.x(item.trimInUs))
+            add(TimelineHandle.TRIM_OUT to view.x(item.trimOutUs))
+            flag?.let { add(TimelineHandle.SHOT_FLAG to it) }
         }
         return candidates
-            .map { (handle, us) -> handle to abs(view.x(us) - xPx) }
+            .map { (handle, x) -> handle to abs(x - xPx) }
             .filter { (_, d) -> d <= grabPx }
             .minByOrNull { (_, d) -> d }
             ?.first ?: TimelineHandle.PLAYHEAD
     }
+
+    /**
+     * Where the flag is drawn: at its start, or pinned to the strip's edge when the shot starts before the video (or
+     * after the strip's end), so it can still be grabbed and dragged back.
+     */
+    fun flagX(view: TimelineView, startUs: Long): Float =
+        view.x(startUs).coerceIn(view.padPx, (view.widthPx - view.padPx).coerceAtLeast(view.padPx))
+
+    /** The flag dragged by [dxPx] from where the drag found it: relative, so a pinned flag moves as the finger does. */
+    fun flagDrag(view: TimelineView, grabbedUs: Long, dxPx: Float): Long = grabbedUs + view.usFor(dxPx)
 
     /**
      * What the trim does to the graph, when it cuts into the shot: its start, its end or both. Null otherwise. Only a

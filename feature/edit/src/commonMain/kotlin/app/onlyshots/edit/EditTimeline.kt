@@ -154,7 +154,15 @@ fun EditTimeline(
 
                     val grip =
                         if (inOverview) TimelineHandle.PLAYHEAD
-                        else TimelineMath.hitHandle(down.position.x, current, view(), GRAB.dp.toPx())
+                        else
+                            TimelineMath.hitHandle(
+                                down.position.x,
+                                current,
+                                view(),
+                                GRAB.dp.toPx(),
+                                onFlagTab = y in RULER_TOP.dp.toPx()..STRIP.dp.toPx() + 8.dp.toPx(),
+                            )
+                    val grabbedShotStart = current.shotStartInVideoUs ?: 0L
                     var push = true
                     var lastX = down.position.x
                     // A snap is felt, not shown: a tick as the handle catches a target.
@@ -196,7 +204,7 @@ fun EditTimeline(
                             TimelineHandle.SHOT_FLAG -> {
                                 val (us, label) =
                                     TimelineMath.snap(
-                                        v.us(x),
+                                        TimelineMath.flagDrag(v, grabbedShotStart, x - down.position.x),
                                         listOf(
                                             SnapTarget.PUMP_START to pumpUs,
                                             SnapTarget.PLAYHEAD to playheadNow(),
@@ -438,8 +446,22 @@ private fun DrawScope.wave(v: TimelineView, pad: Float, waveform: FloatArray?, p
 private fun DrawScope.flag(item: VideoItem, v: TimelineView) {
     val start = item.shotStartInVideoUs ?: return
     if (item.shot == null) return
-    val x = v.x(start)
+    val at = v.x(start)
+    val x = TimelineMath.flagX(v, start)
     val color = if (item.syncLocked) CgColors.Text.Dim else CgColors.Brand.Signal
+    if (at < x - 0.5f) {
+        // The shot starts before the video: its tab waits at the strip's left edge, pointing to where it is.
+        drawRect(color, Offset(x, 44.dp.toPx()), Size(16.dp.toPx(), 12.dp.toPx()))
+        val tri =
+            Path().apply {
+                moveTo(x - 7.dp.toPx(), 50.dp.toPx())
+                lineTo(x - 1.dp.toPx(), 44.dp.toPx())
+                lineTo(x - 1.dp.toPx(), 56.dp.toPx())
+                close()
+            }
+        drawPath(tri, color)
+        return
+    }
     drawRect(color, Offset(x - 1.dp.toPx(), 46.dp.toPx()), Size(2.dp.toPx(), 82.dp.toPx()))
     drawRect(color, Offset(x, 44.dp.toPx()), Size(16.dp.toPx(), 12.dp.toPx()))
 }

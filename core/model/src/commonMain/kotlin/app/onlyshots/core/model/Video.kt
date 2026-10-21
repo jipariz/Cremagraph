@@ -59,22 +59,30 @@ data class VideoItem(
         return copy(trimInUs = i, trimOutUs = o)
     }
 
-    /** Moves the shot-start flag. Ignored for synced in-app recordings. */
+    /**
+     * Moves the shot-start flag. Ignored for synced in-app recordings. The shot may start before the video (the camera
+     * started mid-shot, or the shot is longer than the clip) or run on past its end: they only have to overlap.
+     */
     fun withShotStart(videoUs: Long): VideoItem =
-        if (syncLocked) this else copy(shotStartInVideoUs = videoUs.coerceIn(0L, durationUs))
+        if (syncLocked) this else copy(shotStartInVideoUs = videoUs.coerceIn(earliestShotStartUs, durationUs))
+
+    /** The earliest the shot may start: all but its last microsecond before the video. */
+    val earliestShotStartUs: Long
+        get() = (1L - (shot?.durationUs ?: 0L)).coerceAtMost(0L)
 
     /** A recording's shot start, freed to be moved by hand; it stays where it was recorded until it is moved. */
     fun unlocked(): VideoItem = copy(syncLocked = false)
 
     /**
      * Where the shot starts by the clocks, the shot's against the video's: null when either clock is unknown or the
-     * shot would start outside the clip (a file whose clock is off, or a shot pulled before the camera ran).
+     * shot and the clip would not overlap (a file whose clock is off). A shot pulled before the camera ran starts
+     * before 0:00.
      */
     fun shotStartByClock(): Long? {
         val shot = shot ?: return null
         val recorded = recordedAt ?: return null
         val offsetUs = (shot.startedAt - recorded).inWholeMicroseconds
-        return offsetUs.takeIf { it in 0L..durationUs }
+        return offsetUs.takeIf { it in earliestShotStartUs..durationUs }
     }
 
     companion object {

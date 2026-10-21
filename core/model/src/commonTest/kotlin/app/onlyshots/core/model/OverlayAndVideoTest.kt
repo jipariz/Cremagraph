@@ -89,6 +89,17 @@ class OverlayAndVideoTest {
     }
 
     @Test
+    fun aShotLongerThanTheClipMayStartBeforeIt() {
+        val shot = app.onlyshots.core.model.sample.SampleShots.zer0
+        val short = video.copy(shot = shot, durationUs = shot.durationUs / 2)
+        assertEquals(-10_000_000, short.withShotStart(-10_000_000).shotStartInVideoUs)
+        // They still overlap: at most all but the shot's last microsecond comes before 0:00.
+        assertEquals(1 - shot.durationUs, short.withShotStart(-shot.durationUs * 2).shotStartInVideoUs)
+        // Without a shot there is nothing before the clip to show.
+        assertEquals(0, video.copy(shot = null).withShotStart(-5).shotStartInVideoUs)
+    }
+
+    @Test
     fun capabilitiesExplainMissingSeries() {
         assertTrue(Series.WEIGHT !in Capabilities.of(SourceKind.GAGGIMATE).series)
         assertTrue(Series.WEIGHT in Capabilities.of(SourceKind.GAGGIMATE, hasScale = true).series)

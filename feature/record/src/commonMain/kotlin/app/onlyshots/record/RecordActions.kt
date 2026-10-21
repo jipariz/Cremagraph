@@ -28,9 +28,6 @@ interface RecordActions {
 
     fun updateSettings(change: (RecordingSettings) -> RecordingSettings)
 
-    /** "keep 9:16": record this take in the saved format, though the phone rests on its side. */
-    fun keepFormat() = Unit
-
     /** Does nothing: for previews. */
     object None : RecordActions {
         override fun recordPressed() = Unit

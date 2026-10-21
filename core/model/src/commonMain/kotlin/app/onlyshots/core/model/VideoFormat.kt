@@ -54,11 +54,3 @@ fun sourcePoint(fx: Float, fy: Float, sourceAspect: Float, format: VideoFormat, 
     return if (sourceAspect > out) (0.5f + (gx - 0.5f) * out / sourceAspect) to gy
     else gx to (0.5f + (gy - 0.5f) * sourceAspect / out)
 }
-
-/**
- * Whether a window of [width] × [height] stands the other way from [format]: a 16:9 video on an upright screen, or a
- * tall one on a sideways screen. The camera films the way the screen stands, so such a take would come out the wrong
- * shape. Unknown sizes are never wrong.
- */
-fun heldWrongWay(width: Int, height: Int, format: VideoFormat): Boolean =
-    width > 0 && height > 0 && (width > height) != format.landscape

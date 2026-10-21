@@ -4,11 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -32,7 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -45,6 +44,7 @@ import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.PRIVACY_URL
 import app.onlyshots.SUPPORT_URL
+import app.onlyshots.StopRuleChoice
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgSize
@@ -53,10 +53,9 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.AddRow
 import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.CgSheet
+import app.onlyshots.core.designsystem.component.CgStepper
 import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.ConnectScaleCard
-import app.onlyshots.core.designsystem.component.FormatOption
-import app.onlyshots.core.designsystem.component.FormatPicker
 import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.designsystem.component.IconCircleButton
 import app.onlyshots.core.designsystem.component.MachineRow
@@ -66,13 +65,16 @@ import app.onlyshots.core.designsystem.component.RuleRow
 import app.onlyshots.core.designsystem.component.ScaleAction
 import app.onlyshots.core.designsystem.component.ScaleDeviceRow
 import app.onlyshots.core.designsystem.component.SectionHeader
+import app.onlyshots.core.designsystem.component.SegmentedControl
+import app.onlyshots.core.designsystem.component.SettingRow
 import app.onlyshots.core.designsystem.component.SkeletonRow
-import app.onlyshots.core.designsystem.component.TakeNotice
 import app.onlyshots.core.model.AppVersion
 import app.onlyshots.core.model.RecordingSettings
+import app.onlyshots.core.model.SourceKind
 import app.onlyshots.core.model.StopRule
-import app.onlyshots.core.model.VideoFormat
-import app.onlyshots.core.model.heldWrongWay
+import app.onlyshots.core.model.availableFor
+import app.onlyshots.core.model.stepLabel
+import app.onlyshots.core.model.stepped
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.core_version
 import app.onlyshots.core.resources.home_about
@@ -86,7 +88,6 @@ import app.onlyshots.core.resources.home_bluetooth_scale
 import app.onlyshots.core.resources.home_connect
 import app.onlyshots.core.resources.home_connect_scale_subtitle
 import app.onlyshots.core.resources.home_connect_scale_title
-import app.onlyshots.core.resources.home_format
 import app.onlyshots.core.resources.home_help_machines
 import app.onlyshots.core.resources.home_help_machines_note
 import app.onlyshots.core.resources.home_help_scales_note
@@ -96,6 +97,7 @@ import app.onlyshots.core.resources.home_privacy
 import app.onlyshots.core.resources.home_record
 import app.onlyshots.core.resources.home_record_armed_auto
 import app.onlyshots.core.resources.home_record_armed_manual
+import app.onlyshots.core.resources.home_rule_pre_roll
 import app.onlyshots.core.resources.home_rule_start
 import app.onlyshots.core.resources.home_rule_stop
 import app.onlyshots.core.resources.home_scale_detail
@@ -107,6 +109,9 @@ import app.onlyshots.core.resources.home_take_sample
 import app.onlyshots.core.resources.home_title
 import app.onlyshots.core.resources.home_try_sample
 import app.onlyshots.core.resources.home_turn_on_bluetooth
+import app.onlyshots.core.resources.record_pre_roll_hint
+import app.onlyshots.core.resources.record_pre_roll_hint_scale
+import app.onlyshots.core.resources.record_seconds
 import app.onlyshots.core.resources.source_scale
 import app.onlyshots.core.resources.text
 import app.onlyshots.edit.machineColor
@@ -385,8 +390,8 @@ private fun AddressSheet(address: String, onAddress: (String) -> Unit, onConnect
 }
 
 /**
- * A wide Home's second page: the take the record button starts. The source and its live readings, the video's shape,
- * how the take starts and stops (the record screen's own settings), and the record button at the bottom.
+ * A wide Home's second page: the take the record button starts. The source and its live readings, how the take starts
+ * and stops (the record screen's own settings), and the record button at the bottom.
  */
 @Composable
 private fun NextTakePane(
@@ -397,107 +402,164 @@ private fun NextTakePane(
     onSample: () -> Unit,
 ) {
     val settings = take.settings
-    val window = LocalWindowInfo.current.containerSize
-    val (hint, warn) = formatHint(settings.format, heldWrongWay(window.width, window.height, settings.format))
-    Column(Modifier.fillMaxSize().padding(CgSpace.S24), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    // A short panel (a tablet on its side) tightens up, so the rules still show above the record button.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val compact = maxHeight < COMPACT_PANEL_HEIGHT
+        val gap = if (compact) CgSpace.S12 else 20.dp
         Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            Modifier.fillMaxSize().padding(if (compact) CgSpace.S16 else CgSpace.S24),
+            verticalArrangement = Arrangement.spacedBy(gap),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
-                SectionLabel(stringResource(Res.string.home_next_take))
-                Text(
-                    buildAnnotatedString {
-                        append(
-                            if (state.sample) stringResource(Res.string.home_take_sample)
-                            else state.saved?.name?.text() ?: stringResource(Res.string.home_take_camera_only)
-                        )
-                        state.saved?.let {
-                            withStyle(SpanStyle(color = CgColors.Text.Dim)) {
-                                append(" · ")
-                                append(
-                                    stringResource(
-                                        if (it.isScale) Res.string.source_scale else Res.string.home_take_machine
+            Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(gap),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
+                    SectionLabel(stringResource(Res.string.home_next_take))
+                    Text(
+                        buildAnnotatedString {
+                            append(
+                                if (state.sample) stringResource(Res.string.home_take_sample)
+                                else state.saved?.name?.text() ?: stringResource(Res.string.home_take_camera_only)
+                            )
+                            state.saved?.let {
+                                withStyle(SpanStyle(color = CgColors.Text.Dim)) {
+                                    append(" · ")
+                                    append(
+                                        stringResource(
+                                            if (it.isScale) Res.string.source_scale else Res.string.home_take_machine
+                                        )
                                     )
+                                }
+                            }
+                        },
+                        style = CgTheme.type.sheetTitle,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val live = state.connection == ConnectionState.Connected && take.live != null
+                        Box(
+                            Modifier.size(8.dp)
+                                .clip(CircleShape)
+                                .background(if (live) CgColors.Status.Live else CgColors.Text.Dim)
+                        )
+                        Text(
+                            takeStatus(state, take.live).text(),
+                            style = CgTheme.type.caption,
+                            color = CgColors.Text.Secondary,
+                        )
+                    }
+                    val readings = takeReadings(state, take.live)
+                    if (readings.isNotEmpty()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                            for (r in readings) {
+                                ReadingTile(
+                                    stringResource(r.label),
+                                    r.value,
+                                    stringResource(r.unit),
+                                    Modifier.weight(1f),
+                                    color = r.kind.color(),
                                 )
                             }
                         }
-                    },
-                    style = CgTheme.type.sheetTitle,
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val live = state.connection == ConnectionState.Connected && take.live != null
-                    Box(
-                        Modifier.size(8.dp)
-                            .clip(CircleShape)
-                            .background(if (live) CgColors.Status.Live else CgColors.Text.Dim)
-                    )
-                    Text(
-                        takeStatus(state, take.live).text(),
-                        style = CgTheme.type.caption,
-                        color = CgColors.Text.Secondary,
-                    )
-                }
-                val readings = takeReadings(state, take.live)
-                if (readings.isNotEmpty()) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
-                        for (r in readings) {
-                            ReadingTile(
-                                stringResource(r.label),
-                                r.value,
-                                stringResource(r.unit),
-                                Modifier.weight(1f),
-                                color = r.kind.color(),
-                            )
-                        }
                     }
                 }
+                TakeRules(settings, state.saved?.kind, onRecording)
             }
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SectionLabel(stringResource(Res.string.home_format))
-                FormatPicker(
-                    FORMAT_OPTIONS,
-                    VideoFormat.entries.indexOf(settings.format),
-                    onPick = { i -> onRecording { it.withFormat(VideoFormat.entries[i]) } },
-                    compact = LocalWindowLayout.current.splitDp < 420f,
-                )
-                if (warn) TakeNotice(hint.text())
-                else Text(hint.text(), style = CgTheme.type.caption, color = CgColors.Text.Dim)
-            }
-            Column {
-                RuleRow(
-                    stringResource(Res.string.home_rule_start),
-                    startRuleDetail(settings).text(),
-                    checked = settings.autoStart,
-                    onToggle = { on -> onRecording { it.copy(autoStart = on) } },
-                )
-                RuleRow(
-                    stringResource(Res.string.home_rule_stop),
-                    stopRuleDetail(settings, state.saved?.kind).text(),
-                    checked = settings.stopRule != StopRule.Manual,
-                    onToggle = { on -> onRecording { it.withStopAfterShot(on) } },
-                )
-            }
+            val action = recordAction(state)
+            val withoutData = state.saved == null || state.connection is ConnectionState.Unreachable
+            RecordAction(
+                text = if (withoutData) action.text.text() else stringResource(Res.string.home_record),
+                caption =
+                    if (withoutData) action.caption.text()
+                    else if (settings.autoStart) stringResource(Res.string.home_record_armed_auto)
+                    else stringResource(Res.string.home_record_armed_manual),
+                enabled = action.enabled,
+                onClick = onOpenCamera,
+            )
+            SampleLink(state, onSample, Modifier.align(Alignment.CenterHorizontally))
         }
-        val action = recordAction(state)
-        val withoutData = state.saved == null || state.connection is ConnectionState.Unreachable
-        RecordAction(
-            text = if (withoutData) action.text.text() else stringResource(Res.string.home_record),
-            caption =
-                if (withoutData) action.caption.text()
-                else if (settings.autoStart) stringResource(Res.string.home_record_armed_auto)
-                else stringResource(Res.string.home_record_armed_manual),
-            enabled = action.enabled,
-            onClick = onOpenCamera,
-        )
-        SampleLink(state, onSample, Modifier.align(Alignment.CenterHorizontally))
     }
 }
+
+/**
+ * How the next take starts and stops, all of it, as the record screen's settings have it: the switches, the pre-roll,
+ * and while the take stops by itself, on what and after how long. Worded for the [kind] of source: a scale has no pump.
+ */
+@Composable
+private fun TakeRules(
+    settings: RecordingSettings,
+    kind: SourceKind?,
+    onRecording: ((RecordingSettings) -> RecordingSettings) -> Unit,
+) {
+    val scale = kind == SourceKind.SCALE
+    // What this source really runs with: a scale shows "weight settles" where a machine's "shot end" is saved.
+    val effective = settings.effective(kind)
+    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+        RuleRow(
+            stringResource(Res.string.home_rule_start),
+            startRuleDetail(settings, kind).text(),
+            checked = settings.autoStart,
+            onToggle = { on -> onRecording { it.copy(autoStart = on) } },
+        )
+        SettingRow(
+            stringResource(Res.string.home_rule_pre_roll),
+            hint =
+                stringResource(if (scale) Res.string.record_pre_roll_hint_scale else Res.string.record_pre_roll_hint),
+        ) {
+            CgStepper(
+                value = stringResource(Res.string.record_seconds, settings.preRollSeconds.toString()),
+                onMinus = { onRecording { it.copy(preRollSeconds = (it.preRollSeconds - 1).coerceIn(PRE_ROLL)) } },
+                onPlus = { onRecording { it.copy(preRollSeconds = (it.preRollSeconds + 1).coerceIn(PRE_ROLL)) } },
+                minusEnabled = settings.preRollSeconds > PRE_ROLL.first,
+                plusEnabled = settings.preRollSeconds < PRE_ROLL.last,
+            )
+        }
+        RuleRow(
+            stringResource(Res.string.home_rule_stop),
+            stopRuleDetail(settings, kind).text(),
+            checked = settings.stopRule != StopRule.Manual,
+            onToggle = { on -> onRecording { it.withStopAfterShot(on) } },
+        )
+        if (effective.stopRule != StopRule.Manual) {
+            // "By hand" is the switch above; the picker holds the rules that stop by themselves.
+            val choices =
+                StopRuleChoice.entries.filter {
+                    it != StopRuleChoice.MANUAL && (kind == null || it.rule().availableFor(kind))
+                }
+            val current = StopRuleChoice.of(effective.stopRule)
+            SegmentedControl(
+                fill = true,
+                options = choices.map { stringResource(it.label) },
+                selectedIndex = choices.indexOf(current),
+                onSelect = { i -> onRecording { it.copy(stopRule = choices[i].rule()) } },
+            )
+            val label = effective.stopRule.stepLabel
+            val parameter = current.parameter
+            if (label != null && parameter != null) {
+                SettingRow(stringResource(parameter).replaceFirstChar { it.uppercase() }) {
+                    // Stepped from what is shown, so a scale's stand-in "weight settles" becomes the saved rule.
+                    CgStepper(
+                        value = label,
+                        onMinus = { onRecording { s -> s.copy(stopRule = s.effective(kind).stopRule.stepped(-1)) } },
+                        onPlus = { onRecording { s -> s.copy(stopRule = s.effective(kind).stopRule.stepped(1)) } },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun RecordingSettings.effective(kind: SourceKind?) = kind?.let { effectiveFor(it) } ?: this
+
+private val PRE_ROLL = RecordingSettings.PRE_ROLL_RANGE
+
+/** Under this the next take's panel is short, and tighter. */
+private val COMPACT_PANEL_HEIGHT = 640.dp
 
 @Composable
 private fun SectionLabel(text: String) {
@@ -513,9 +575,6 @@ private fun ReadingKind.color(): Color =
         ReadingKind.Flow -> CgColors.Series.Flow
         ReadingKind.WeightFlow -> CgColors.Series.WeightFlow
     }
-
-/** The four shapes, as the format picker draws them. */
-private val FORMAT_OPTIONS = VideoFormat.entries.map { FormatOption(it.label, it.ratio) }
 
 /**
  * Under the record button: a recorded shot to try the app with when there is no machine at hand (and for App Review,

@@ -77,8 +77,8 @@ Liquid Glass. Old ids (`gweb`, `tiles`, …) map to closest. User makes own in s
   New style field needs edit + control, or test fail.
 
 **Formats.** 9:16 (default), 4:5, 1:1, 16:9. Export 1080 (or 2160) on short side. Graph sized to short side.
-Phones film portrait for 9:16, 4:5, 1:1 (crop, rest dimmed). Film landscape for 16:9. Editor's **⤢ frame** swaps
-format and moves crop.
+Record screen picks no format: camera fills screen, films its whole frame as held (9:16 upright, 16:9 on its side).
+Screen locks only while take runs. Editor's **⤢ frame** picks format and moves crop.
 
 **Live data.** Every machine or scale = `ShotSource`. Network machine = `NetworkMachine` in
 `NetworkMachines.all`. Scale = pure `BleProtocol` over Kable. `SourceHolder` swaps live source under every screen.

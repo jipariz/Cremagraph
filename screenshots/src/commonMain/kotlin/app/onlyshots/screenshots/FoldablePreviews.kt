@@ -5,9 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.tooling.preview.Preview
 import app.onlyshots.core.designsystem.CgTheme
-import app.onlyshots.core.model.RecordingSettings
 import app.onlyshots.core.model.SourceKind
-import app.onlyshots.core.model.VideoFormat
 import app.onlyshots.core.model.sample.SampleShots
 import app.onlyshots.core.resources.raw
 import app.onlyshots.edit.EditSheet
@@ -104,7 +102,7 @@ private val armed =
 @Composable
 internal fun HomeBookOpen() = Book { HomeBody(connected, {}, {}, {}, {}, {}, take = NextTake(live = idleReading)) }
 
-/** The iPhone Duo open: the inner display is landscape, so a tall format gets the warning. */
+/** The iPhone Duo open: the inner display is landscape. */
 @Mugshot
 @MugshotDevices(MugshotDevice.TABLET)
 @Preview
@@ -119,21 +117,12 @@ internal fun HomeDuoOpen() = Book { HomeBody(connected, {}, {}, {}, {}, {}, take
 @Composable
 internal fun RecordBookOpen() = Book { Record(running()) }
 
-/** The iPhone Duo held sideways with 9:16 chosen: the camera waits, and 16:9 is offered. */
+/** A book on its side: the camera in the upper half films 16:9, the controls on the half lying flat. */
 @Mugshot
 @MugshotDevices(MugshotDevice.TABLET)
 @Preview
 @Composable
-internal fun RecordDuoWrongWay() = Book { Record(armed, turnHint = "turn upright to film 9:16") }
-
-/** A book on its side: 16:9 for this take, "keep 9:16" to undo. */
-@Mugshot
-@MugshotDevices(MugshotDevice.TABLET)
-@Preview
-@Composable
-internal fun RecordTabletop() = OnItsSide {
-    Record(armed, RecordingSettings().withFormat(VideoFormat.LANDSCAPE_16_9), switchedFrom = VideoFormat.PORTRAIT_9_16)
-}
+internal fun RecordTabletop() = OnItsSide { Record(armed) }
 
 /** A flip half open: the camera stands in the upper half, framed 9:16. */
 @Mugshot

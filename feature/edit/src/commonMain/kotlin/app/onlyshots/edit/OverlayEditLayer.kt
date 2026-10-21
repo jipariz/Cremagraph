@@ -85,11 +85,17 @@ fun OverlayEditLayer(
     leftGrip: Boolean = false,
     /** The frame's shape: its minimum graph size and where the graph snaps. */
     format: VideoFormat = VideoFormat.PORTRAIT_9_16,
+    /**
+     * The part of the frame the graph is kept in, where not all of it is on screen (the record screen's camera fills
+     * the window, so the frame's edges are cut off); null for the whole frame.
+     */
+    bounds: NormRect? = null,
     toolbar: (@Composable () -> Unit)? = null,
 ) {
     val change by rememberUpdatedState(onChange)
     val tap by rememberUpdatedState(onTap)
     val current by rememberUpdatedState(rect)
+    val inside by rememberUpdatedState(bounds)
     val haptic = LocalHapticFeedback.current
     var dragging by remember { mutableStateOf(false) }
     var snap by remember { mutableStateOf<OverlaySnap.Snapped?>(null) }
@@ -174,10 +180,23 @@ fun OverlayEditLayer(
                             val dx = (now - last).x / frameW
                             val dy = (now - last).y / frameH
                             last = now
+                            val limit = inside
                             val next =
                                 when {
-                                    rightGrip -> current.resizedBy(dx, dy, format)
-                                    leftHit -> current.resizedFromLeftBy(dx, dy, format)
+                                    rightGrip ->
+                                        current.resizedBy(dx, dy, format).let { r ->
+                                            if (limit == null) r
+                                            else
+                                                r.copy(
+                                                    w = r.w.coerceAtMost(limit.right - r.x),
+                                                    h = r.h.coerceAtMost(limit.bottom - r.y),
+                                                )
+                                        }
+                                    leftHit ->
+                                        current.resizedFromLeftBy(dx, dy, format).let { r ->
+                                            if (limit == null || r.x >= limit.x) r
+                                            else r.copy(x = limit.x, w = r.right - limit.x)
+                                        }
                                     else -> {
                                         free = free.copy(x = free.x + dx, y = free.y + dy)
                                         val s = OverlaySnap.snap(free.clamped(format), pullX, pullY, format)
@@ -187,7 +206,7 @@ fun OverlayEditLayer(
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         }
                                         lastTarget = target
-                                        s.rect
+                                        limit?.let(s.rect::within) ?: s.rect
                                     }
                                 }
                             change(next, push)

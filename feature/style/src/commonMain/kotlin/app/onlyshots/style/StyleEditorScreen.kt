@@ -55,7 +55,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -351,7 +353,12 @@ fun StyleEditorBody(
         WidePanes(
             layout,
             modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding(),
-            panelWidth = STYLE_PANEL_WIDTH,
+            // On a medium window the two share it, as the adaptive scaffold split it; the wider panel on an expanded
+            // one.
+            panelWidth =
+                STYLE_PANEL_WIDTH.takeIf {
+                    with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() } >= 840.dp
+                },
             main = {
                 Column(Modifier.fillMaxSize()) {
                     header()

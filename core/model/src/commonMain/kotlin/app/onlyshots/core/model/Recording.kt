@@ -79,9 +79,11 @@ data class RecordingSettings(
     val autoStart: Boolean = true,
     val preRollSeconds: Int = 3,
     val stopRule: StopRule = StopRule.ShotEndPlusTail(),
+    /**
+     * The graph for the next recordings, its rect in a 9:16 frame. Each take films the camera's whole frame the way the
+     * screen stands (9:16 or 16:9), and the editor crops it to the video's format.
+     */
     val overlay: OverlaySettings = OverlaySettings(),
-    /** The shape of the videos recorded: 16:9 is filmed with the phone turned, the rest portrait and cropped. */
-    val format: VideoFormat = VideoFormat.PORTRAIT_9_16,
 ) {
     init {
         require(preRollSeconds in PRE_ROLL_RANGE)
@@ -92,10 +94,6 @@ data class RecordingSettings(
      * does the same job there (a scale stops when the weight settles). The saved settings stay as they are, so a
      * machine still gets its "shot end".
      */
-    /** Another shape for the next recordings, the graph refitted into it. */
-    fun withFormat(to: VideoFormat): RecordingSettings =
-        if (to == format) this else copy(format = to, overlay = overlay.copy(rect = overlay.rect.refit(format, to)))
-
     fun effectiveFor(kind: SourceKind): RecordingSettings =
         if (stopRule.availableFor(kind)) this else copy(stopRule = StopRule.WeightSettles())
 

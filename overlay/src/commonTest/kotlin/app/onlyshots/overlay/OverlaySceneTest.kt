@@ -238,6 +238,16 @@ class OverlaySceneTest {
     }
 
     @Test
+    fun beforeTheFirstSampleEverySelectedSeriesWaits() {
+        val waiting = shot.copy(samples = emptyList())
+        assertEquals(
+            listOf(Series.PRESSURE, Series.FLOW, Series.WEIGHT),
+            visibleSeries(waiting, OverlaySettings.DefaultSeries),
+        )
+        assertTrue("weight" in scene(0.0, s = waiting).texts())
+    }
+
+    @Test
     fun gapsBreakCurves() {
         val gapped = shot.copy(gaps = listOf(TimeRange(10_000_000, 12_000_000)))
         val settings = OverlaySettings(series = setOf(Series.PRESSURE))

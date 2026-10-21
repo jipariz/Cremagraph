@@ -73,26 +73,20 @@ class RecordViewModel(
     private var overlaySave: Job? = null
 
     /**
-     * The shape this take records in when it is not the saved one: 16:9 for a tall format while a book foldable rests
-     * on its side ([onItsSide]), until "keep 9:16" ([keepFormat]). The saved setting is left alone.
+     * The shape the camera films: its whole frame, 9:16 with the screen upright and 16:9 on its side ([capture]). The
+     * editor crops it to the video's format.
      */
-    val takeFormat: StateFlow<VideoFormat?>
-        field = MutableStateFlow<VideoFormat?>(null)
+    val captureFormat: StateFlow<VideoFormat>
+        field = MutableStateFlow(VideoFormat.PORTRAIT_9_16)
 
-    /** "keep 9:16" was pressed while on its side; forgotten when it stands up again. */
-    private var keepTall = false
-
-    /** The format chosen in the settings, whatever this take does. */
-    val savedFormat: StateFlow<VideoFormat> =
-        settingsRepo.state
-            .map { it.recording.format }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, settingsRepo.value.recording.format)
-
-    /** The settings the next take records with: the saved ones, the graph being dragged, the take's own format. */
+    /**
+     * The settings the next take records with: the saved ones and the graph being dragged, its rect moved from the
+     * saved 9:16 frame into the one being filmed.
+     */
     val settings: StateFlow<RecordingSettings> =
-        combine(settingsRepo.state.map { it.recording }, overlayDraft, takeFormat) { recording, draft, take ->
-                val base = if (draft == null) recording else recording.copy(overlay = draft)
-                if (take == null) base else base.withFormat(take)
+        combine(settingsRepo.state.map { it.recording }, overlayDraft, captureFormat) { recording, draft, capture ->
+                val overlay = draft ?: recording.overlay
+                recording.copy(overlay = overlay.copy(rect = overlay.rect.refit(SAVED_FRAME, capture)))
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, settingsRepo.value.recording)
 
@@ -164,21 +158,28 @@ class RecordViewModel(
      */
     fun arm(micGranted: Boolean) {
         onScreen = true
-        if (wrongWay) return
         prepareSource()
         viewModelScope.launch {
             camera.setMic(micGranted)
             camera.setFourK(camera.state.value.supports4k)
-            camera.setFormat(settings.value.format)
+            camera.setFormat(captureFormat.value)
             camera.arm(settings.value.preRollSeconds)
         }
     }
 
     /**
-     * The format changed: the pre-roll being kept was filmed the old way, so it starts again in the new one, once the
-     * screen has turned (the camera records the way the screen stands). Never under a recording.
+     * The screen turned to stand as [format]: the pre-roll being kept was filmed the old way, so it starts again in the
+     * new one. A recording keeps the way it started (the screen is held still while it runs); the screen asks again
+     * once it has ended.
      */
-    fun rearm(micGranted: Boolean) {
+    fun capture(format: VideoFormat, micGranted: Boolean) {
+        if (format == captureFormat.value || state.value.recording) return
+        captureFormat.value = format
+        if (onScreen) rearm(micGranted)
+    }
+
+    /** The pre-roll starts again, once the screen has finished turning. Never under a recording. */
+    private fun rearm(micGranted: Boolean) {
         if (state.value.recording) return
         disarm()
         rearming?.cancel()
@@ -190,9 +191,6 @@ class RecordViewModel(
 
     private var rearming: Job? = null
 
-    /** The screen stands the other way from the format; see [RecordSession.heldWrongWay]. */
-    private var wrongWay = false
-
     /** The camera was refused; see [RecordUiState.noCamera]. */
     private var noCamera = false
 
@@ -200,20 +198,6 @@ class RecordViewModel(
     fun cameraAccess(granted: Boolean) {
         noCamera = !granted
         _session.value.noCamera = noCamera
-    }
-
-    /**
-     * Where the screen cannot be held the format's way (a foldable's inner display ignores the lock), the camera waits
-     * until it is turned: it stops filming the pre-roll the wrong way, and arms again once the screen stands right. A
-     * recording under way is never cut.
-     */
-    fun heldWrongWay(wrong: Boolean, micGranted: Boolean) {
-        if (wrong == wrongWay) return
-        wrongWay = wrong
-        _session.value.heldWrongWay = wrong
-        if (state.value.recording) return
-        rearming?.cancel()
-        if (wrong) disarm() else if (onScreen) arm(micGranted)
     }
 
     fun disarm() = camera.disarm()
@@ -235,28 +219,7 @@ class RecordViewModel(
     override fun setZoom(zoom: Float) = camera.setZoom(zoom)
 
     override fun updateSettings(change: (RecordingSettings) -> RecordingSettings) {
-        val before = settingsRepo.value.recording.format
         settingsRepo.update { it.copy(recording = change(it.recording)) }
-        // A format picked by hand is the one to use, on its side or not.
-        if (settingsRepo.value.recording.format != before) {
-            keepTall = true
-            takeFormat.value = null
-        }
-    }
-
-    /**
-     * The posture changed: on its side a tall format records 16:9 for the take (the camera fills the upper half), back
-     * up the saved format returns. Never under a recording.
-     */
-    fun onItsSide(side: Boolean) {
-        if (state.value.recording) return
-        if (!side) keepTall = false
-        takeFormat.value = takeFormatFor(side, settingsRepo.value.recording.format, keepTall)
-    }
-
-    override fun keepFormat() {
-        keepTall = true
-        takeFormat.value = null
     }
 
     /**
@@ -264,11 +227,9 @@ class RecordViewModel(
      * change is drawn at once and saved after a moment without one.
      */
     override fun updateOverlay(change: (OverlaySettings) -> OverlaySettings) {
-        // Moved in the take's own shape, the graph is kept where it lands in the saved one.
+        // Moved in the frame being filmed, the graph is kept where it lands in the saved one.
         val changed = change(settings.value.overlay)
-        val saved = settingsRepo.value.recording.format
-        overlayDraft.value =
-            takeFormat.value?.let { take -> changed.copy(rect = changed.rect.refit(take, saved)) } ?: changed
+        overlayDraft.value = changed.copy(rect = changed.rect.refit(captureFormat.value, SAVED_FRAME))
         overlaySave?.cancel()
         overlaySave = viewModelScope.launch {
             delay(OVERLAY_SAVE_DELAY_MS)
@@ -313,10 +274,7 @@ class RecordViewModel(
                 nowUs = { start.elapsedNow().inWholeMicroseconds },
                 camera = camera,
             )
-            .also {
-                it.heldWrongWay = wrongWay
-                it.noCamera = noCamera
-            }
+            .also { it.noCamera = noCamera }
     }
 
     private suspend fun save(take: FinishedRecording) {
@@ -348,8 +306,8 @@ class RecordViewModel(
                                     pinStyle(settings.overlay.forSource(kind), kind)
                                 },
                         )
-                        // A portrait take for 4:5 or 1:1 keeps its middle; the editor can move the crop.
-                        .copy(format = settings.format)
+                        // The camera's whole frame, as filmed: the editor crops it to another format.
+                        .copy(format = captureFormat.value)
                 )
                 id
             }
@@ -370,6 +328,9 @@ class RecordViewModel(
 
 /** A pause this long after the last drag frame counts as the gesture settled. */
 private const val OVERLAY_SAVE_DELAY_MS = 400L
+
+/** The frame the saved graph's rect is kept in, whatever each take films. */
+private val SAVED_FRAME = VideoFormat.PORTRAIT_9_16
 
 /** How long a screen takes to turn before the camera is armed the new way. */
 private const val TURN_MS = 700L

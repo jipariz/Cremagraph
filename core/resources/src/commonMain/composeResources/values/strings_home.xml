@@ -77,13 +77,12 @@
     <string name="home_status_offline">%1$s is offline</string>
     <string name="home_status_busy">the machine is busy: close another web interface</string>
     <string name="home_status_connecting">connecting…</string>
-    <string name="home_format">Format</string>
-    <string name="home_format_landscape_wrong_way">16:9 records with the phone on its side. Held like this, pick 9:16.</string>
-    <string name="home_format_portrait_wrong_way">%1$s records with the phone closed or upright. Open like this, pick 16:9.</string>
-    <string name="home_format_hint">Hold the phone closed and upright for 9:16. 16:9 records on its side.</string>
     <string name="home_rule_start">Start with the shot</string>
     <string name="home_rule_start_now">starts the moment the pump starts</string>
     <string name="home_rule_start_pre_roll">keep the %1$s s before the pump starts</string>
+    <string name="home_rule_start_now_scale">starts the moment the first drops land</string>
+    <string name="home_rule_start_pre_roll_scale">keep the %1$s s before the first drops land</string>
+    <string name="home_rule_pre_roll">Pre-roll</string>
     <string name="home_rule_stop">Stop after the shot</string>
     <string name="home_rule_stop_tail">%1$s s after the pump stops</string>
     <string name="home_rule_stop_settles">when the weight settles for %1$s s</string>

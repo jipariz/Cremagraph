@@ -8,10 +8,11 @@ import app.onlyshots.core.resources.ic_help
 import app.onlyshots.core.resources.ic_lock
 import app.onlyshots.core.resources.ic_machine
 import app.onlyshots.core.resources.ic_onlyshots
+import app.onlyshots.core.resources.ic_play
 import app.onlyshots.core.resources.ic_plus
 import app.onlyshots.core.resources.ic_record
 import app.onlyshots.core.resources.ic_settings
-import app.onlyshots.core.resources.ic_sliders
+import app.onlyshots.core.resources.ic_stop
 import org.jetbrains.compose.resources.vectorResource
 
 /**
@@ -42,10 +43,6 @@ object CgIcons {
     val Settings: ImageVector
         @Composable get() = vectorResource(Res.drawable.ic_settings)
 
-    /** Two sliders: the graph's style, data and text, from the record screen's panel. */
-    val Sliders: ImageVector
-        @Composable get() = vectorResource(Res.drawable.ic_sliders)
-
     /** The record mark: a dot in a ring. */
     val Record: ImageVector
         @Composable get() = vectorResource(Res.drawable.ic_record)
@@ -57,4 +54,12 @@ object CgIcons {
     /** A closed padlock: a shot start the recording fixed, until it is unlocked. */
     val Lock: ImageVector
         @Composable get() = vectorResource(Res.drawable.ic_lock)
+
+    /** A rounded triangle: how a recording starts, in the rules strip. */
+    val Play: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_play)
+
+    /** A rounded square: how a recording stops, in the rules strip. */
+    val Stop: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_stop)
 }

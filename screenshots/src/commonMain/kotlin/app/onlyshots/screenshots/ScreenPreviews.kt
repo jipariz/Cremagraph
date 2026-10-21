@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.tooling.preview.Preview
 import app.onlyshots.camera.CameraState
 import app.onlyshots.core.designsystem.CgColors
@@ -46,6 +47,7 @@ import app.onlyshots.record.RecordBody
 import app.onlyshots.record.RecordPhase
 import app.onlyshots.record.RecordUiState
 import app.onlyshots.record.RecordingSettingsContent
+import app.onlyshots.record.formatThatFits
 import app.onlyshots.sources.ConnectionState
 import app.onlyshots.sources.machine.FoundMachine
 import app.onlyshots.sources.machine.Gaggiuino
@@ -103,14 +105,18 @@ internal fun HomeMachineFound() = Screen {
 internal fun Record(
     state: RecordUiState,
     settings: RecordingSettings = RecordingSettings(),
-    turnHint: String? = null,
-    switchedFrom: VideoFormat? = null,
     granted: Boolean = true,
-) =
+    graphSelected: Boolean = false,
+) {
+    // The camera films the way the screen stands, as the record screen asks it to.
+    val window = LocalWindowInfo.current.containerSize
+    val capture = formatThatFits(window.width, window.height)
     RecordBody(
         state = state,
-        camera = CameraState(previewReady = true, maxZoom = 5f),
-        settings = settings,
+        camera = CameraState(previewReady = true, minZoom = 0.6f, maxZoom = 10f, lenses = listOf(0.6f, 1f, 3f)),
+        // The saved graph is kept in a 9:16 frame; the screen's view model moves it into the one being filmed.
+        settings =
+            settings.copy(overlay = settings.overlay.copy(rect = settings.overlay.rect.refit(PORTRAIT, capture))),
         graphStyle = GraphStyles.Gaggiuino,
         customStyles = emptyList(),
         granted = granted,
@@ -121,9 +127,23 @@ internal fun Record(
         onStyleEditor = {},
         sampleLuma = { _, _, _, _ -> null },
         picture = { modifier, _ -> picture(modifier) },
-        turnHint = turnHint,
+        capture = capture,
         live = state.shot.samples.lastOrNull(),
-        switchedFrom = switchedFrom,
+        graphSelectedAtFirst = graphSelected,
+    )
+}
+
+private val PORTRAIT = VideoFormat.PORTRAIT_9_16
+
+/** Armed before the shot, the machine sending: what the record screen shows most of the time. */
+internal val armedTake =
+    RecordUiState(
+        phase = RecordPhase.ARMED,
+        status = "armed · waiting for the shot".raw(),
+        connection = ConnectionState.Connected,
+        sourceKind = SourceKind.GAGGIUINO,
+        shot = SampleShots.zer0.copy(samples = SampleShots.zer0.samples.filter { it.tUs <= 15_000_000 }),
+        stopRuleText = "stops 5 s after the shot".raw(),
     )
 
 @ScreenShots
@@ -180,42 +200,18 @@ internal fun RecordNoCamera() = Screen {
     )
 }
 
-/** A 4:5 recording: the camera films portrait, the middle is the video, the rest dimmed. */
+/** The graph tapped before a shot: its toolbar, for the style, the data, its background and its place. */
 @ScreenShots
 @Preview
 @Composable
-internal fun RecordFeedFormat() = Screen {
-    Record(
-        RecordUiState(
-            phase = RecordPhase.ARMED,
-            status = "armed · waiting for the shot".raw(),
-            connection = ConnectionState.Connected,
-            sourceKind = SourceKind.GAGGIUINO,
-            shot = SampleShots.zer0.copy(samples = SampleShots.zer0.samples.filter { it.tUs <= 15_000_000 }),
-            stopRuleText = "stops 5 s after the shot".raw(),
-        ),
-        RecordingSettings().withFormat(VideoFormat.FEED_4_5),
-    )
-}
+internal fun RecordGraphSelected() = Screen { Record(armedTake, graphSelected = true) }
 
-/** 16:9, filmed with the phone turned: the record screen stands landscape. */
+/** On its side the camera films 16:9: the button moves to the edge the thumb is at. */
 @Mugshot
 @MugshotDevices(MugshotDevice.LANDSCAPE)
 @Preview
 @Composable
-internal fun RecordLandscapeFormat() = Screen {
-    Record(
-        RecordUiState(
-            phase = RecordPhase.ARMED,
-            status = "armed · waiting for the shot".raw(),
-            connection = ConnectionState.Connected,
-            sourceKind = SourceKind.GAGGIUINO,
-            shot = SampleShots.zer0.copy(samples = SampleShots.zer0.samples.filter { it.tUs <= 15_000_000 }),
-            stopRuleText = "stops 5 s after the shot".raw(),
-        ),
-        RecordingSettings().withFormat(VideoFormat.LANDSCAPE_16_9),
-    )
-}
+internal fun RecordLandscape() = Screen { Record(armedTake) }
 
 @ScreenShots
 @Preview

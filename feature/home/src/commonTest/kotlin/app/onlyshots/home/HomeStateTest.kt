@@ -4,16 +4,16 @@ import app.onlyshots.core.model.RecordingSettings
 import app.onlyshots.core.model.Sample
 import app.onlyshots.core.model.SourceKind
 import app.onlyshots.core.model.StopRule
-import app.onlyshots.core.model.VideoFormat
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.home_action_open_camera
 import app.onlyshots.core.resources.home_action_sample
 import app.onlyshots.core.resources.home_action_scale_caption
 import app.onlyshots.core.resources.home_action_without_data
 import app.onlyshots.core.resources.home_auto_start_brew_switch
-import app.onlyshots.core.resources.home_format_hint
-import app.onlyshots.core.resources.home_format_portrait_wrong_way
 import app.onlyshots.core.resources.home_found
+import app.onlyshots.core.resources.home_rule_start_now_scale
+import app.onlyshots.core.resources.home_rule_start_pre_roll
+import app.onlyshots.core.resources.home_rule_start_pre_roll_scale
 import app.onlyshots.core.resources.home_searching
 import app.onlyshots.core.resources.home_status_brewing
 import app.onlyshots.core.resources.home_status_idle
@@ -152,20 +152,21 @@ class HomeStateTest {
     }
 
     @Test
-    fun aFormatHeldTheWrongWaySaysWhatToPick() {
-        val (fine, warnFine) = formatHint(VideoFormat.PORTRAIT_9_16, wrongWay = false)
-        assertFalse(warnFine)
-        assertEquals(Res.string.home_format_hint.text(), fine)
-        val (duo, warn) = formatHint(VideoFormat.PORTRAIT_9_16, wrongWay = true)
-        assertTrue(warn)
-        assertEquals(Res.string.home_format_portrait_wrong_way.text("9:16"), duo)
-    }
-
-    @Test
     fun theStopSwitchTogglesBetweenTheShotAndByHand() {
         val off = RecordingSettings().withStopAfterShot(false)
         assertEquals(StopRule.Manual, off.stopRule)
         assertEquals(StopRule.ShotEndPlusTail(), off.withStopAfterShot(true).stopRule)
+    }
+
+    @Test
+    fun aScaleStartsWithTheFirstDropsNotThePump() {
+        val s = RecordingSettings(preRollSeconds = 3)
+        assertEquals(Res.string.home_rule_start_pre_roll.text("3"), startRuleDetail(s, SourceKind.GAGGIUINO))
+        assertEquals(Res.string.home_rule_start_pre_roll_scale.text("3"), startRuleDetail(s, SourceKind.SCALE))
+        assertEquals(
+            Res.string.home_rule_start_now_scale.text(),
+            startRuleDetail(s.copy(preRollSeconds = 0), SourceKind.SCALE),
+        )
     }
 
     @Test

@@ -7,7 +7,7 @@ import app.onlyshots.core.model.SourceKind
 import app.onlyshots.core.model.StopReason
 import app.onlyshots.core.model.StopRule
 import app.onlyshots.core.model.StopRules
-import app.onlyshots.core.model.VideoFormat
+import app.onlyshots.core.model.formatClock
 import app.onlyshots.core.model.oneDecimal
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.UiText
@@ -25,8 +25,10 @@ import app.onlyshots.core.resources.record_status_manual
 import app.onlyshots.core.resources.record_status_no_camera
 import app.onlyshots.core.resources.record_status_no_machine
 import app.onlyshots.core.resources.record_status_pre_roll
+import app.onlyshots.core.resources.record_status_recording
 import app.onlyshots.core.resources.record_status_saved
 import app.onlyshots.core.resources.record_status_shot_ended
+import app.onlyshots.core.resources.record_status_waiting
 import app.onlyshots.core.resources.record_stop_fixed
 import app.onlyshots.core.resources.record_stop_manual
 import app.onlyshots.core.resources.record_stop_short_fixed
@@ -70,6 +72,11 @@ data class FinishedRecording(
     val durationUs: Long,
     val shotStartInVideoUs: Long?,
     val stopReason: StopReason?,
+    /**
+     * Where the take was started in the file, on the same clock as [shotStartInVideoUs]: the shot's own start when it
+     * started the take, earlier when the take was started by hand and the shot came after.
+     */
+    val takeStartInVideoUs: Long = shotStartInVideoUs ?: 0L,
 )
 
 data class RecordUiState(
@@ -132,12 +139,6 @@ class RecordSession(
         )
     val state: StateFlow<RecordUiState> = _state.asStateFlow()
 
-    /**
-     * The screen stands the other way from the format (a lock that did not hold, as on a foldable's inner display):
-     * nothing starts, by hand or by the machine, until it is turned.
-     */
-    var heldWrongWay: Boolean = false
-
     /** The camera may not be used; see [RecordUiState.noCamera]. */
     var noCamera: Boolean = false
         set(value) {
@@ -147,6 +148,9 @@ class RecordSession(
 
     private var assembler: LiveShotAssembler? = null
     private var fileStartUs = 0L
+
+    /** Where the take was started in the file: see [FinishedRecording.takeStartInVideoUs]. */
+    private var takeStartUs = 0L
     /** source clock − our clock, known once the brew started. */
     private var sourceOffsetUs: Long? = null
     private var tickJob: Job? = null
@@ -178,7 +182,7 @@ class RecordSession(
         when (_state.value.phase) {
             RecordPhase.RECORDING -> stop(null)
             RecordPhase.SAVED -> recordAnother()
-            else -> if (!heldWrongWay && !noCamera) startRecording(trigger = null)
+            else -> if (!noCamera) startRecording(trigger = null)
         }
     }
 
@@ -198,11 +202,8 @@ class RecordSession(
     private fun onBrewEvent(e: BrewEvent) {
         val s = _state.value
         when {
-            e is BrewEvent.Started &&
-                s.phase == RecordPhase.ARMED &&
-                settings.autoStart &&
-                !heldWrongWay &&
-                !noCamera -> startRecording(e)
+            e is BrewEvent.Started && s.phase == RecordPhase.ARMED && settings.autoStart && !noCamera ->
+                startRecording(e)
             s.phase == RecordPhase.RECORDING -> {
                 val a = assembler ?: return
                 if (e is BrewEvent.Started && a.startSourceUs == null) {
@@ -221,6 +222,7 @@ class RecordSession(
         // already in the file. Without one, fall back to the nominal pre-roll.
         val preRollUs = camera?.trigger() ?: if (trigger != null) settings.preRollSeconds * 1_000_000L else 0L
         fileStartUs = now - preRollUs
+        takeStartUs = preRollUs
         val a =
             LiveShotAssembler(
                 id = "rec-${wallClock().toEpochMilliseconds()}",
@@ -286,7 +288,13 @@ class RecordSession(
                     videoTimeUs = durationUs,
                     shot = shot ?: it.shot,
                     finished =
-                        FinishedRecording(shot, durationUs, if (shot != null) it.shotStartInVideoUs else null, reason),
+                        FinishedRecording(
+                            shot,
+                            durationUs,
+                            if (shot != null) it.shotStartInVideoUs else null,
+                            reason,
+                            takeStartInVideoUs = takeStartUs,
+                        ),
                 )
                 .withStatus()
         }
@@ -317,11 +325,17 @@ class RecordSession(
         if (s.noCamera && !s.recording) Res.string.record_status_no_camera.text()
         else
             when (s.phase) {
+                // One clock at a time: the brew while the shot runs, else how long the take has run since it was
+                // started (the pre-roll filmed before that is not counted).
                 RecordPhase.RECORDING -> {
                     val shotT = s.videoTimeUs - s.shotStartInVideoUs
                     val ended = assembler?.endedAtUs
+                    val take = formatClock((s.videoTimeUs - takeStartUs).coerceAtLeast(0L))
                     when {
-                        assembler?.startSourceUs == null || shotT < 0 -> Res.string.record_status_pre_roll.text()
+                        assembler?.startSourceUs == null && s.connection is ConnectionState.Connected ->
+                            Res.string.record_status_waiting.text(take)
+                        assembler?.startSourceUs == null -> Res.string.record_status_recording.text(take)
+                        shotT < 0 -> Res.string.record_status_pre_roll.text()
                         ended == null -> Res.string.record_status_brewing.text((shotT / 1_000_000f).oneDecimal())
                         else -> Res.string.record_status_shot_ended.text(s.stopRuleText)
                     }
@@ -385,10 +399,3 @@ class RecordSession(
             }
     }
 }
-
-/**
- * The format a take records in when it is not the saved [format]: 16:9 while a book foldable rests [onItsSide] and the
- * saved format is tall, unless [keepTall] ("keep 9:16"). On its side the upper half is wide, and 16:9 fills it.
- */
-fun takeFormatFor(onItsSide: Boolean, format: VideoFormat, keepTall: Boolean): VideoFormat? =
-    VideoFormat.LANDSCAPE_16_9.takeIf { onItsSide && !format.landscape && !keepTall }

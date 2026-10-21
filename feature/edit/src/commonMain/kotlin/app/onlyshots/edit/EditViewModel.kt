@@ -28,7 +28,9 @@ import app.onlyshots.core.resources.edit_start_unlocked
 import app.onlyshots.core.resources.edit_video_gone
 import app.onlyshots.core.resources.text
 import app.onlyshots.export.ExportManager
+import app.onlyshots.export.exportQuality
 import app.onlyshots.overlay.GraphStyle
+import app.onlyshots.storage.AppSettingsRepo
 import app.onlyshots.storage.Library
 import app.onlyshots.storage.LibraryStore
 import app.onlyshots.style.StyleLibrary
@@ -67,6 +69,12 @@ data class EditUiState(
     /** Whether there is a machine to pick a shot from; without one (the desktop, the web) a shot comes from a file. */
     val hasShotHistory: Boolean = false,
     val qualities: List<Quality> = listOf(Quality.HD_1080),
+    /** What saving to the gallery makes, out of [qualities]: the last pick, else the best. */
+    val galleryQuality: Quality = Quality.HD_1080,
+    /** What a share makes, out of [qualities]: the last pick, else 1080p. */
+    val shareQuality: Quality = Quality.HD_1080,
+    /** The quality of the export running or just done, for its progress and result to name. */
+    val exportingQuality: Quality? = null,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
     /** The source picture's width over height as shown, once read: how far it reaches past the frame. */
@@ -106,6 +114,7 @@ class EditViewModel(
     private val fs: FileSystem,
     private val cacheDir: Path,
     val styles: StyleLibrary,
+    private val settings: AppSettingsRepo,
     private val sampler: FrameSampler,
     private val nowMs: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     /** Where the reading, decoding and saving run: a test hands its own dispatcher so nothing outlives it. */
@@ -132,7 +141,7 @@ class EditViewModel(
             val info = withContext(work) { runCatching { probe.info(store.videoPath(item)) }.getOrNull() }
             sourceAspect = info?.aspect
             val qualities = availableQualities(info?.shortSidePx ?: 0, probe.supports4k())
-            _ui.update { it.copy(qualities = qualities, sourceAspect = info?.aspect) }
+            _ui.update { it.copy(qualities = qualities, sourceAspect = info?.aspect).withExportQualities() }
             analyse(item)
             // A shot handed over with the video but not placed (the phones' "compose a video") is lined up as one
             // picked
@@ -352,11 +361,34 @@ class EditViewModel(
         val item = state?.item ?: return
         saveJob?.cancel()
         destination = to
-        _ui.update { it.copy(exporting = 0f, savedToGallery = false, sheet = EditSheet.EXPORT) }
+        _ui.update {
+            it.copy(exporting = 0f, exportingQuality = quality, savedToGallery = false, sheet = EditSheet.EXPORT)
+        }
         viewModelScope.launch {
             withContext(work) { library.save(item) }
             exports.enqueue(listOf(id), quality, withSound, to)
         }
+    }
+
+    /** Remembers [quality] for exports [to] that destination, this video's and the next ones'. */
+    override fun pickQuality(to: ExportManager.Destination, quality: Quality) {
+        if (quality !in _ui.value.qualities) return
+        settings.update {
+            when (to) {
+                ExportManager.Destination.GALLERY -> it.copy(galleryQuality = quality)
+                ExportManager.Destination.SHARE -> it.copy(shareQuality = quality)
+            }
+        }
+        _ui.update { it.withExportQualities() }
+    }
+
+    /** Each destination's quality out of what this video allows, from what was picked last. */
+    private fun EditUiState.withExportQualities(): EditUiState {
+        val picked = settings.value
+        return copy(
+            galleryQuality = exportQuality(ExportManager.Destination.GALLERY, qualities, picked.galleryQuality),
+            shareQuality = exportQuality(ExportManager.Destination.SHARE, qualities, picked.shareQuality),
+        )
     }
 
     /** Stops the render in progress; the screen stays, with nothing exported. */

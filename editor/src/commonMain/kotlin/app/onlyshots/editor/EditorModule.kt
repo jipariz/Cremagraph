@@ -57,7 +57,19 @@ val editorModule = module {
         )
     }
     viewModel { (id: String) ->
-        EditViewModel(id, get(), get(), get(), get(), get(), get(), get<Path>(named(CACHE_DIR)) / "edit", get(), get())
+        EditViewModel(
+            id,
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get<Path>(named(CACHE_DIR)) / "edit",
+            get(),
+            get(),
+            get(),
+        )
     }
     viewModel { OpenViewModel(get(), get(), get(), get(), get()) }
     // Koin parameters cannot be null; an absent id travels as "".

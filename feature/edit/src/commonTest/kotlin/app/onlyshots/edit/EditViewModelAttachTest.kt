@@ -50,15 +50,17 @@ import okio.Path
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 
-/** A probe whose sound is [pcm]: a pump from some point, or nothing at all. */
-private class ScriptedProbe(private val pcm: MonoPcm?) : VideoProbe {
-    override suspend fun info(file: Path) = VideoInfo(DURATION_US, hasAudio = pcm != null, heightPx = 1920)
+/** A probe whose sound is [pcm]: a pump from some point, or nothing at all; a 4K video when [fourK]. */
+private class ScriptedProbe(private val pcm: MonoPcm?, private val fourK: Boolean = false) : VideoProbe {
+    override suspend fun info(file: Path) =
+        if (fourK) VideoInfo(DURATION_US, hasAudio = pcm != null, heightPx = 3840, widthPx = 2160)
+        else VideoInfo(DURATION_US, hasAudio = pcm != null, heightPx = 1920)
 
     override suspend fun writeThumbnail(file: Path, atUs: Long, out: Path, maxWidthPx: Int) = error("no frames here")
 
     override suspend fun decodeMonoPcm(file: Path, maxSeconds: Int): MonoPcm? = pcm
 
-    override fun supports4k() = false
+    override fun supports4k() = fourK
 }
 
 private object NoExporter : VideoExporter {
@@ -125,9 +127,10 @@ class EditViewModelAttachTest {
             recordedAt = recordedAt,
         )
 
-    private fun viewModel(item: VideoItem, sound: MonoPcm?): EditViewModel {
+    private fun viewModel(item: VideoItem, sound: MonoPcm?, fourK: Boolean = false): EditViewModel {
         library.save(item)
-        val styles = StyleLibrary(AppSettingsRepo(SettingsStore(fs, "/library/settings.json".toPath())))
+        val settings = AppSettingsRepo(SettingsStore(fs, "/library/settings.json".toPath()))
+        val styles = StyleLibrary(settings)
         val exports =
             ExportManager(
                 store = store,
@@ -152,12 +155,13 @@ class EditViewModelAttachTest {
             id = item.id,
             library = library,
             store = store,
-            probe = ScriptedProbe(sound),
+            probe = ScriptedProbe(sound, fourK),
             source = ShotHistory.None,
             exports = exports,
             fs = fs,
             cacheDir = "/cache/edit".toPath(),
             styles = styles,
+            settings = settings,
             sampler =
                 object : FrameSampler {
                     override suspend fun lumaAt(file: Path, atUs: Long, points: List<Pair<Float, Float>>) = null
@@ -180,6 +184,21 @@ class EditViewModelAttachTest {
         }
         vm.importShotFile(path)
         return vm.ui.first { it.item?.shot != null && it.busy == null }.item!!
+    }
+
+    @Test
+    fun aFourKVideoSavesIn4KSharesIn1080pAndRemembersAPick() = runTest {
+        val vm = viewModel(video(), sound = null, fourK = true)
+        val ui = vm.ui.first { it.qualities.size == 2 }
+        assertEquals(Quality.UHD_4K, ui.galleryQuality)
+        assertEquals(Quality.HD_1080, ui.shareQuality)
+
+        vm.pickQuality(ExportManager.Destination.SHARE, Quality.UHD_4K)
+
+        assertEquals(Quality.UHD_4K, vm.ui.value.shareQuality)
+        // The next video starts on the pick: it is in the settings file.
+        val next = viewModel(video(), sound = null, fourK = true)
+        assertEquals(Quality.UHD_4K, next.ui.first { it.qualities.size == 2 }.shareQuality)
     }
 
     @Test

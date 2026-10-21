@@ -218,12 +218,11 @@ fun EditScreen(
     // out the same file.
     val pickShotFile = rememberShotFilePicker(viewModel::importShotFile)
     val video = ui.item
-    // Always the best the video and the phone allow, and sound unless the take is muted.
-    val quality = ui.qualities.maxBy { it.shortSide }
+    // Sound unless the take is muted.
     val sound = !player.muted && video?.hasAudio == true
     // The gallery may need a permission first (Photos on iOS, storage on old Android): asked on the tap, not before.
     val askGallery = rememberGalleryAccess { granted ->
-        if (granted) viewModel.saveAndExport(quality, sound, ExportManager.Destination.GALLERY)
+        if (granted) viewModel.saveAndExport(ui.galleryQuality, sound, ExportManager.Destination.GALLERY)
         else viewModel.showMessage(Res.string.edit_gallery_access.text())
     }
     // The playhead starts where the export does, and stays inside the trim when the trim moves past it.
@@ -347,8 +346,8 @@ fun EditBody(
         withFrameNanos {}
         focus.requestFocus()
     }
-    val quality = ui.qualities.maxBy { it.shortSide }
     val sound = !player.muted && video?.hasAudio == true
+    val share = { actions.saveAndExport(ui.shareQuality, sound) }
     val leave = onBack
     // What the sheets hold: a bottom sheet on a phone, the side panel on a wide window.
     val sheetBody: @Composable (EditSheet, VideoItem) -> Unit = { sheet, video ->
@@ -388,15 +387,18 @@ fun EditBody(
             EditSheet.EXPORT ->
                 ExportSheetContent(
                     item = video,
-                    quality = quality,
+                    galleryQuality = ui.galleryQuality,
+                    shareQuality = ui.shareQuality,
+                    qualities = ui.qualities,
                     sound = sound,
                     exporting = ui.exporting,
                     leftMs = ui.exportLeftMs,
                     savedToGallery = ui.savedToGallery,
-                    onShare = { actions.saveAndExport(quality, sound) },
+                    onShare = share,
                     onSaveToGallery = onSaveToGallery,
                     onNextShot = onExported,
                     onCancel = actions::cancelExport,
+                    onQuality = actions::pickQuality,
                 )
         }
     }
@@ -406,7 +408,16 @@ fun EditBody(
     val exportBar =
         @Composable {
             if (video != null) {
-                ExportBar(video, quality, sound, onSave = export, onShare = { actions.saveAndExport(quality, sound) })
+                ExportBar(
+                    video,
+                    galleryQuality = ui.galleryQuality,
+                    shareQuality = ui.shareQuality,
+                    qualities = ui.qualities,
+                    sound = sound,
+                    onSave = export,
+                    onShare = share,
+                    onQuality = actions::pickQuality,
+                )
             }
         }
     // A flip's cover screen: there is no room to edit, only to say so.
@@ -595,7 +606,9 @@ fun EditBody(
                 val wording = LocalExportWording.current
                 val detail =
                     listOfNotNull(
-                            quality.size(video.format).let { "${it.width} × ${it.height}" },
+                            (ui.exportingQuality ?: ui.galleryQuality).size(video.format).let {
+                                "${it.width} × ${it.height}"
+                            },
                             clock(video.trimmedDurationUs),
                             video.shot?.profileName,
                         )

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Record · graph selected</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#E8E6E1}a:hover{color:#FF5A1F}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #0B0B0B; color: #E8E6E1; font-family: 'IBM Plex Mono', monospace">
+  <svg aria-hidden="true" viewBox="0 0 390 844" style="position: absolute; inset: 0; width: 100%; height: 100%">
+    <defs><radialGradient id="cam" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#4A3A30"></stop><stop offset="1" stop-color="#0B0B0B"></stop></radialGradient></defs>
+    <rect width="390" height="844" fill="url(#cam)"></rect>
+    <rect x="95" y="150" width="200" height="90" rx="12" fill="#2B2420"></rect>
+    <rect x="120" y="240" width="150" height="40" rx="8" fill="#1A1614"></rect>
+    <path d="M130 440 h130 l-12 110 a18 18 0 0 1 -18 16 h-70 a18 18 0 0 1 -18 -16z" fill="#E9E2DC" opacity=".9"></path>
+    <rect y="580" width="390" height="264" fill="#141210"></rect>
+  </svg>
+
+  <div style="position: absolute; top: 48px; left: 16px; right: 16px; display: flex; gap: 8px; align-items: center">
+    <a href="Home-Found.dc.html" aria-label="Back" style="width: 44px; height: 44px; background: rgba(11,11,11,.85); border: 1px solid #3A3A38; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#E8E6E1" stroke-width="1.5"><path d="M10 3 5 8l5 5"></path></svg></a>
+    <span style="height: 44px; padding: 0 12px; background: rgba(11,11,11,.85); border: 1px solid #3A3A38; display: flex; align-items: center; gap: 8px; font: 600 12px 'IBM Plex Mono'"><span aria-hidden="true" style="width: 6px; height: 6px; background: #5CD08A"></span>GAGGIUINO</span>
+    <span style="flex-grow: 1"></span>
+    <a href="Rec-Settings.dc.html" aria-label="recording settings" style="width: 44px; height: 44px; background: rgba(11,11,11,.85); border: 1px solid #3A3A38; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#E8E6E1" stroke-width="1.5"><path d="M2 5h14M2 13h14"></path><rect x="5" y="3" width="4" height="4" fill="#0B0B0B"></rect><rect x="10" y="11" width="4" height="4" fill="#0B0B0B"></rect></svg></a>
+  </div>
+  <div style="position: absolute; top: 104px; left: 16px; font: 600 12px 'IBM Plex Mono'; background: rgba(11,11,11,.85); border: 1px solid #FF5A1F; color: #FF5A1F; padding: 6px 10px">ARMED · STARTS WHEN THE BREW SWITCH FLIPS ON</div>
+
+  <div style="position: absolute; left: 16px; right: 16px; top: 148px; display: flex; border: 1px solid #FF5A1F; background: #0B0B0B">
+    <a href="Rec-Style.dc.html" style="flex: 1; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none; font: 600 12px 'IBM Plex Mono'; border-right: 1px solid #3A3A38">STYLE ▾</a>
+    <a href="Rec-Data.dc.html" style="flex: 1; height: 44px; display: flex; align-items: center; justify-content: center; text-decoration: none; font: 600 12px 'IBM Plex Mono'; border-right: 1px solid #3A3A38">DATA ▾</a>
+    <button aria-label="background opacity 75 percent, tap for 50" style="flex: 1; height: 44px; border: 0; border-right: 1px solid #3A3A38; background: transparent; color: #E8E6E1; font: 600 12px 'IBM Plex Mono'">◐ 75 %</button>
+    <button aria-label="reset position" style="width: 52px; height: 44px; border: 0; background: transparent; color: #E8E6E1; font: 600 15px 'IBM Plex Mono'">↺</button>
+  </div>
+
+  <div style="position: absolute; left: 16px; right: 16px; top: 204px; background: rgba(11,11,11,.66); outline: 1px solid #FF5A1F">
+    <div style="display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid #2A2A28; font-size: 12px; color: #A3A19B"><span>ADAPTIVE · GAGGIUINO</span><span>0:00</span></div>
+    <svg role="img" aria-label="Graph" viewBox="0 0 300 120" preserveAspectRatio="none" style="width: 100%; height: 88px; display: block">
+      <path d="M0 24H300M0 60H300M0 96H300M75 0V120M150 0V120M225 0V120" stroke="#2A2A28" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+    </svg>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #2A2A28">
+      <div style="padding: 6px 10px"><div style="font-size: 12px; color: #A3A19B">BAR</div><div style="font: 600 18px 'IBM Plex Mono'; color: #FF5A1F">0.0</div></div>
+      <div style="padding: 6px 10px"><div style="font-size: 12px; color: #A3A19B">ML/S</div><div style="font: 600 18px 'IBM Plex Mono'">0.0</div></div>
+      <div style="padding: 6px 10px"><div style="font-size: 12px; color: #A3A19B">G</div><div style="font: 600 18px 'IBM Plex Mono'; color: #7FA7B8">0.0</div></div>
+      <div style="padding: 6px 10px"><div style="font-size: 12px; color: #A3A19B">°C</div><div style="font: 600 18px 'IBM Plex Mono'; color: #FFB020">92.8</div></div>
+    </div>
+    <span aria-hidden="true" style="position: absolute; left: -6px; top: -6px; width: 11px; height: 11px; background: #FF5A1F"></span>
+    <span aria-hidden="true" style="position: absolute; right: -6px; top: -6px; width: 11px; height: 11px; background: #FF5A1F"></span>
+    <span aria-hidden="true" style="position: absolute; left: -6px; bottom: -6px; width: 11px; height: 11px; background: #FF5A1F"></span>
+    <span aria-hidden="true" style="position: absolute; right: -6px; bottom: -6px; width: 11px; height: 11px; background: #FF5A1F"></span>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 196px; background: #0B0B0B; border-top: 1px solid #3A3A38; display: flex; flex-direction: column">
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid #3A3A38; font-size: 12px">
+      <div style="padding: 10px 16px; border-right: 1px solid #3A3A38"><span style="color: #A3A19B">▶ START</span><br><span style="font-weight: 600">WITH THE SHOT · 3 S BEFORE</span></div>
+      <div style="padding: 10px 16px"><span style="color: #A3A19B">■ STOP</span><br><span style="font-weight: 600">3 S AFTER THE SHOT</span></div>
+    </div>
+    <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center">
+      <a href="Rec-Recording.dc.html" aria-label="record" style="width: 80px; height: 80px; border: 2px solid #FF5A1F; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><span style="width: 32px; height: 32px; border-radius: 16px; background: #DC1B34"></span></a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

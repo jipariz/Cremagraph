@@ -3,7 +3,11 @@ package app.onlyshots.open
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,16 +36,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -65,9 +72,11 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgIcon
-import app.onlyshots.core.designsystem.component.CoffeeScene
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
+import app.onlyshots.core.model.NormRect
+import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.VideoItem
+import app.onlyshots.core.model.sample.SampleShots
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.UiText
 import app.onlyshots.core.resources.app_name
@@ -100,13 +109,14 @@ import app.onlyshots.core.resources.open_wide_shot_detail_machine
 import app.onlyshots.core.resources.open_wide_shot_title
 import app.onlyshots.core.resources.open_wide_video_drop
 import app.onlyshots.core.resources.open_wide_video_title
+import app.onlyshots.core.resources.photo_shot
 import app.onlyshots.core.resources.start_title
 import app.onlyshots.core.resources.text
-import app.onlyshots.core.resources.unit_bar
 import app.onlyshots.core.resources.unit_grams
-import app.onlyshots.core.resources.unit_ml_per_s
 import app.onlyshots.core.resources.unit_seconds
 import app.onlyshots.machineLabel
+import app.onlyshots.overlay.GraphStyles
+import app.onlyshots.overlay.compose.ShotOverlay
 import app.onlyshots.shareBounds
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.StringResource
@@ -424,11 +434,14 @@ private fun DeskEmptyStep(
                 else Modifier.drawBehind { dashedBorder(if (next) CgColors.Brand.Signal else CgColors.Line.Hairline) }
             )
             .padding(CgSpace.S16),
-        verticalArrangement = Arrangement.spacedBy(CgSpace.S8, Alignment.CenterVertically),
+        // The words at the top, the key in the bottom corner: side by side, both cells' keys line up.
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text("${stepNumber(number)} · ${title.caps()}", style = CgTheme.type.data, color = accent)
-        Text(detail, style = CgTheme.type.body, color = CgColors.Text.Secondary)
-        StepKey(action, signal = next, onClick = onClick, modifier = Modifier.testTag(tag))
+        Column(Modifier.padding(bottom = CgSpace.S8), verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+            Text("${stepNumber(number)} · ${title.caps()}", style = CgTheme.type.data, color = accent)
+            Text(detail, style = CgTheme.type.body, color = CgColors.Text.Secondary)
+        }
+        StepKey(action, signal = next, onClick = onClick, modifier = Modifier.testTag(tag), shine = next)
     }
 }
 
@@ -491,11 +504,19 @@ private fun DeskPickedStep(
  * every Open layout. Without [onClick] it only shows the way: the whole step row is what takes the tap.
  */
 @Composable
-internal fun StepKey(text: String, signal: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+internal fun StepKey(
+    text: String,
+    signal: Boolean,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    /** A light runs over it now and then, like a shine on metal: the key to press next. */
+    shine: Boolean = false,
+) {
     Box(
         modifier
             .heightIn(min = CgSize.Touch)
             .background(if (signal) CgColors.Brand.Signal else Color.Transparent)
+            .then(if (shine) Modifier.shine() else Modifier)
             .border(CgStroke.Hairline, if (signal) CgColors.Brand.Signal else CgColors.Line.Hairline)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .padding(horizontal = 14.dp),
@@ -508,6 +529,47 @@ internal fun StepKey(text: String, signal: Boolean, onClick: (() -> Unit)?, modi
         )
     }
 }
+
+/**
+ * A soft light that crosses the key at a slant every few seconds and is gone between: a shine on metal. It starts off
+ * the left edge and waits off the right, so a still frame (an IDE preview, a screenshot) shows the key plain.
+ */
+@Composable
+private fun Modifier.shine(): Modifier {
+    if (LocalInspectionMode.current) return this
+    val at by
+        rememberInfiniteTransition(label = "shine")
+            .animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec =
+                    infiniteRepeatable(
+                        keyframes {
+                            durationMillis = SHINE_PERIOD_MS
+                            0f at 0
+                            0f at SHINE_REST_MS using LinearEasing
+                            1f at SHINE_PERIOD_MS
+                        }
+                    ),
+                label = "at",
+            )
+    return clipToBounds().drawWithContent {
+        drawContent()
+        val band = size.height * 2f
+        val x = -band + (size.width + band * 2f) * at
+        drawRect(
+            Brush.linearGradient(
+                listOf(Color.Transparent, Color.White.copy(alpha = 0.35f), Color.Transparent),
+                start = Offset(x - band / 2f, 0f),
+                end = Offset(x + band / 2f, size.height),
+            )
+        )
+    }
+}
+
+/** A shine every 3.2 s: 2.4 s at rest, then 0.8 s across. */
+private const val SHINE_PERIOD_MS = 3_200
+private const val SHINE_REST_MS = 2_400
 
 /**
  * "Open editor →": the signal key once the video and the shot are picked, a hairline outline with grey letters before.
@@ -553,26 +615,25 @@ private fun Preview(modifier: Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
     ) {
-        Box(Modifier.size(300.dp, 533.dp).border(CgStroke.Hairline, CgColors.Line.Hairline)) {
-            CoffeeScene(Modifier.fillMaxSize())
-            Column(
-                Modifier.align(Alignment.BottomCenter)
-                    .padding(start = 12.dp, end = 12.dp, bottom = 16.dp)
-                    .fillMaxWidth()
-                    .background(CgColors.Surface.Base.copy(alpha = 0.9f))
-                    .border(CgStroke.Hairline, CgColors.Line.Hairline)
-            ) {
-                Canvas(Modifier.fillMaxWidth().height(96.dp).padding(CgSpace.S8)) { graph() }
-                Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Divider))
-                Row(Modifier.fillMaxWidth()) {
-                    val small = CgTheme.type.micro
-                    val cell = Modifier.weight(1f).padding(horizontal = 6.dp, vertical = CgSpace.S4)
-                    Text("9.0 ${stringResource(Res.string.unit_bar)}", cell, CgColors.Series.Pressure, style = small)
-                    Text("2.1 ${stringResource(Res.string.unit_ml_per_s)}", cell, CgColors.Series.Flow, style = small)
-                    Text("36.4 ${stringResource(Res.string.unit_grams)}", cell, CgColors.Series.Weight, style = small)
-                    Text("0:28", cell, CgColors.Text.Secondary, style = small)
-                }
-            }
+        Box(Modifier.size(300.dp, 533.dp).border(CgStroke.Hairline, CgColors.Line.Hairline).clipToBounds()) {
+            Image(
+                painterResource(Res.drawable.photo_shot),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            // The graph as the app draws it and the export writes it: Instrument, the sample shot, near its end.
+            val style = GraphStyles.byId(PREVIEW_STYLE) ?: GraphStyles.all.first()
+            ShotOverlay(
+                shot = SampleShots.zer0,
+                videoTimeUs = PREVIEW_AT_US,
+                shotStartUs = 0L,
+                settings = OverlaySettings(styleId = style.id, rect = NormRect.Default),
+                style = style,
+                title = PREVIEW_TITLE,
+                fonts = CgTheme.overlayFonts,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
         Text(
             stringResource(Res.string.open_preview_caption),
@@ -581,6 +642,11 @@ private fun Preview(modifier: Modifier) {
         )
     }
 }
+
+/** The preview's graph: its style, the moment of the sample shot it shows, and its title (proper nouns). */
+private const val PREVIEW_STYLE = "instrument"
+private const val PREVIEW_AT_US = 30_000_000L
+private const val PREVIEW_TITLE = "Zer0 · Gaggiuino"
 
 /** What it does, which shots it reads, which videos it takes: three cells in a hairline grid. */
 @Composable
@@ -668,46 +734,6 @@ internal fun ShotTile() {
     ) {
         Image(painterResource(Res.drawable.illus_shot_tile), contentDescription = null, Modifier.size(44.dp, 30.dp))
     }
-}
-
-/** The preview's graph: the grid's rules, pressure, flow and weight. */
-private fun DrawScope.graph() {
-    val sx = size.width / 200f
-    val sy = size.height / 80f
-    for (y in listOf(20f, 40f, 60f)) {
-        drawLine(CgColors.Line.Divider, Offset(0f, y * sy), Offset(size.width, y * sy), 1f)
-    }
-    for (x in listOf(50f, 100f, 150f)) {
-        drawLine(CgColors.Line.Divider, Offset(x * sx, 0f), Offset(x * sx, size.height), 1f)
-    }
-    drawPath(
-        Path().apply {
-            moveTo(0f, 78 * sy)
-            cubicTo(20 * sx, 78 * sy, 25 * sx, 16 * sy, 45 * sx, 14 * sy)
-            lineTo(130 * sx, 14 * sy)
-            cubicTo(150 * sx, 14 * sy, 165 * sx, 34 * sy, 200 * sx, 42 * sy)
-        },
-        CgColors.Series.Pressure,
-        style = Stroke(1.5.dp.toPx()),
-    )
-    drawPath(
-        Path().apply {
-            moveTo(0f, 79 * sy)
-            cubicTo(30 * sx, 79 * sy, 40 * sx, 53 * sy, 60 * sx, 48 * sy)
-            cubicTo(80 * sx, 43 * sy, 120 * sx, 36 * sy, 200 * sx, 34 * sy)
-        },
-        CgColors.Series.Flow,
-        style = Stroke(1.5.dp.toPx()),
-    )
-    drawPath(
-        Path().apply {
-            moveTo(0f, 79 * sy)
-            lineTo(40 * sx, 79 * sy)
-            cubicTo(80 * sx, 77 * sy, 120 * sx, 41 * sy, 200 * sx, 13 * sy)
-        },
-        CgColors.Series.Weight,
-        style = Stroke(1.5.dp.toPx()),
-    )
 }
 
 /** A dashed hairline inside the bounds, square, as the canvas draws a step still to do. */

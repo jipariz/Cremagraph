@@ -106,19 +106,16 @@ while the screen underneath fades in.
 - **No extra marks:** no REC dot, no scanline, no particles. The head's tick is the only accent.
 - **Sound:** none. A shutter or beep would be a cliché, and most launches are silent.
 
-## Implementation (not yet done in the app)
+## Implementation
 
-The design files are ready; the app still draws the previous mark. To ship it:
+Where each part lives; change the timeline in `motion.py` and mirror it in all of them.
 
-1. **`SplashMark.kt`** (`core/designsystem`): redraw `OnlyShotsMark` and the splash drawing from this spec's numbers
-   (the tile, the ink trace stroke, head and stem). Keep the timeline in one place, mirroring `motion.py`.
-2. **`Splash.kt`** (`SplashHost`, `core/ui`): unchanged in shape. Swap the pulse for the tick and keep the hand-off to
-   `OnlyShotsMark(splashTarget = true)`.
-3. **Android:** run `python3 design/splash/avd.py` (writes `res/drawable/splash_icon*.xml`) and set
-   `windowSplashScreenBackground` to `#0B0B0B`.
-4. **iOS:** run `python3 design/splash/launch.py` (writes `LaunchMark.imageset`) and set `LaunchBackground` to
-   `#0B0B0B`.
-5. **Web:** rewrite the inline SVG and keyframes in `app/webApp/.../index.html` as above; `Main.kt`'s `onlyshotsReady()`
-   call stays.
-6. **Tests and icons:** re-record `SplashPreviews` and the other screenshot goldens, and put the kit's app icons into
-   each build (`design/logo/kit/ios`, `android`, `desktop`, `web`).
+- **App** (`core/designsystem/.../component/SplashMark.kt`): `SplashTimeline.app` / `.android`, `Splash.pose(t)` (pure
+  numbers, tested by `core/ui/.../SplashTest.kt`) and the drawing. `SplashHost` (`core/ui/.../Splash.kt`) plays it,
+  waits for the platform's splash, ticks (with the haptic) and hands off to `OnlyShotsMark(splashTarget = true)`. The
+  mark's 256 grid is 146 dp, 256 / 420 of Android's 240 dp icon box, on every platform.
+- **Android:** `python3 design/splash/avd.py` writes `res/drawable/splash_icon.xml` and `splash_icon_still.xml`;
+  `MainActivity.markBounds` finds the system's mark at 1.5 × 256 / 420 of the icon view.
+- **iOS:** `python3 design/splash/launch.py` writes `LaunchMark.imageset` (146 pt); `LaunchBackground` is ink.
+- **Web:** `app/webApp/.../index.html` draws and loops it in inline SVG; `Main.kt` calls `onlyshotsReady()`.
+- **Key frames:** `screenshots/.../SplashPreviews.kt` (120, 300, 760, 1000, 1220 ms).

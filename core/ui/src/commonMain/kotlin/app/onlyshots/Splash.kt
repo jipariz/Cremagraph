@@ -38,12 +38,15 @@ import app.onlyshots.core.designsystem.component.drawSplashMark
 import app.onlyshots.core.designsystem.component.rememberSplashGeometry
 import kotlin.math.roundToInt
 
-/** How big the splash's mark is: Android's 240 dp splash icon box at 64 %, the size every platform shows it at. */
-val SplashMarkSize = 154.dp
+/**
+ * How big the splash's mark (its 256 grid) is: Android's 240 dp splash icon box draws it in a 420 viewport
+ * (design/splash/avd.py), 256 / 420 of the box, the size every platform shows it at.
+ */
+val SplashMarkSize = 146.dp
 
 /**
  * One cold start's splash (design/splash/SPEC.md). [held]: the finished mark is already on screen, drawn by the
- * platform's own launch screen (Android's system splash, iOS's launch screen), so only the pulse and the hand-off are
+ * platform's own launch screen (Android's system splash, iOS's launch screen), so only the tick and the hand-off are
  * left, and they wait for [release]. [markBounds]: where that mark is, in the window, when the platform says.
  */
 class SplashState(val held: Boolean, val timeline: SplashTimeline = SplashTimeline.app) {
@@ -70,9 +73,9 @@ object SplashOnce {
 }
 
 /**
- * The app under its splash. The app is composed from the first frame, underneath; over it the mark records the shot
+ * The app under its splash. The app is composed from the first frame, underneath; over it the mark plots the shot
  * (unless [splash] is [SplashState.held]), always to the end of the draw, holds there until the platform's splash has
- * gone ([SplashState.release]), pulses once, then flies into the first screen's own mark ([SplashTarget]) or, without
+ * gone ([SplashState.release]), ticks once, then flies into the first screen's own mark ([SplashTarget]) or, without
  * one, eases back and fades.
  */
 @Composable
@@ -85,7 +88,7 @@ fun SplashHost(splash: SplashState?, content: @Composable () -> Unit) {
     val target = remember { SplashTarget().apply { hidden = true } }
     val reduced = rememberReducedMotion()
     val tl = splash.timeline
-    var t by remember { mutableFloatStateOf(if (splash.held) tl.draw.endInclusive else 0f) }
+    var t by remember { mutableFloatStateOf(if (splash.held) tl.drawn else 0f) }
     // Reduced motion: no clock, only these two fades.
     var fadeIn by remember { mutableFloatStateOf(if (splash.held) 1f else 0f) }
     var fadeOut by remember { mutableFloatStateOf(0f) }
@@ -112,9 +115,9 @@ fun SplashHost(splash: SplashState?, content: @Composable () -> Unit) {
             animate(300f) { fadeOut = it }
         } else {
             // The draw always plays to its end; then the finished mark waits, if it has to, for the platform's splash.
-            advance(tl.draw.endInclusive)
+            advance(tl.drawn)
             waitUntil { splash.released }
-            advance(tl.pulse.start)
+            advance(tl.tick.start)
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             advance(tl.exit.endInclusive)
         }

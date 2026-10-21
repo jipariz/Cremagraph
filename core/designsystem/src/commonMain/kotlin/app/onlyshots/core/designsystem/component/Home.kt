@@ -88,8 +88,8 @@ import org.jetbrains.compose.resources.stringResource
 private val TileSize = 44.dp
 
 /**
- * The app mark, 32 dp: the Signal tile, the trace cut into a signal square. With [splashTarget]
- * it is where the splash's mark lands (the first screen's header): it says where it is and waits, unseen, until then.
+ * The app mark, 32 dp: the Signal tile, the trace cut into a signal square. With [splashTarget] it is where the
+ * splash's mark lands (the first screen's header): it says where it is and waits, unseen, until then.
  */
 @Composable
 fun OnlyShotsMark(modifier: Modifier = Modifier, splashTarget: Boolean = false) {

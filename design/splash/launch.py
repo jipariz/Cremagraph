@@ -9,7 +9,8 @@ import tempfile
 
 import motion as M
 
-# The mark at the same size and place as Android's icon view: the 256 grid at 154 pt, the tile inside it.
+# The mark at the same size and place as Android's icon view: the 256 grid at 146 pt (256 / 420 of the
+# 240 dp icon box, avd.py's viewport), the tile inside it.
 svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="100%" height="100%">'
        f'<path fill="{M.SIGNAL}" d="{M.build.tile_path("regular")}"/></svg>')
 OUT = os.path.join(M.HERE, '..', '..', 'app', 'iosApp', 'iosApp', 'Assets.xcassets', 'LaunchMark.imageset')
@@ -22,13 +23,13 @@ def main():
         page = os.path.join(tmp, 'mark.html')
         style = 'html,body{margin:0;width:100vw;height:100vh;background:transparent;overflow:hidden}svg{display:block;width:100vw;height:100vh}'
         open(page, 'w').write(f'<html><head><style>{style}</style></head><body>{svg}</body></html>')
-        # Rendered large once (headless Chrome mis-sizes small windows), then scaled down to 154 pt.
+        # Rendered large once (headless Chrome mis-sizes small windows), then scaled down to 146 pt.
         big = os.path.join(tmp, 'big.png')
         subprocess.run([CHROME, '--headless', '--disable-gpu', '--hide-scrollbars', '--window-size=1024,1024',
                         '--force-device-scale-factor=1', '--default-background-color=00000000', f'--screenshot={big}',
                         'file://' + page], check=True, capture_output=True)
         for scale in (1, 2, 3):
-            px = str(154 * scale)
+            px = str(146 * scale)
             subprocess.run(['sips', '-z', px, px, big, '--out', os.path.join(OUT, f'launch-mark@{scale}x.png')],
                            check=True, capture_output=True)
     open(os.path.join(OUT, 'Contents.json'), 'w').write('''{

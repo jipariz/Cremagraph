@@ -46,6 +46,7 @@ import app.onlyshots.core.model.style.CellLook
 import app.onlyshots.core.model.style.GraphStyle
 import app.onlyshots.core.model.style.GridMode
 import app.onlyshots.core.model.style.Material
+import app.onlyshots.core.model.style.OverlayFont
 import app.onlyshots.core.model.style.Reading
 import app.onlyshots.core.model.style.Shadow
 import app.onlyshots.core.model.style.TargetLook
@@ -69,6 +70,9 @@ import app.onlyshots.core.resources.style_dashed
 import app.onlyshots.core.resources.style_dotted
 import app.onlyshots.core.resources.style_drop
 import app.onlyshots.core.resources.style_faint
+import app.onlyshots.core.resources.style_font
+import app.onlyshots.core.resources.style_font_mono
+import app.onlyshots.core.resources.style_font_sans
 import app.onlyshots.core.resources.style_gloss
 import app.onlyshots.core.resources.style_gloss_above
 import app.onlyshots.core.resources.style_gloss_below
@@ -472,6 +476,16 @@ internal fun GridControls(s: GraphStyle, change: Change, pickColor: Pick) {
 
 @Composable
 internal fun TextControls(s: GraphStyle, change: Change, pickColor: Pick) {
+    val fonts = listOf(OverlayFont.SANS, OverlayFont.MONO)
+    ChoiceRow(stringResource(Res.string.style_font)) {
+        SegmentedControl(
+            listOf(stringResource(Res.string.style_font_sans), stringResource(Res.string.style_font_mono)),
+            fonts.indexOf(s.text.font),
+            fill = true,
+            onSelect = { i -> change { it.withFont(fonts[i]) } },
+            tags = fonts.map { TestTags.choice("font", it.name) },
+        )
+    }
     ColorRow(
         stringResource(Res.string.style_title),
         ColorTarget(

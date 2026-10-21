@@ -12,7 +12,10 @@ import kotlin.test.assertTrue
 class GraphStylesTest {
     @Test
     fun builtInStyles() {
-        assertEquals(listOf("gaggiuino", "metro", "aero", "liquidglass", "minimal"), GraphStyles.all.map { it.id })
+        assertEquals(
+            listOf("instrument", "gaggiuino", "metro", "aero", "liquidglass", "minimal"),
+            GraphStyles.all.map { it.id },
+        )
         assertTrue(GraphStyles.all.all { it.builtIn })
     }
 

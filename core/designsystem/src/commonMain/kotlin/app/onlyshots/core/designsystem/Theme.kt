@@ -9,18 +9,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.text.font.FontFamily
+import app.onlyshots.overlay.compose.OverlayFonts
 
 val LocalCgTypography = staticCompositionLocalOf<CgTypography> { error("CgTheme missing") }
-val LocalOverlayFontFamily = staticCompositionLocalOf<FontFamily> { FontFamily.Default }
+val LocalOverlayFonts = staticCompositionLocalOf { OverlayFonts.Default }
 
 object CgTheme {
     val type: CgTypography
         @Composable get() = LocalCgTypography.current
 
-    /** Font family for the overlay renderer (Open Sans in every graph style). */
-    val overlayFont: FontFamily
-        @Composable get() = LocalOverlayFontFamily.current
+    /** The overlay renderer's typefaces: each graph style sets its text in one of them. */
+    val overlayFonts: OverlayFonts
+        @Composable get() = LocalOverlayFonts.current
 }
 
 /**
@@ -31,8 +31,9 @@ object CgTheme {
 fun CgTheme(content: @Composable () -> Unit) {
     val mono = plexMono()
     val sans = plexSans()
-    val overlay = openSans()
+    val sansOverlay = openSans()
     val typography = remember(mono, sans) { CgTypography.of(mono, sans) }
+    val overlay = remember(sansOverlay, mono) { OverlayFonts(sans = sansOverlay, mono = mono) }
     val material =
         remember(typography) {
             Typography(
@@ -67,7 +68,7 @@ fun CgTheme(content: @Composable () -> Unit) {
             error = CgColors.Status.Record,
             scrim = CgColors.Surface.Scrim,
         )
-    CompositionLocalProvider(LocalCgTypography provides typography, LocalOverlayFontFamily provides overlay) {
+    CompositionLocalProvider(LocalCgTypography provides typography, LocalOverlayFonts provides overlay) {
         MaterialTheme(colorScheme = scheme, typography = material, shapes = square, content = content)
     }
 }

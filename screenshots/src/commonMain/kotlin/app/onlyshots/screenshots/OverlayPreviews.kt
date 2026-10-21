@@ -51,7 +51,7 @@ private fun Frame(
                 settings = OverlaySettings(styleId = style.id, rect = NormRect.Default),
                 style = style,
                 title = title,
-                fontFamily = CgTheme.overlayFont,
+                fonts = CgTheme.overlayFonts,
                 modifier = Modifier.fillMaxSize(),
                 hazeState = haze,
             )
@@ -86,6 +86,12 @@ internal fun GaggiuinoGap() =
 @Composable
 internal fun GaggiuinoLongTitle() =
     Frame(style("gaggiuino"), MID, title = "Londinium declining, 9 bar to 6 over the shot · Gaggiuino")
+
+@Mugshot @MugshotShrink @Preview @Composable internal fun InstrumentStart() = Frame(style("instrument"), START)
+
+@Mugshot @MugshotShrink @Preview @Composable internal fun InstrumentMid() = Frame(style("instrument"), MID)
+
+@Mugshot @MugshotShrink @Preview @Composable internal fun InstrumentAfter() = Frame(style("instrument"), AFTER)
 
 @Mugshot @MugshotShrink @Preview @Composable internal fun GaggiuinoStart() = Frame(style("gaggiuino"), START)
 

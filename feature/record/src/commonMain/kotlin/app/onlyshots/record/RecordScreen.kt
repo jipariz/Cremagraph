@@ -591,7 +591,7 @@ private fun CameraPane(
                     title =
                         "${state.shot.profileName.ifEmpty { RecordSession.defaultProfileName(state.sourceKind).text() }} · " +
                             machineLabel(state.sourceKind),
-                    fontFamily = CgTheme.overlayFont,
+                    fonts = CgTheme.overlayFonts,
                     modifier = Modifier.fillMaxSize(),
                     hazeState = haze,
                     backdropLuma = luma,

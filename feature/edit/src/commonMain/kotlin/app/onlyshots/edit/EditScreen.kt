@@ -823,7 +823,7 @@ private fun Picture(
                         style = ui.style ?: return@let,
                         title = overlayTitleText(shot, video.overlay),
                         recipe = video.overlay.recipe,
-                        fontFamily = CgTheme.overlayFont,
+                        fonts = CgTheme.overlayFonts,
                         modifier = Modifier.fillMaxSize(),
                         hazeState = haze,
                         backdropLuma = { ui.luma?.at(player.positionUs) },

@@ -145,6 +145,9 @@
     <string name="style_cell_border">cell border</string>
     <string name="style_border">border</string>
     <string name="style_text">text</string>
+    <string name="style_font">typeface</string>
+    <string name="style_font_sans">Open Sans</string>
+    <string name="style_font_mono">Plex Mono</string>
     <string name="style_text_over_bright_video">text over bright video</string>
     <string name="style_x_over_bright_video">%1$s over bright video</string>
     <string name="style_text_halo_over_bright_video">text halo over bright video</string>

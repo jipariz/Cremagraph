@@ -1,9 +1,9 @@
 package app.onlyshots.video
 
-import androidx.compose.ui.text.font.FontFamily
 import app.onlyshots.core.model.Quality
 import app.onlyshots.core.model.VideoFormat
 import app.onlyshots.overlay.AlignmentBarcode
+import app.onlyshots.overlay.compose.OverlayFonts
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -21,7 +21,7 @@ import platform.Foundation.NSTemporaryDirectory
  */
 class AvFoundationExportTest {
     private val clip = NSProcessInfo.processInfo.environment["ONLYSHOTS_SPIKE_CLIP"] as? String
-    private val exporter = AvFoundationVideoExporter(videoPath = { it.file.toPath() }, fonts = { FontFamily.Default })
+    private val exporter = AvFoundationVideoExporter(videoPath = { it.file.toPath() }, fonts = { OverlayFonts.Default })
 
     private fun export(trimInUs: Long, trimOutUs: Long, checkAtUs: List<Long>) = runBlocking {
         val path =

@@ -676,7 +676,7 @@ private fun Preview(
                 settings = OverlaySettings(styleId = style.id, rect = PreviewRect),
                 style = style,
                 title = "${style.name} · Zer0",
-                fontFamily = CgTheme.overlayFont,
+                fonts = CgTheme.overlayFonts,
                 modifier = Modifier.fillMaxSize(),
                 hazeState = haze,
                 backdropLuma = luma,

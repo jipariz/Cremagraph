@@ -9,6 +9,7 @@ import app.onlyshots.core.model.style.Glow
 import app.onlyshots.core.model.style.GraphStyle
 import app.onlyshots.core.model.style.GridMode
 import app.onlyshots.core.model.style.Material
+import app.onlyshots.core.model.style.OverlayFont
 import app.onlyshots.core.model.style.Reading
 import app.onlyshots.core.model.style.SeriesColors
 import app.onlyshots.core.model.style.Shadow
@@ -119,6 +120,9 @@ fun GraphStyle.withTitleColor(argb: Int): GraphStyle = copy(text = text.copy(tit
 fun GraphStyle.withLabelColor(argb: Int): GraphStyle = copy(text = text.copy(label = argb))
 
 fun GraphStyle.withTargetTextColor(argb: Int): GraphStyle = copy(text = text.copy(target = argb))
+
+/** The typeface every text of the graph is set in. */
+fun GraphStyle.withFont(font: OverlayFont): GraphStyle = copy(text = text.copy(font = font))
 
 /** A shadow (or, with no offset, a halo) under every text; null for none. */
 fun GraphStyle.withTextEffect(effect: Shadow?): GraphStyle = copy(text = text.copy(effect = effect))

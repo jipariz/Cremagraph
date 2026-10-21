@@ -10,7 +10,6 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.LayoutDirection
 import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.Shot
@@ -48,7 +47,7 @@ class OverlayFrameRenderer(
     private val frameWidth: Int,
     private val frameHeight: Int,
     private val textMeasurer: TextMeasurer,
-    private val fontFamily: FontFamily,
+    fonts: OverlayFonts,
     /** The overlay's words, resolved once before the export ([overlayLabels]). */
     private val labels: OverlayLabels,
     private val recipe: String? = null,
@@ -68,6 +67,7 @@ class OverlayFrameRenderer(
     val width: Int = (ceil(bounds.right).toInt() - left).coerceAtLeast(1)
     val height: Int = (ceil(bounds.bottom).toInt() - top).coerceAtLeast(1)
 
+    private val fontFamily = fonts.of(style.text.font)
     private val metrics = ComposeTextMetrics(textMeasurer, fontFamily)
     private val drawScope = CanvasDrawScope()
 

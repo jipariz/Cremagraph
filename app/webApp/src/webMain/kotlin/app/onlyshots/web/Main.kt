@@ -5,7 +5,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
-import app.onlyshots.core.designsystem.loadOpenSans
+import app.onlyshots.core.designsystem.loadOverlayFonts
 import app.onlyshots.core.model.ShotHistory
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.core_web_file_gone
@@ -103,7 +103,7 @@ private val webModule = module {
     }
     single<VideoExporter> {
         val store = get<LibraryStore>()
-        WebVideoExporter(videoPath = { store.videoPath(it) }, fonts = { loadOpenSans() })
+        WebVideoExporter(videoPath = { store.videoPath(it) }, fonts = { loadOverlayFonts() })
     }
     single<VideoProbe> { WebVideoProbe(get()) }
     single<FrameSampler> { WebFrameSampler() }

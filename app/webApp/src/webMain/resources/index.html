@@ -14,6 +14,8 @@
     <!-- <meta name="apple-itunes-app" content="app-id=REPLACE_WITH_APP_STORE_ID" /> -->
     <style>
       html, body { margin: 0; height: 100%; background: #0b0b0b; overflow: hidden; }
+      /* The editor's own place: Compose takes over the element it is given, and the splash must outlive that. */
+      #app { position: fixed; inset: 0; }
       #splash { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
                 background: #0b0b0b; pointer-events: none; }
       /* 146 px, as the apps draw it (design/splash/avd.py). */
@@ -23,6 +25,7 @@
     <script type="application/javascript" src="onlyshots.js"></script>
   </head>
   <body>
+    <div id="app"></div>
     <!-- The splash (design/splash/SPEC.md): drawn by the page itself, long before the app's code has loaded. The signal
          tile wipes in; the pen, the head on its stem, stands up at its edge as a playhead and sweeps through the shot,
          the trace drawn behind it. Until the app says it has drawn its first frame (onlyshotsReady) the playhead runs
@@ -66,7 +69,9 @@
                   ring: bezier(.33, 1, .68, 1), exit: bezier(.65, 0, .35, 1) };
         function seg(t, a, b) { return Math.min(1, Math.max(0, (t - a) / (b - a))); }
         var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var start = performance.now(), loaded = false, doneAt = -1;
+        // The splash's own clock: it moves at most a frame at a time, so while the browser is busy starting the app
+        // (compiling and running the wasm blocks this page for a moment) the animation waits instead of jumping ahead.
+        var clock = 0, last = -1, loaded = false, doneAt = -1;
         // How far the playhead has swept at t. The first sweep follows P; after it, while the app loads, each cycle
         // holds the swept mark, runs the playhead back (the trace trims back behind it) and sweeps again.
         function sweep(t) {
@@ -107,7 +112,9 @@
           return doneAt >= 0 && e >= 1;
         }
         function frame(now) {
-          if (render(now - start)) { el.remove(); return; }
+          clock += last < 0 ? 0 : Math.min(now - last, 34);
+          last = now;
+          if (render(clock)) { el.remove(); return; }
           requestAnimationFrame(frame);
         }
         window.onlyshotsReady = function () {

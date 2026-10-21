@@ -54,7 +54,9 @@ fun main() {
     // media.js is a module, so it runs after this script; nothing asks it for anything until the first tap, but the
     // first screen waits for it anyway so a quick tap cannot find it missing.
     whenMediaReady {
-        ComposeViewport(document.body!!) {
+        // Its own element (index.html's #app), not the body: Compose takes over what it is given, and the page's
+        // splash beside it has to stay until it has handed over.
+        ComposeViewport(document.getElementById("app")!!) {
             val fileGone = stringResource(Res.string.core_web_file_gone)
             SideEffect { WebWords.fileGone = fileGone }
             // The page's own splash (index.html) has been drawing until now: the editor is on screen, it can go.

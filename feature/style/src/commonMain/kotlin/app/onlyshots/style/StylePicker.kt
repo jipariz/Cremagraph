@@ -3,16 +3,19 @@ package app.onlyshots.style
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,11 +58,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import app.onlyshots.SharedKeys
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
@@ -67,7 +72,6 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgDialog
 import app.onlyshots.core.designsystem.component.CgIcon
-import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CoffeeScene
 import app.onlyshots.core.designsystem.component.DialogRisk
 import app.onlyshots.core.designsystem.component.SectionHeader
@@ -76,16 +80,15 @@ import app.onlyshots.core.model.style.Material
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.style_built_in
 import app.onlyshots.core.resources.style_cancel
+import app.onlyshots.core.resources.style_copy
 import app.onlyshots.core.resources.style_delete
 import app.onlyshots.core.resources.style_delete_text
 import app.onlyshots.core.resources.style_delete_title
 import app.onlyshots.core.resources.style_edit
 import app.onlyshots.core.resources.style_edit_a_copy
 import app.onlyshots.core.resources.style_long_press_hint
-import app.onlyshots.core.resources.style_name
 import app.onlyshots.core.resources.style_new_style
-import app.onlyshots.core.resources.style_rename
-import app.onlyshots.core.resources.style_rename_style
+import app.onlyshots.core.resources.style_remove
 import app.onlyshots.core.resources.style_tile_description
 import app.onlyshots.core.resources.style_your_styles
 import app.onlyshots.overlay.GraphStyles
@@ -105,12 +108,12 @@ class StylePickerActions(
 )
 
 /**
- * Figma 13 · A: the user's styles first, with "new style" (a copy of the selected style), then the built-in ones.
- * Long-press a style for edit, edit a copy, rename or delete; built-ins can only be copied.
+ * The canvas's style sheet: the user's styles first, with "new style" (a copy of the selected style), and under them
+ * the selected style's keys (copy · edit · remove; a built-in can only be copied), then the built-in ones. Long-press a
+ * style for the same actions. Renaming is the style editor's, in its header.
  */
 @Composable
 fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePickerActions) {
-    var renaming by remember { mutableStateOf<GraphStyle?>(null) }
     var deleting by remember { mutableStateOf<GraphStyle?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
         SectionHeader(stringResource(Res.string.style_your_styles))
@@ -125,19 +128,15 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                         Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = ItemPlacement),
                     onPick = { actions.pick(style.id) },
                     menu = { close ->
+                        Item(stringResource(Res.string.style_copy), TestTags.StyleMenuCopy) {
+                            close()
+                            actions.create(style.id)
+                        }
                         Item(stringResource(Res.string.style_edit), TestTags.StyleMenuEdit) {
                             close()
                             actions.edit(style.id)
                         }
-                        Item(stringResource(Res.string.style_edit_a_copy), TestTags.StyleMenuCopy) {
-                            close()
-                            actions.create(style.id)
-                        }
-                        Item(stringResource(Res.string.style_rename), TestTags.StyleMenuRename) {
-                            close()
-                            renaming = style
-                        }
-                        Item(stringResource(Res.string.style_delete), TestTags.StyleMenuDelete, risky = true) {
+                        Item(stringResource(Res.string.style_remove), TestTags.StyleMenuDelete, risky = true) {
                             close()
                             deleting = style
                         }
@@ -150,6 +149,16 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                     Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = ItemPlacement),
                 )
             }
+        }
+        val selected = custom.firstOrNull { it.id == currentId } ?: GraphStyles.all.firstOrNull { it.id == currentId }
+        if (selected != null) {
+            SelectedStyleKeys(
+                selected,
+                own = custom.any { it.id == selected.id },
+                onCopy = { actions.create(selected.id) },
+                onEdit = { actions.edit(selected.id) },
+                onRemove = { deleting = selected },
+            )
         }
         SectionHeader(stringResource(Res.string.style_built_in))
         // As many columns as fit (a sheet on a phone takes three, the wide panel and a wide sheet more); a grid that
@@ -166,8 +175,13 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                                     picked = style.id == currentId,
                                     width = null,
                                     onPick = { actions.pick(style.id) },
+                                    builtIn = true,
                                     menu = { close ->
-                                        Item(stringResource(Res.string.style_edit_a_copy), TestTags.StyleMenuCopy) {
+                                        Item(
+                                            stringResource(Res.string.style_edit_a_copy),
+                                            TestTags.StyleMenuCopy,
+                                            onward = true,
+                                        ) {
                                             close()
                                             actions.create(style.id)
                                         }
@@ -188,28 +202,6 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                 Modifier.fillMaxWidth().heightIn(min = CgSize.Touch).wrapContentHeight(Alignment.CenterVertically),
         )
     }
-    renaming?.let { style ->
-        var name by remember(style.id) { mutableStateOf(style.name) }
-        CgDialog(
-            title = stringResource(Res.string.style_rename_style),
-            onDismiss = { renaming = null },
-            confirm =
-                stringResource(Res.string.style_rename) to
-                    {
-                        actions.rename(style.id, name.trim())
-                        renaming = null
-                    },
-            confirmEnabled = name.isNotBlank(),
-            dismiss = stringResource(Res.string.style_cancel) to { renaming = null },
-        ) {
-            CgTextField(
-                name,
-                onValueChange = { name = it.take(MAX_NAME) },
-                label = stringResource(Res.string.style_name),
-                modifier = Modifier.testTag(TestTags.StyleNameField),
-            )
-        }
-    }
     deleting?.let { style ->
         CgDialog(
             title = stringResource(Res.string.style_delete_title, style.name),
@@ -227,17 +219,24 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
     }
 }
 
-/** A row of a style's long-press menu, as CgMenuItem draws them, with its test tag; [risky] in signal letters. */
+/**
+ * A row of a style's long-press menu, as CgMenuItem draws them (Mono 13 capitals over a divider), with its test tag;
+ * [risky] in signal letters, [onward] with an arrow for one that opens the editor.
+ */
 @Composable
-private fun Item(text: String, tag: String, risky: Boolean = false, onClick: () -> Unit) {
+private fun Item(text: String, tag: String, risky: Boolean = false, onward: Boolean = false, onClick: () -> Unit) {
     DropdownMenuItem(
         text = {
             Text(
                 text.caps(),
-                style = CgTheme.type.labelStrong,
+                style = CgTheme.type.labelStrong.copy(fontSize = 13.sp, letterSpacing = 0.02.em),
                 color = if (risky) CgColors.Brand.Signal else CgColors.Text.Primary,
             )
         },
+        trailingIcon =
+            if (onward) {
+                { CgIcon(CgIcons.ArrowRight, tint = CgColors.Text.Primary) }
+            } else null,
         onClick = onClick,
         modifier =
             Modifier.testTag(tag).drawBehind {
@@ -256,6 +255,7 @@ private fun StyleTile(
     onPick: () -> Unit,
     menu: @Composable (close: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
+    builtIn: Boolean = false,
 ) {
     var open by remember { mutableStateOf(false) }
     val description = stringResource(Res.string.style_tile_description, style.name)
@@ -280,10 +280,22 @@ private fun StyleTile(
                 picked,
                 Modifier.fillMaxWidth().height(TILE_HEIGHT).shareBounds(SharedKeys.style(style.id), clip = TileShape),
             )
+            // A hairline-framed menu; a built-in's, which only copies, wears the signal rule on top like a sheet.
             DropdownMenu(
                 expanded = open,
                 onDismissRequest = { open = false },
-                modifier = Modifier.testTagsAsResourceIds(),
+                modifier =
+                    Modifier.testTagsAsResourceIds()
+                        .then(
+                            if (builtIn)
+                                Modifier.drawBehind {
+                                    drawRect(CgColors.Brand.Signal, size = Size(size.width, CgStroke.Rule.toPx()))
+                                }
+                            else Modifier
+                        ),
+                shape = CgShape.Chip,
+                containerColor = CgColors.Surface.Bar,
+                border = BorderStroke(CgStroke.Hairline, CgColors.Line.Hairline),
             ) {
                 menu { open = false }
             }
@@ -297,6 +309,62 @@ private fun StyleTile(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = CgSpace.S8, vertical = CgSpace.S6),
         )
+    }
+}
+
+/**
+ * The selected style's keys, under the user's styles: its name, then COPY, EDIT and REMOVE (in signal) for one of the
+ * user's; a built-in can only be copied, so it shows EDIT A COPY alone.
+ */
+@Composable
+private fun SelectedStyleKeys(
+    style: GraphStyle,
+    own: Boolean,
+    onCopy: () -> Unit,
+    onEdit: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            style.name.caps(),
+            style = CgTheme.type.labelStrong,
+            color = CgColors.Text.Secondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(TILE_SMALL),
+        )
+        if (own) {
+            StyleKey(stringResource(Res.string.style_copy), TestTags.StyleActionCopy, onClick = onCopy)
+            StyleKey(stringResource(Res.string.style_edit), TestTags.StyleActionEdit, onClick = onEdit)
+            StyleKey(
+                stringResource(Res.string.style_remove),
+                TestTags.StyleActionRemove,
+                risky = true,
+                onClick = onRemove,
+            )
+        } else {
+            StyleKey(stringResource(Res.string.style_edit_a_copy), TestTags.StyleActionCopy, onClick = onCopy)
+        }
+    }
+}
+
+/** One of [SelectedStyleKeys]: a hairline key sharing the row, [risky] framed and lettered in signal. */
+@Composable
+private fun RowScope.StyleKey(text: String, tag: String, risky: Boolean = false, onClick: () -> Unit) {
+    val colour = if (risky) CgColors.Brand.Signal else CgColors.Text.Primary
+    Box(
+        Modifier.weight(1f)
+            .height(CgSize.Touch)
+            .border(CgStroke.Hairline, if (risky) CgColors.Brand.Signal else CgColors.Line.Hairline)
+            .clickable(role = Role.Button, onClick = onClick)
+            .testTag(tag),
+        Alignment.Center,
+    ) {
+        Text(text.caps(), style = CgTheme.type.labelStrong, color = colour, maxLines = 1)
     }
 }
 
@@ -394,7 +462,6 @@ fun StyleSwatch(style: GraphStyle, picked: Boolean, modifier: Modifier = Modifie
 
 private val TILE_HEIGHT = 64.dp
 private val TILE_SMALL = 104.dp
-private const val MAX_NAME = 32
 
 /** A built-in style's tile is never narrower than this. */
 private val TILE_MIN = 110.dp

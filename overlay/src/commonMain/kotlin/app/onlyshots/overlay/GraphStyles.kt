@@ -9,6 +9,7 @@ import app.onlyshots.core.model.style.DarkSet
 import app.onlyshots.core.model.style.GlassSettings
 import app.onlyshots.core.model.style.Glow
 import app.onlyshots.core.model.style.GridStyle
+import app.onlyshots.core.model.style.Lettering
 import app.onlyshots.core.model.style.LineStyle
 import app.onlyshots.core.model.style.Material
 import app.onlyshots.core.model.style.OverlayFont
@@ -38,7 +39,8 @@ object GraphStyles {
 
     /**
      * The app's own look ("Instrument"): an ink panel, a hairline grid of rows and columns, square outlined cells, the
-     * signal pressure curve, and every text in Plex Mono.
+     * signal pressure curve, and every text in Plex Mono, lettered as a readout (grey capitals, a rule under the title,
+     * readings named by their units).
      */
     val Instrument =
         GraphStyle(
@@ -58,10 +60,11 @@ object GraphStyles {
             lines = LineStyle(main = 2f, secondary = 1.6f, targetOpacity = 0.5f),
             text =
                 TextColors(
-                    title = rgb(0xE8E6E1),
+                    title = rgb(0xA3A19B),
                     label = rgb(0xA3A19B),
                     target = rgb(0xA3A19B),
                     font = OverlayFont.MONO,
+                    lettering = Lettering.READOUT,
                 ),
             cells =
                 CellsStyle(

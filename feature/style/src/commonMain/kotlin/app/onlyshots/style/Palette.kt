@@ -31,42 +31,56 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.StringResource
 
-/** A named colour of the picker's presets: colours that read on video. */
-data class Swatch(val name: StringResource, val color: Argb)
+/**
+ * A named colour of the picker's presets: colours that read on video. [clear] is the one that is no colour at all: a
+ * faint white wash (white at [CLEAR_OPACITY] or less), drawn hatched, never confused with white itself.
+ */
+data class Swatch(val name: StringResource, val color: Argb, val clear: Boolean = false) {
+    /** Whether [current] (with its alpha) is this preset. */
+    fun matches(current: Argb): Boolean {
+        if ((current and 0xFFFFFF) != (color and 0xFFFFFF)) return false
+        val faint = current.alpha <= CLEAR_OPACITY + 0.005f && (color and 0xFFFFFF) == 0xFFFFFF
+        return if (clear) faint else !faint || (color and 0xFFFFFF) != 0xFFFFFF
+    }
+}
 
-/** Figma 13 · F's presets, and the panel colours the built-ins and the editor's examples use. */
+/** The canvas's colour sheet: the presets that read on video. */
 val Swatches =
     listOf(
-        Swatch(Res.string.style_swatch_ice_blue, rgb(0x7FB8FF)),
-        Swatch(Res.string.style_swatch_blue, rgb(0x3A90DA)),
-        Swatch(Res.string.style_swatch_mint, rgb(0x1FC48C)),
+        Swatch(Res.string.style_swatch_ice_blue, rgb(0x9CC3FF)),
+        Swatch(Res.string.style_swatch_blue, rgb(0x6FA8FF)),
+        Swatch(Res.string.style_swatch_mint, rgb(0x8FD3A8)),
         Swatch(Res.string.style_swatch_honey, rgb(0xFFC94D)),
-        Swatch(Res.string.style_swatch_apricot, rgb(0xFF9A6B)),
-        Swatch(Res.string.style_swatch_ember, rgb(0xF05A3C)),
-        Swatch(Res.string.style_swatch_rose, rgb(0xE07F78)),
-        Swatch(Res.string.style_swatch_lilac, rgb(0xC4A8FF)),
-        Swatch(Res.string.style_swatch_milk, rgb(0xF2E6DC)),
+        Swatch(Res.string.style_swatch_apricot, rgb(0xFF8A5C)),
+        Swatch(Res.string.style_swatch_ember, rgb(0xEF4E2B)),
+        Swatch(Res.string.style_swatch_rose, rgb(0xF08CA8)),
+        Swatch(Res.string.style_swatch_lilac, rgb(0xB9A3F0)),
+        Swatch(Res.string.style_swatch_milk, rgb(0xE8E0DC)),
         Swatch(Res.string.style_swatch_white, rgb(0xFFFFFF)),
         Swatch(Res.string.style_swatch_teal, rgb(0x5CC4B8)),
-        Swatch(Res.string.style_swatch_sky, rgb(0xA8C8FF)),
+        Swatch(Res.string.style_swatch_sky, rgb(0x7CC7F0)),
     )
 
-/** Panel colours: dark and deep, for under the curves. */
+/** And its panel colours: dark and deep, for under the curves, and clear. */
 val PanelSwatches =
     listOf(
-        Swatch(Res.string.style_swatch_espresso, rgb(0x2B1A12)),
-        Swatch(Res.string.style_swatch_oxblood, rgb(0x4A1216)),
-        Swatch(Res.string.style_swatch_graphite, rgb(0x121416)),
-        Swatch(Res.string.style_swatch_cobalt, rgb(0x0050EF)),
-        Swatch(Res.string.style_swatch_forest, rgb(0x0F3D2A)),
-        Swatch(Res.string.style_swatch_clear, rgb(0xFFFFFF)),
+        Swatch(Res.string.style_swatch_espresso, rgb(0x2B1810)),
+        Swatch(Res.string.style_swatch_oxblood, rgb(0x4A1414)),
+        Swatch(Res.string.style_swatch_graphite, rgb(0x2A2C30)),
+        Swatch(Res.string.style_swatch_cobalt, rgb(0x142A5A)),
+        Swatch(Res.string.style_swatch_forest, rgb(0x16351F)),
+        Swatch(Res.string.style_swatch_clear, rgb(0xFFFFFF), clear = true),
     )
 
-/** The colour's name when it is a preset, else its hex. */
-fun colorName(color: Argb): UiText {
-    val opaque = color or 0xFF000000.toInt()
-    return (Swatches + PanelSwatches).firstOrNull { it.color == opaque }?.name?.text() ?: hex(color).raw()
-}
+/** The most a wash of white can show and still be "clear", not white: Liquid Glass's 16 %. */
+const val CLEAR_OPACITY = 0.16f
+
+/** The colour's name when it is a preset (a faint white is "clear"), else its hex. */
+fun colorName(color: Argb): UiText =
+    (PanelSwatches.filter { it.clear } + Swatches + PanelSwatches.filterNot { it.clear })
+        .firstOrNull { it.matches(color) }
+        ?.name
+        ?.text() ?: hex(color).raw()
 
 /** "#7FB8FF" — the colour without its alpha. */
 fun hex(color: Argb): String = "#" + (color and 0xFFFFFF).toString(16).uppercase().padStart(6, '0')

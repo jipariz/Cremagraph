@@ -499,7 +499,8 @@ class OverlaySceneTest {
         for (style in GraphStyles.all) {
             val sc = scene(25.0, style = style)
             assertTrue(sc.prims.isNotEmpty(), style.id)
-            assertTrue("time" in sc.texts(), style.id)
+            // A readout letters its words in capitals.
+            assertTrue(sc.texts().any { it.equals("time", ignoreCase = true) }, style.id)
         }
     }
 
@@ -628,5 +629,24 @@ class OverlaySceneTest {
         val heads = (0..(20 * 30)).map { curve(scene(15.0 + it / 30.0, settings, s = scale), weight).last() }
         val drift = heads.max() - heads.min()
         assertTrue(drift < 0.5f, "the head moved $drift px up and down while the weight climbed")
+    }
+
+    @Test
+    fun readoutLetteringNamesReadingsByUnitInCapitals() {
+        val instrument = scene(20.0, style = GraphStyles.Instrument)
+        val texts = instrument.texts()
+        assertTrue("ZER0 · GAGGIUINO" in texts, texts.toString())
+        // The readings are named by their units, in capitals, and the value stands alone; time keeps its word.
+        for (label in listOf("TIME", "G", "BAR", "ML/S")) assertTrue(label in texts, "$label in $texts")
+        assertFalse(texts.any { it in setOf("pressure", "flow", "weight", "time", "bar", "ml/s") }, texts.toString())
+        assertTrue(texts.any { it.startsWith("TARGET ") && it.endsWith(" G") }, "the weight target in capitals")
+        assertTrue("PHASE 2" in texts || texts.none { it.startsWith("phase") }, "phase names in capitals")
+
+        // A hairline under the title row, across the panel, in the grid's colour.
+        val rules = instrument.lines().filter { it.pointCount == 2 && it.points[1] == it.points[3] }
+        assertTrue(rules.any { it.color == GraphStyles.Instrument.grid.color }, "the rule under the header")
+
+        // Words stay words for every other built-in.
+        assertTrue("pressure" in scene(20.0, style = GraphStyles.Gaggiuino).texts())
     }
 }

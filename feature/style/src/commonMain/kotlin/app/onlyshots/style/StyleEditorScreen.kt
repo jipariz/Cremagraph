@@ -22,9 +22,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -69,6 +68,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -76,6 +76,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
@@ -133,6 +134,7 @@ import app.onlyshots.core.resources.style_hex_colour
 import app.onlyshots.core.resources.style_live_camera
 import app.onlyshots.core.resources.style_name
 import app.onlyshots.core.resources.style_opacity
+import app.onlyshots.core.resources.style_panels
 import app.onlyshots.core.resources.style_preview_drag
 import app.onlyshots.core.resources.style_preview_record
 import app.onlyshots.core.resources.style_readability_text_panel
@@ -167,7 +169,9 @@ import app.onlyshots.overlay.relativeLuminance
 import app.onlyshots.shareBounds
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -814,8 +818,10 @@ internal fun ReadabilityWarning(s: GraphStyle, luma: Float, change: ((GraphStyle
 
 // Sheets ------------------------------------------------------------------------------------
 
-/** Figma 13 · F: presets that work on video, a hue strip, hex, and opacity where the colour has one. */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * The canvas's colour sheet: the presets that work on video, then (for a panel's colour) the panel colours under their
+ * label, each six to a row; a hue strip, hex, and opacity where the colour has one.
+ */
 @Composable
 private fun ColorSheet(
     target: ColorTarget,
@@ -827,24 +833,14 @@ private fun ColorSheet(
     val alpha = if (target.withOpacity) current.opacity else 1f
     fun set(c: Int) = change { target.set(it, c.withAlpha(alpha)) }
     EditorSheet(target.title.text(), onDone = onDone) {
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            val presets =
-                if (target.withOpacity && target.title != Res.string.style_grid_colour.text()) PanelSwatches + Swatches
-                else Swatches
-            for (sw in presets) {
-                val on = (sw.color and 0xFFFFFF) == (current and 0xFFFFFF)
-                Box(
-                    Modifier.size(SWATCH)
-                        .background(Color(sw.color))
-                        .border(
-                            if (on) CgStroke.Rule else CgStroke.Hairline,
-                            if (on) CgColors.Brand.Signal else CgColors.Line.Hairline,
-                        )
-                        .clickable(role = Role.RadioButton) { set(sw.color) }
-                )
+        val panels = target.withOpacity && target.title != Res.string.style_grid_colour.text()
+        SwatchGrid(Swatches, current) { set(it.color) }
+        if (panels) {
+            StyleLabel(stringResource(Res.string.style_panels))
+            // Clear keeps a faint wash: white at the colour's own opacity, if that is faint already, else 16 %.
+            SwatchGrid(PanelSwatches, current) { sw ->
+                if (sw.clear) change { target.set(it, sw.color.withAlpha(min(alpha, CLEAR_OPACITY))) }
+                else set(sw.color)
             }
         }
         HueStrip(current) { set(it) }
@@ -868,6 +864,52 @@ private fun ColorSheet(
             SliderRow(stringResource(Res.string.style_opacity), alpha, 0f..1f, "${(alpha * 100).roundToInt()} %") { v ->
                 change { target.set(it, current.withAlpha(step(v, 0.01f).coerceIn(0f, 1f))) }
             }
+        }
+    }
+}
+
+/** [swatches] six to a row, square, the picked one framed in signal; clear drawn hatched. */
+@Composable
+private fun SwatchGrid(swatches: List<Swatch>, current: Int, onPick: (Swatch) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+        for (row in swatches.chunked(SWATCH_COLUMNS)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                for (sw in row) {
+                    val on = sw.matches(current)
+                    val name = stringResource(sw.name)
+                    Box(
+                        Modifier.weight(1f)
+                            .aspectRatio(1f)
+                            .then(
+                                if (sw.clear) Modifier.drawBehind { hatch() } else Modifier.background(Color(sw.color))
+                            )
+                            .border(
+                                if (on) CgStroke.Rule else CgStroke.Hairline,
+                                if (on) CgColors.Brand.Signal else CgColors.Line.Hairline,
+                            )
+                            .semantics {
+                                contentDescription = name
+                                selected = on
+                            }
+                            .clickable(role = Role.RadioButton) { onPick(sw) }
+                    )
+                }
+                repeat(SWATCH_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/** The clear swatch: bars at 45° on the sheet's ground, as the canvas hatches "no colour". */
+private fun DrawScope.hatch() {
+    drawRect(CgColors.Surface.Bar)
+    val step = 8.dp.toPx()
+    val w = 4.dp.toPx() / sqrt(2f) * 2f
+    clipRect {
+        var x = -size.height
+        while (x < size.width) {
+            drawLine(CgColors.Line.Hairline, Offset(x, size.height), Offset(x + size.height, 0f), strokeWidth = w / 2f)
+            x += step
         }
     }
 }
@@ -1033,11 +1075,11 @@ private const val SCENE_LUMA = 0.06f
 private val PREVIEW_HEIGHT = 330.dp
 
 /** A slider row's name and value columns, as the canvas sets them. */
-private val SLIDER_LABEL = 88.dp
+internal val SLIDER_LABEL = 88.dp
 private val SLIDER_VALUE = 44.dp
 
 /** A preset colour in the colour sheet. */
-private val SWATCH = 44.dp
+private const val SWATCH_COLUMNS = 6
 
 /** The dashed rule under the style's name, which says it can be typed over. */
 private fun DrawScope.dashedRule(color: Color) {

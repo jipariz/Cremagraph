@@ -43,6 +43,7 @@ class BuiltInsAreReplicableTest {
         // Text
         s =
             s.withFont(to.text.font)
+                .withLettering(to.text.lettering)
                 .withTitleColor(to.text.title)
                 .withLabelColor(to.text.label)
                 .withTargetTextColor(to.text.target)

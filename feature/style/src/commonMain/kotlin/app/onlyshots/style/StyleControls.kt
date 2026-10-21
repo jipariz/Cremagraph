@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,9 +23,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.onlyshots.TestTags
 import app.onlyshots.connect.label
@@ -43,6 +48,7 @@ import app.onlyshots.core.designsystem.component.SegmentedControl
 import app.onlyshots.core.model.style.CellLook
 import app.onlyshots.core.model.style.GraphStyle
 import app.onlyshots.core.model.style.GridMode
+import app.onlyshots.core.model.style.Lettering
 import app.onlyshots.core.model.style.Material
 import app.onlyshots.core.model.style.OverlayFont
 import app.onlyshots.core.model.style.Reading
@@ -86,6 +92,9 @@ import app.onlyshots.core.resources.style_halo
 import app.onlyshots.core.resources.style_inner_border
 import app.onlyshots.core.resources.style_label_colour
 import app.onlyshots.core.resources.style_labels
+import app.onlyshots.core.resources.style_lettering
+import app.onlyshots.core.resources.style_lettering_readout
+import app.onlyshots.core.resources.style_lettering_words
 import app.onlyshots.core.resources.style_light
 import app.onlyshots.core.resources.style_line_shadow
 import app.onlyshots.core.resources.style_line_weight
@@ -348,28 +357,24 @@ private fun Corners(s: GraphStyle, change: Change) {
 
 @Composable
 internal fun LineControls(s: GraphStyle, change: Change, pickColor: Pick) {
-    for (series in StyleSeries) {
-        val c = s.series.of(series)
-        Row(Modifier.fillMaxWidth().heightIn(min = CgSize.Touch), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(12.dp, 3.dp).background(Color(c)))
-            Text(
-                series.label.caps(),
-                style = CgTheme.type.labelStrong,
-                modifier = Modifier.weight(1f).padding(start = 10.dp),
-            )
-            ColorChip(
-                Color(c),
+    // The curves' colours in one framed list: each row its line, its name and its colour's name; tap for the sheet.
+    ColorList {
+        for (series in StyleSeries) {
+            val c = s.series.of(series)
+            ColorListRow(
+                series.label,
                 colorName(c).text(),
-                {
-                    pickColor(
-                        ColorTarget(
-                            Res.string.style_x_colour.text(series.labelRes.text()),
-                            { it.series.of(series) },
-                            { st, v -> st.withSeriesColor(series, v) },
-                        )
+                swatch = { Box(Modifier.size(28.dp, 2.dp).background(Color(c))) },
+                height = SERIES_ROW,
+            ) {
+                pickColor(
+                    ColorTarget(
+                        Res.string.style_x_colour.text(series.labelRes.text()),
+                        { it.series.of(series) },
+                        { st, v -> st.withSeriesColor(series, v) },
                     )
-                },
-            )
+                )
+            }
         }
     }
     val l = s.lines
@@ -379,14 +384,6 @@ internal fun LineControls(s: GraphStyle, change: Change, pickColor: Pick) {
     SliderRow(stringResource(Res.string.style_other_curves), l.secondary, 1f..4f, px1(l.secondary)) { v ->
         change { it.withLineWeights(it.lines.main, step(v, 0.1f)) }
     }
-    ChoiceRow(stringResource(Res.string.style_shape)) {
-        SegmentedControl(
-            listOf(stringResource(Res.string.style_smooth), stringResource(Res.string.style_stepped)),
-            if (l.stepped) 1 else 0,
-            fill = true,
-            onSelect = { i -> change { it.withStepped(i == 1) } },
-        )
-    }
     SliderRow(
         stringResource(Res.string.style_area_fill),
         l.area,
@@ -395,8 +392,24 @@ internal fun LineControls(s: GraphStyle, change: Change, pickColor: Pick) {
     ) { v ->
         change { it.withArea(step(v, 0.02f)) }
     }
+    SliderRow(stringResource(Res.string.style_target_opacity), l.targetOpacity, 0.1f..1f, percent(l.targetOpacity)) { v
+        ->
+        change { it.withTargetOpacity(step(v, 0.01f)) }
+    }
+    val targetWidth = l.targetWidth ?: l.secondary
+    SliderRow(stringResource(Res.string.style_target_weight), targetWidth, 0.5f..4f, px1(targetWidth)) { v ->
+        change { it.withTargetWidth(step(v, 0.1f)) }
+    }
+    ChoiceRow(stringResource(Res.string.style_shape), inline = true) {
+        SegmentedControl(
+            listOf(stringResource(Res.string.style_smooth), stringResource(Res.string.style_stepped)),
+            if (l.stepped) 1 else 0,
+            fill = true,
+            onSelect = { i -> change { it.withStepped(i == 1) } },
+        )
+    }
     val looks = listOf(TargetLook.DASHED, TargetLook.DOTTED, TargetLook.FAINT)
-    ChoiceRow(stringResource(Res.string.style_targets)) {
+    ChoiceRow(stringResource(Res.string.style_targets), inline = true) {
         SegmentedControl(
             listOf(
                 stringResource(Res.string.style_dashed),
@@ -407,14 +420,6 @@ internal fun LineControls(s: GraphStyle, change: Change, pickColor: Pick) {
             fill = true,
             onSelect = { i -> change { it.withTargets(looks[i]) } },
         )
-    }
-    SliderRow(stringResource(Res.string.style_target_opacity), l.targetOpacity, 0.1f..1f, percent(l.targetOpacity)) { v
-        ->
-        change { it.withTargetOpacity(step(v, 0.01f)) }
-    }
-    val targetWidth = l.targetWidth ?: l.secondary
-    SliderRow(stringResource(Res.string.style_target_weight), targetWidth, 0.5f..4f, px1(targetWidth)) { v ->
-        change { it.withTargetWidth(step(v, 0.1f)) }
     }
     EffectControls(
         stringResource(Res.string.style_line_shadow),
@@ -484,39 +489,76 @@ internal fun TextControls(s: GraphStyle, change: Change, pickColor: Pick) {
             tags = fonts.map { TestTags.choice("font", it.name) },
         )
     }
-    ColorRow(
-        stringResource(Res.string.style_title),
-        ColorTarget(
-            Res.string.style_title_colour.text(),
-            { it.text.title },
-            { st, c -> st.withTitleColor(c) },
-            withOpacity = true,
-        ),
-        s,
-        pickColor,
-    )
-    ColorRow(
-        stringResource(Res.string.style_labels),
-        ColorTarget(
-            Res.string.style_label_colour.text(),
-            { it.text.label },
-            { st, c -> st.withLabelColor(c) },
-            withOpacity = true,
-        ),
-        s,
-        pickColor,
-    )
-    ColorRow(
-        stringResource(Res.string.style_target_values),
-        ColorTarget(
-            Res.string.style_target_value_colour.text(),
-            { it.text.target },
-            { st, c -> st.withTargetTextColor(c) },
-            true,
-        ),
-        s,
-        pickColor,
-    )
+    val letterings = listOf(Lettering.WORDS, Lettering.READOUT)
+    ChoiceRow(stringResource(Res.string.style_lettering)) {
+        SegmentedControl(
+            listOf(
+                stringResource(Res.string.style_lettering_words),
+                stringResource(Res.string.style_lettering_readout),
+            ),
+            letterings.indexOf(s.text.lettering),
+            fill = true,
+            onSelect = { i -> change { it.withLettering(letterings[i]) } },
+            tags = letterings.map { TestTags.choice("lettering", it.name) },
+        )
+    }
+    ColorList {
+        ColorListRow(
+            stringResource(Res.string.style_title),
+            ColorTarget(
+                Res.string.style_title_colour.text(),
+                { it.text.title },
+                { st, c -> st.withTitleColor(c) },
+                withOpacity = true,
+            ),
+            s,
+            pickColor,
+        )
+        ColorListRow(
+            stringResource(Res.string.style_labels),
+            ColorTarget(
+                Res.string.style_label_colour.text(),
+                { it.text.label },
+                { st, c -> st.withLabelColor(c) },
+                withOpacity = true,
+            ),
+            s,
+            pickColor,
+        )
+        ColorListRow(
+            stringResource(Res.string.style_target_values),
+            ColorTarget(
+                Res.string.style_target_value_colour.text(),
+                { it.text.target },
+                { st, c -> st.withTargetTextColor(c) },
+                true,
+            ),
+            s,
+            pickColor,
+        )
+        ColorListRow(
+            stringResource(Res.string.style_phase_lines),
+            ColorTarget(
+                Res.string.style_phase_line_colour.text(),
+                { it.phase.line },
+                { st, c -> st.withPhaseLineColor(c) },
+                withOpacity = true,
+            ),
+            s,
+            pickColor,
+        )
+        ColorListRow(
+            stringResource(Res.string.style_phase_names),
+            ColorTarget(
+                Res.string.style_phase_name_colour.text(),
+                { it.phase.label },
+                { st, c -> st.withPhaseLabelColor(c) },
+                true,
+            ),
+            s,
+            pickColor,
+        )
+    }
     EffectControls(
         stringResource(Res.string.style_under_the_text),
         s.text.effect,
@@ -533,28 +575,6 @@ internal fun TextControls(s: GraphStyle, change: Change, pickColor: Pick) {
     ) { e ->
         change { it.withTextEffect(e) }
     }
-    ColorRow(
-        stringResource(Res.string.style_phase_lines),
-        ColorTarget(
-            Res.string.style_phase_line_colour.text(),
-            { it.phase.line },
-            { st, c -> st.withPhaseLineColor(c) },
-            withOpacity = true,
-        ),
-        s,
-        pickColor,
-    )
-    ColorRow(
-        stringResource(Res.string.style_phase_names),
-        ColorTarget(
-            Res.string.style_phase_name_colour.text(),
-            { it.phase.label },
-            { st, c -> st.withPhaseLabelColor(c) },
-            true,
-        ),
-        s,
-        pickColor,
-    )
 }
 
 // Readings ------------------------------------------------------------------------------------
@@ -773,12 +793,80 @@ private fun StyleRow(label: String, control: @Composable () -> Unit) {
     }
 }
 
-/** A choice of the style: its name above, the segments across the whole width under it. */
+/**
+ * A choice of the style: its name above, the segments across the whole width under it; [inline] puts the name on the
+ * left, as wide as a slider's, and the segments beside it (the lines page, where it sits among sliders).
+ */
 @Composable
-private fun ChoiceRow(label: String, segments: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
-        StyleLabel(label)
-        segments()
+private fun ChoiceRow(label: String, inline: Boolean = false, segments: @Composable () -> Unit) {
+    if (inline) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+        ) {
+            StyleLabel(label, Modifier.width(SLIDER_LABEL))
+            Box(Modifier.weight(1f)) { segments() }
+        }
+    } else {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
+            StyleLabel(label)
+            segments()
+        }
+    }
+}
+
+/** Rows of colours in one hairline frame, a divider between each two, as the canvas lists a page's colours. */
+@Composable
+private fun ColorList(rows: @Composable ColorListScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline)) { ColorListScope().rows() }
+}
+
+/** Counts [ColorList]'s rows as they compose, so each but the first draws the divider above it. */
+private class ColorListScope {
+    private var count = 0
+
+    fun first(): Boolean = count++ == 0
+}
+
+/**
+ * One colour of a [ColorList]: its name, its [swatch] and the colour's name in grey; the whole row opens the colour
+ * sheet.
+ */
+@Composable
+private fun ColorListScope.ColorListRow(
+    label: String,
+    name: String,
+    swatch: @Composable () -> Unit,
+    height: Dp = CgSize.Touch,
+    onClick: () -> Unit,
+) {
+    val top = first()
+    Row(
+        Modifier.fillMaxWidth()
+            .height(height)
+            .drawBehind { if (!top) drawRect(CgColors.Line.Divider, size = Size(size.width, CgStroke.Hairline.toPx())) }
+            .clickable(role = Role.Button, onClickLabel = name, onClick = onClick)
+            .padding(horizontal = CgSpace.S12),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+    ) {
+        swatch()
+        Text(label.caps(), style = CgTheme.type.data, color = CgColors.Text.Primary, modifier = Modifier.weight(1f))
+        Text(name.caps(), style = CgTheme.type.data, color = CgColors.Text.Secondary, maxLines = 1)
+    }
+}
+
+/** A colour of the style in a [ColorList]: a small square of it (at its opacity) before its name. */
+@Composable
+private fun ColorListScope.ColorListRow(label: String, target: ColorTarget, s: GraphStyle, pickColor: Pick) {
+    val c = target.get(s)
+    ColorListRow(
+        label,
+        if (target.withOpacity) tintLabel(c, c.opacity).text() else colorName(c).text(),
+        swatch = { Box(Modifier.size(16.dp).background(Color(c)).border(CgStroke.Hairline, CgColors.Line.Hairline)) },
+    ) {
+        pickColor(target)
     }
 }
 
@@ -961,3 +1049,6 @@ private val CellLook.label: StringResource
             CellLook.GLOSSY -> Res.string.style_cell_glossy
             CellLook.TILES -> Res.string.style_cell_tiles
         }
+
+/** A curve's row in the lines page's colour list. */
+private val SERIES_ROW = 40.dp

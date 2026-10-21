@@ -16,6 +16,7 @@ import app.onlyshots.storage.LibraryStore
 import app.onlyshots.storage.ShareTempFiles
 import app.onlyshots.video.ExportProgress
 import app.onlyshots.video.VideoExporter
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,44 +69,59 @@ class ExportManager(
         GALLERY,
     }
 
+    /**
+     * Renders [ids] one after another and hands the results to [destination]. Each video's progress entry stays until
+     * its file has been handed on, and any failure is in [message] before the entry goes: the edit screen reads the
+     * entry's removal as "finished" and [message] as how it went, so a failure reported later would read as success.
+     */
     fun enqueue(ids: List<String>, quality: Quality, withSound: Boolean, destination: Destination = Destination.SHARE) {
         if (ids.isEmpty()) return
         running = scope.launch {
             lock.withLock {
-                temp.cleanup(nowMs())
-                background.keepAlive(words(Res.plurals.edit_creating_videos.text(ids.size))) {
-                    val files = ArrayList<Path>(ids.size)
-                    for (id in ids) {
-                        val item = store.read(id) ?: continue
-                        val out = temp.newFile(id, nowMs())
-                        _progress.update { it + (id to 0f) }
-                        var failed: String? = null
-                        try {
-                            exporter.export(item, quality, withSound && item.hasAudio, out).collect { p ->
-                                when (p) {
-                                    is ExportProgress.Rendering -> _progress.update { it + (id to p.fraction) }
-                                    is ExportProgress.Done -> files += p.file
-                                    is ExportProgress.Failed -> failed = p.reason
-                                }
-                            }
-                        } finally {
-                            _progress.update { it - id }
-                        }
-                        failed?.let { _message.value = Res.string.edit_export_failed.text(it.raw()) }
-                    }
-                    if (files.isEmpty()) return@keepAlive
-                    when (destination) {
-                        Destination.SHARE -> share.shareVideos(files) { files.forEach(temp::release) }
-                        Destination.GALLERY -> {
-                            for (file in files) {
-                                runCatching { gallery.save(file) }
-                                    .onFailure {
-                                        _message.value = Res.string.edit_gallery_failed.text("${it.message}".raw())
+                try {
+                    temp.cleanup(nowMs())
+                    background.keepAlive(words(Res.plurals.edit_creating_videos.text(ids.size))) {
+                        val files = ArrayList<Path>(ids.size)
+                        for (id in ids) {
+                            val item = store.read(id) ?: continue
+                            val out = temp.newFile(id, nowMs())
+                            _progress.update { it + (id to 0f) }
+                            var failed: String? = null
+                            try {
+                                exporter.export(item, quality, withSound && item.hasAudio, out).collect { p ->
+                                    when (p) {
+                                        is ExportProgress.Rendering -> _progress.update { it + (id to p.fraction) }
+                                        is ExportProgress.Done -> files += p.file
+                                        is ExportProgress.Failed -> failed = p.reason
                                     }
+                                }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                failed = e.message ?: e::class.simpleName ?: "?"
                             }
-                            files.forEach(temp::release)
+                            failed?.let {
+                                _message.value = Res.string.edit_export_failed.text(it.raw())
+                                _progress.update { all -> all - id }
+                            }
+                        }
+                        if (files.isEmpty()) return@keepAlive
+                        when (destination) {
+                            Destination.SHARE -> share.shareVideos(files) { files.forEach(temp::release) }
+                            Destination.GALLERY -> {
+                                for (file in files) {
+                                    runCatching { gallery.save(file) }
+                                        .onFailure {
+                                            if (it is CancellationException) throw it
+                                            _message.value = Res.string.edit_gallery_failed.text("${it.message}".raw())
+                                        }
+                                }
+                                files.forEach(temp::release)
+                            }
                         }
                     }
+                } finally {
+                    _progress.update { it - ids.toSet() }
                 }
             }
         }

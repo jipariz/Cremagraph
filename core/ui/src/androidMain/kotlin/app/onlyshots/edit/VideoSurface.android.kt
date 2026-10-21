@@ -15,6 +15,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import okio.Path
 
@@ -23,7 +24,7 @@ import okio.Path
 actual fun VideoSurface(file: Path, state: PlayerState, clipUs: LongRange, modifier: Modifier, drawFrames: Boolean) {
     val context = LocalContext.current
     val player = remember(file) {
-        ExoPlayer.Builder(context).build().apply {
+        ExoPlayer.Builder(context).setLoadControl(previewLoadControl()).build().apply {
             setMediaItem(MediaItem.fromUri("file://$file"))
             prepare()
         }
@@ -64,6 +65,24 @@ actual fun VideoSurface(file: Path, state: PlayerState, clipUs: LongRange, modif
         modifier = modifier,
     )
 }
+
+/**
+ * A few seconds ahead, at most [PREVIEW_BUFFER_BYTES]. The default buffers 50 s or about 130 MB of video in the Java
+ * heap: a whole 4K take. The file is local, so a short buffer never stalls, and the export reads the same file with a
+ * buffer of its own just as large: both together left a 256 MB heap out of memory a moment into a 4K render.
+ */
+@OptIn(UnstableApi::class)
+private fun previewLoadControl() =
+    DefaultLoadControl.Builder()
+        .setBufferDurationsMs(PREVIEW_MIN_BUFFER_MS, PREVIEW_MAX_BUFFER_MS, PREVIEW_START_MS, PREVIEW_START_MS)
+        .setTargetBufferBytes(PREVIEW_BUFFER_BYTES)
+        .setPrioritizeTimeOverSizeThresholds(false)
+        .build()
+
+private const val PREVIEW_MIN_BUFFER_MS = 2_000
+private const val PREVIEW_MAX_BUFFER_MS = 5_000
+private const val PREVIEW_START_MS = 500
+private const val PREVIEW_BUFFER_BYTES = 16 * 1024 * 1024
 
 /** Scales the stretched picture back to its own shape, covering the view and centred. */
 private fun coverMatrix(viewW: Int, viewH: Int, video: VideoSize): Matrix {

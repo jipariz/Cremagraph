@@ -27,6 +27,9 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -73,6 +76,20 @@ private class PausingExporter(private val fraction: Float, private val resume: C
             resume.await()
             emit(ExportProgress.Done(out))
         }
+    }
+}
+
+/** A render that throws instead of reporting a failure: a codec or file error escaping the exporter. */
+private class ThrowingExporter(private val message: String) : VideoExporter {
+    override fun export(
+        item: VideoItem,
+        quality: Quality,
+        withSound: Boolean,
+        out: Path,
+        alignmentBarcode: Boolean,
+    ): Flow<ExportProgress> = flow {
+        emit(ExportProgress.Rendering(0.1f))
+        error(message)
     }
 }
 
@@ -151,6 +168,96 @@ class ExportManagerTest {
             spoken += it
             "title"
         }
+
+    /**
+     * What the edit screen sees: the message at the moment [id]'s progress entry goes, which it reads as "finished".
+     * The collector runs unconfined, inside each update, so a message set after the entry went is missed here as it is
+     * on the phone.
+     */
+    private fun TestScope.messageWhenFinished(manager: ExportManager, id: String): () -> UiText? {
+        var seen = false
+        var atEnd: UiText? = null
+        var finished = false
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            manager.progress.collect { all ->
+                if (id in all) seen = true
+                else if (seen && !finished) {
+                    finished = true
+                    atEnd = manager.message.value
+                }
+            }
+        }
+        return {
+            assertTrue(finished, "the progress entry for $id never came and went")
+            atEnd
+        }
+    }
+
+    @Test
+    fun aFailedRenderIsReportedBeforeItsProgressGoes() = runTest {
+        store.write(item("a"))
+        val manager =
+            manager(FakeExporter(mapOf("a" to listOf(ExportProgress.Failed("out of memory")))), backgroundScope)
+        val atEnd = messageWhenFinished(manager, "a")
+
+        manager.enqueue(listOf("a"), Quality.UHD_4K, withSound = true, ExportManager.Destination.GALLERY)
+        runCurrent()
+        advanceUntilIdle()
+
+        assertEquals(Res.string.edit_export_failed.text("out of memory".raw()), atEnd())
+        assertTrue(gallery.saved.isEmpty())
+    }
+
+    @Test
+    fun aRenderThatThrowsIsReportedNotSaved() = runTest {
+        store.write(item("a"))
+        val manager = manager(ThrowingExporter("muxer gave up"), backgroundScope)
+        val atEnd = messageWhenFinished(manager, "a")
+
+        manager.enqueue(listOf("a"), Quality.UHD_4K, withSound = true, ExportManager.Destination.GALLERY)
+        runCurrent()
+        advanceUntilIdle()
+
+        assertEquals(Res.string.edit_export_failed.text("muxer gave up".raw()), atEnd())
+        assertTrue(gallery.saved.isEmpty())
+        assertEquals(emptyMap(), manager.progress.value)
+        assertEquals(1, background.closed)
+    }
+
+    @Test
+    fun aGalleryRefusalIsReportedBeforeTheProgressGoes() = runTest {
+        store.write(item("a"))
+        gallery = FakeGallery(failWith = "no space")
+        val manager = manager(FakeExporter(), backgroundScope)
+        val atEnd = messageWhenFinished(manager, "a")
+
+        manager.enqueue(listOf("a"), Quality.HD_1080, withSound = false, ExportManager.Destination.GALLERY)
+        runCurrent()
+        advanceUntilIdle()
+
+        assertEquals(Res.string.edit_gallery_failed.text("no space".raw()), atEnd())
+    }
+
+    @Test
+    fun aSavedVideoIsInTheGalleryBeforeItsProgressGoes() = runTest {
+        store.write(item("a"))
+        val manager = manager(FakeExporter(), backgroundScope)
+        var savedWhenFinished = -1
+        var seen = false
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            manager.progress.collect { all ->
+                if ("a" in all) seen = true
+                else if (seen && savedWhenFinished < 0) savedWhenFinished = gallery.saved.size
+            }
+        }
+
+        manager.enqueue(listOf("a"), Quality.HD_1080, withSound = false, ExportManager.Destination.GALLERY)
+        runCurrent()
+        advanceUntilIdle()
+
+        assertEquals(1, savedWhenFinished)
+        assertEquals(null, manager.message.value)
+    }
 
     @Test
     fun progressIsReportedWhileRenderingAndClearedAfterwards() = runTest {

@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgSize
@@ -50,7 +51,7 @@ fun ShotRow(
                     else -> Modifier
                 }
             )
-            .selectable(selected, onClick = onClick)
+            .selectable(selected, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),

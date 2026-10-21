@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -160,7 +161,8 @@ fun HeaderPivot(items: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit
             Box(
                 Modifier.defaultMinSize(minHeight = CgSize.Touch)
                     .semantics { if (i == selectedIndex) heading() }
-                    .clickable(role = Role.Tab) { onSelect(i) },
+                    // A tab says which one is chosen to a screen reader, not only that it can be pressed.
+                    .selectable(selected = i == selectedIndex, role = Role.Tab) { onSelect(i) },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

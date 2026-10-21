@@ -25,10 +25,10 @@ import app.onlyshots.testTagsAsResourceIds
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CgSheet(title: String, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+fun CgSheet(title: String, onDismiss: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        modifier = Modifier.testTagsAsResourceIds(),
+        modifier = modifier.testTagsAsResourceIds(),
         containerColor = CgColors.Surface.Bar,
         contentColor = CgColors.Text.Primary,
         shape = CgShape.Sheet,

@@ -64,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -78,6 +79,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -86,6 +88,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -116,6 +119,7 @@ import app.onlyshots.core.resources.core_export_left
 import app.onlyshots.core.resources.core_export_making
 import app.onlyshots.core.resources.core_export_more
 import app.onlyshots.testTagsAsResourceIds
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -227,7 +231,7 @@ fun SplitButton(
  * with a sentence under it when there is a [detail].
  */
 @Composable
-fun CgMenuItem(text: String, detail: String? = null, onClick: () -> Unit) {
+fun CgMenuItem(text: String, modifier: Modifier = Modifier, detail: String? = null, onClick: () -> Unit) {
     val divider = CgColors.Line.Divider
     DropdownMenuItem(
         text = {
@@ -238,7 +242,7 @@ fun CgMenuItem(text: String, detail: String? = null, onClick: () -> Unit) {
         },
         onClick = onClick,
         modifier =
-            Modifier.drawBehind {
+            modifier.drawBehind {
                 val h = CgStroke.Hairline.toPx()
                 drawRect(divider, Offset(0f, size.height - h), Size(size.width, h))
             },
@@ -928,9 +932,22 @@ fun SheetHeader(title: String, onDone: (() -> Unit)?, modifier: Modifier = Modif
 @Composable
 fun ProgressLine(fraction: Float, modifier: Modifier = Modifier) {
     // The export reports in steps; the bar runs between them at an even rate, like a gauge, instead of jumping.
-    val shown by animateFloatAsState(fraction.coerceIn(0f, 1f), CgMotion.gauge(), label = "progress")
+    val shown = animateFloatAsState(fraction.coerceIn(0f, 1f), CgMotion.gauge(), label = "progress")
     Box(modifier.fillMaxWidth().height(12.dp).border(CgStroke.Hairline, CgColors.Line.Hairline).padding(3.dp)) {
-        Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(CgColors.Brand.Signal))
+        // Sized as fillMaxWidth(shown).fillMaxHeight() would (the same rounding), but read while measuring: a run only
+        // re-measures the bar rather than recomposing it every frame.
+        Box(
+            Modifier.layout { measurable, constraints ->
+                    val w =
+                        (constraints.maxWidth * shown.value)
+                            .roundToInt()
+                            .coerceIn(constraints.minWidth, constraints.maxWidth)
+                    val h = constraints.maxHeight
+                    val bar = measurable.measure(Constraints(minWidth = w, maxWidth = w, minHeight = h, maxHeight = h))
+                    layout(bar.width, bar.height) { bar.place(0, 0) }
+                }
+                .background(CgColors.Brand.Signal)
+        )
     }
 }
 
@@ -969,18 +986,22 @@ fun DropZone(onPick: () -> Unit, modifier: Modifier = Modifier, active: Boolean 
             .fillMaxWidth()
             .heightIn(min = 240.dp)
             .background(if (active) CgColors.Surface.Raised else CgColors.Surface.Bar)
-            .drawBehind {
+            // The edge is made once per size and state, not on every draw.
+            .drawWithCache {
                 val stroke = (if (active) CgStroke.Rule else CgStroke.Hairline).toPx()
-                drawRect(
-                    color = outline,
-                    topLeft = Offset(stroke / 2, stroke / 2),
-                    size = Size(size.width - stroke, size.height - stroke),
-                    style =
-                        Stroke(
-                            width = stroke,
-                            pathEffect = if (active) null else PathEffect.dashPathEffect(floatArrayOf(6f, 6f)),
-                        ),
-                )
+                val edge =
+                    Stroke(
+                        width = stroke,
+                        pathEffect = if (active) null else PathEffect.dashPathEffect(floatArrayOf(6f, 6f)),
+                    )
+                onDrawBehind {
+                    drawRect(
+                        color = outline,
+                        topLeft = Offset(stroke / 2, stroke / 2),
+                        size = Size(size.width - stroke, size.height - stroke),
+                        style = edge,
+                    )
+                }
             }
             .clickable(enabled = busy == null, role = Role.Button, onClick = onPick)
             .padding(CgSpace.S24),

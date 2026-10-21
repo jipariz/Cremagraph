@@ -24,13 +24,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -262,9 +262,11 @@ fun MachineRow(
                 enter = CgMotion.reveal,
                 exit = CgMotion.conceal,
             ) {
-                var last by remember { mutableStateOf(live.orEmpty()) }
-                if (live != null) last = live
-                Text(last, style = CgTheme.type.data, color = CgColors.Status.Live)
+                // The last line seen, kept while the line rolls up after readings stop: a plain holder, not state, so
+                // keeping it is no write during composition.
+                val last = remember { arrayOf(live.orEmpty()) }
+                if (live != null) last[0] = live
+                Text(last[0], style = CgTheme.type.data, color = CgColors.Status.Live)
             }
         }
         StatusPill(status, statusDot)
@@ -391,14 +393,18 @@ fun AddRow(title: String, onClick: () -> Unit, modifier: Modifier = Modifier, su
         modifier
             .fillMaxWidth()
             .heightIn(min = CgSize.Touch)
-            .drawBehind {
+            // The dashed edge is made once per size, not on every draw.
+            .drawWithCache {
                 val stroke = CgStroke.Hairline.toPx()
-                drawRect(
-                    color = CgColors.Line.Hairline,
-                    topLeft = Offset(stroke / 2, stroke / 2),
-                    size = Size(size.width - stroke, size.height - stroke),
-                    style = Stroke(width = stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))),
-                )
+                val dashed = Stroke(width = stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f)))
+                onDrawBehind {
+                    drawRect(
+                        color = CgColors.Line.Hairline,
+                        topLeft = Offset(stroke / 2, stroke / 2),
+                        size = Size(size.width - stroke, size.height - stroke),
+                        style = dashed,
+                    )
+                }
             }
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),

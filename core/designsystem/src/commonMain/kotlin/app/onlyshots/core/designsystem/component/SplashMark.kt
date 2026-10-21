@@ -212,7 +212,7 @@ private fun DrawScope.drawGrid(g: SplashGeometry, pose: SplashPose, alpha: Float
             g.trimmed,
             ink,
             alpha = alpha,
-            style = Stroke(Splash.TRACE, cap = StrokeCap.Butt, join = StrokeJoin.Round),
+            style = TraceStroke,
         )
     }
     if (pose.stem > 0f) {
@@ -238,9 +238,13 @@ private fun DrawScope.drawGrid(g: SplashGeometry, pose: SplashPose, alpha: Float
             Offset(pose.head.x - r / 2, pose.head.y - r / 2),
             Size(r, r),
             alpha = alpha * pose.ringAlpha,
-            style = Stroke(RING_WIDTH),
+            style = RingStroke,
         )
     }
 }
 
 private const val RING_WIDTH = 5f
+
+/** The trace's and the ring's strokes, in the mark's own units: made once, not on every frame of the splash. */
+private val TraceStroke = Stroke(Splash.TRACE, cap = StrokeCap.Butt, join = StrokeJoin.Round)
+private val RingStroke = Stroke(RING_WIDTH)

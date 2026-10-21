@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -24,14 +25,17 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.component.LocalSplashTarget
 import app.onlyshots.core.designsystem.component.Splash
+import app.onlyshots.core.designsystem.component.SplashPose
 import app.onlyshots.core.designsystem.component.SplashTarget
 import app.onlyshots.core.designsystem.component.SplashTimeline
 import app.onlyshots.core.designsystem.component.drawSplashMark
@@ -131,7 +135,7 @@ fun SplashHost(splash: SplashState?, content: @Composable () -> Unit) {
             content()
             if (!done) {
                 if (reduced) ReducedOverlay(fadeIn, fadeOut, splash.markBounds)
-                else Overlay(t, tl, splash.markBounds, target.bounds)
+                else Overlay({ t }, tl, splash.markBounds, target.bounds)
             }
         }
     }
@@ -147,8 +151,23 @@ private suspend fun animate(ms: Float, set: (Float) -> Unit) {
     }
 }
 
+/**
+ * Where the flying mark is at one moment of the clock, and how much of it, the app's mark and the splash's ground show.
+ */
+private class SplashFrame(
+    val rect: Rect,
+    val markAlpha: Float,
+    val logoAlpha: Float,
+    val groundAlpha: Float,
+    val pose: SplashPose,
+)
+
+/**
+ * The flying mark. The clock [t] is read only while placing and drawing, never while composing: the splash runs for
+ * well over a second at cold start, while the first screen is being composed underneath, and only has to move.
+ */
 @Composable
-private fun Overlay(t: Float, tl: SplashTimeline, held: Rect?, landing: Rect?) {
+private fun Overlay(t: () -> Float, tl: SplashTimeline, held: Rect?, landing: Rect?) {
     val geometry = rememberSplashGeometry()
     val logo = CgIcons.OnlyShots
     val density = LocalDensity.current
@@ -160,35 +179,45 @@ private fun Overlay(t: Float, tl: SplashTimeline, held: Rect?, landing: Rect?) {
                     Offset((constraints.maxWidth - markPx) / 2f, (constraints.maxHeight - markPx) / 2f),
                     Size(markPx, markPx),
                 )
-        val e = Splash.inOutCubic(((t - tl.exit.start) / (tl.exit.endInclusive - tl.exit.start)).coerceIn(0f, 1f))
-        // The screen comes up from under the splash as the mark sets off.
-        val screen = ((t - tl.exit.start - 120f) / (tl.exit.endInclusive - tl.exit.start - 120f)).coerceIn(0f, 1f)
-        val rect: Rect
-        val markAlpha: Float
-        // The app's own mark, drawn in the last stretch over the splash's so the hand-over is seamless: at 32 dp the
-        // logo takes its small cut, a little heavier than the splash's regular weight.
-        val logoAlpha: Float
-        if (landing != null) {
-            rect = lerp(start, landing, e)
-            logoAlpha = ((e - 0.7f) / 0.3f).coerceIn(0f, 1f)
-            markAlpha = 1f - logoAlpha
-        } else {
-            val s = 1f - 0.08f * e
-            rect = Rect(start.center, start.width * s / 2f)
-            markAlpha = 1f - e
-            logoAlpha = 0f
+        val frame by
+            remember(start, landing, tl) {
+                derivedStateOf {
+                    val now = t()
+                    val e =
+                        Splash.inOutCubic(
+                            ((now - tl.exit.start) / (tl.exit.endInclusive - tl.exit.start)).coerceIn(0f, 1f)
+                        )
+                    // The screen comes up from under the splash as the mark sets off.
+                    val screen =
+                        ((now - tl.exit.start - 120f) / (tl.exit.endInclusive - tl.exit.start - 120f)).coerceIn(0f, 1f)
+                    // The app's own mark, drawn in the last stretch over the splash's so the hand-over is seamless: at
+                    // 32 dp the logo takes its small cut, a little heavier than the splash's regular weight.
+                    if (landing != null) {
+                        val logoAlpha = ((e - 0.7f) / 0.3f).coerceIn(0f, 1f)
+                        SplashFrame(
+                            lerp(start, landing, e),
+                            1f - logoAlpha,
+                            logoAlpha,
+                            1f - screen,
+                            Splash.pose(now, tl),
+                        )
+                    } else {
+                        val s = 1f - 0.08f * e
+                        SplashFrame(Rect(start.center, start.width * s / 2f), 1f - e, 0f, 1f - e, Splash.pose(now, tl))
+                    }
+                }
+            }
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = frame.groundAlpha }.background(CgColors.Surface.Base))
+        // Placed and sized as offset { rect.topLeft } then size(rect.width in dp) would: the same rounding.
+        val placed = Modifier.layout { measurable, _ ->
+            val f = frame
+            val side = with(density) { f.rect.width.toDp() }.roundToPx()
+            val box = measurable.measure(Constraints.fixed(side, side))
+            layout(box.width, box.height) { box.place(f.rect.left.roundToInt(), f.rect.top.roundToInt()) }
         }
-        Box(
-            Modifier.fillMaxSize()
-                .graphicsLayer { alpha = 1f - if (landing != null) screen else e }
-                .background(CgColors.Surface.Base)
-        )
-        val pose = Splash.pose(t, tl)
-        val sizeDp = with(density) { rect.width.toDp() }
-        val at = IntOffset(rect.left.roundToInt(), rect.top.roundToInt())
-        Canvas(Modifier.offset { at }.size(sizeDp)) { drawSplashMark(geometry, pose, markAlpha) }
-        if (logoAlpha > 0f) {
-            Image(logo, null, Modifier.offset { at }.size(sizeDp).graphicsLayer { alpha = logoAlpha })
+        Canvas(placed) { frame.let { drawSplashMark(geometry, it.pose, it.markAlpha) } }
+        if (landing != null) {
+            Image(logo, null, placed.graphicsLayer { alpha = frame.logoAlpha })
         }
     }
 }

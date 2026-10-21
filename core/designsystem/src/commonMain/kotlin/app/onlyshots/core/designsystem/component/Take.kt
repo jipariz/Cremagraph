@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -84,8 +83,8 @@ fun FormatPicker(
                     .testTag(TestTags.format(option.label))
                     .height(if (compact) 48.dp else 64.dp)
                     .background(ground)
-                    .clickable(role = Role.Button) { onPick(i) }
-                    .semantics { this.selected = on }
+                    // One choice of several: read as a radio button that is or is not chosen.
+                    .selectable(selected = on, role = Role.RadioButton) { onPick(i) }
             if (compact) {
                 Row(body, Arrangement.spacedBy(CgSpace.S8, Alignment.CenterHorizontally), Alignment.CenterVertically) {
                     outline()

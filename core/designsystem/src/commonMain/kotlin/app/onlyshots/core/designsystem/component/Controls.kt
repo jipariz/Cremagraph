@@ -30,9 +30,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.testTag
@@ -51,6 +52,7 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import app.onlyshots.core.designsystem.CgColors
@@ -81,7 +83,8 @@ fun CgToggle(
     enabled: Boolean = true,
 ) {
     // The knob slides and the colours follow it; both start where they belong, so a still frame shows them settled.
-    // As an alignment's bias, so the settled knob sits on exactly the pixels Start and End put it on.
+    // Placed as an alignment's bias would (BiasAlignment's own sum), so the settled knob sits on exactly the pixels
+    // Start and End put it on; read while placing, so a slide only moves it rather than recomposing the switch.
     val knobAt by animateFloatAsState(if (checked) 1f else -1f, CgMotion.settle(), label = "knob")
     val track by animateColorAsState(if (checked) CgColors.Brand.Signal else Color.Transparent, CgMotion.short())
     val edge by animateColorAsState(if (checked) CgColors.Brand.Signal else CgColors.Line.Hairline, CgMotion.short())
@@ -95,13 +98,21 @@ fun CgToggle(
         contentAlignment = Alignment.Center,
     ) {
         Box(
-            Modifier.size(width = 56.dp, height = 32.dp)
-                .background(track)
-                .border(CgStroke.Hairline, edge)
-                .padding(4.dp),
-            contentAlignment = BiasAlignment(knobAt, 0f),
+            Modifier.size(width = 56.dp, height = 32.dp).background(track).border(CgStroke.Hairline, edge).padding(4.dp)
         ) {
-            Box(Modifier.size(24.dp).background(knob))
+            Box(
+                Modifier.layout { measurable, constraints ->
+                        val knobBox = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+                        layout(constraints.maxWidth, constraints.maxHeight) {
+                            val bias = if (layoutDirection == LayoutDirection.Ltr) knobAt else -knobAt
+                            val centerX = (constraints.maxWidth - knobBox.width).toFloat() / 2f
+                            val centerY = (constraints.maxHeight - knobBox.height).toFloat() / 2f
+                            knobBox.place((centerX * (1 + bias)).roundToInt(), centerY.roundToInt())
+                        }
+                    }
+                    .size(24.dp)
+                    .background(knob)
+            )
         }
     }
 }
@@ -294,6 +305,8 @@ fun CgSlider(
     val shown = remember { Animatable(f) }
     LaunchedEffect(f) { if (dragging) shown.snapTo(f) else shown.animateTo(f, CgMotion.settle()) }
     fun at(x: Float, width: Float) = snapped(range.start + (x / width).coerceIn(0f, 1f) * span)
+    // The gestures outlive a recomposition: they call whatever callback the caller passes now, not the first one.
+    val change by rememberUpdatedState(onValueChange)
     Canvas(
         // As wide as it is allowed, like Material's slider: a width or weight from the caller still decides.
         modifier
@@ -307,14 +320,14 @@ fun CgSlider(
                     true
                 }
             }
-            .pointerInput(range, steps) { detectTapGestures { onValueChange(at(it.x, size.width.toFloat())) } }
+            .pointerInput(range, steps) { detectTapGestures { change(at(it.x, size.width.toFloat())) } }
             .pointerInput(range, steps) {
                 detectHorizontalDragGestures(
                     onDragStart = { dragging = true },
                     onDragEnd = { dragging = false },
                     onDragCancel = { dragging = false },
                 ) { c, _ ->
-                    onValueChange(at(c.position.x, size.width.toFloat()))
+                    change(at(c.position.x, size.width.toFloat()))
                 }
             }
     ) {

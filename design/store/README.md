@@ -24,7 +24,7 @@ https://claude.ai/artifact/LTQSexsdusFXLmyuTFNVSa).
 
 | # | Phone screen | Headline | Line |
 | --- | --- | --- | --- |
-| 1 | `Main` | YOUR SHOT, WITH ITS GRAPH | Film espresso with pressure, flow and weight drawn on top. |
+| 1 | `Main` | YOUR SHOT, WITH ITS GRAPH | Film espresso with its graph on top: pressure, flow, weight or temp. |
 | 2 | `Home-Found` | FINDS YOUR MACHINE AND SCALE | Gaggiuino over Wi-Fi, scales over Bluetooth. |
 | 3 | `Rec-Recording` | STARTS WHEN THE SHOT DOES | Recording follows the brew switch. |
 | 4 | `Rec-Graph` | THE GRAPH WHERE YOU WANT IT | Drag it, resize it, pick what it shows. |

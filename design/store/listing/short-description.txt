@@ -1,1 +1,1 @@
-Film your espresso shot with live pressure, flow and weight drawn on top.
+Film your espresso shot with its live graph: pressure, flow, weight or temp.

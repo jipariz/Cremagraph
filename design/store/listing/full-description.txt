@@ -1,4 +1,4 @@
-OnlyShots films your espresso shot with its graph on top: pressure, flow, weight and temperature, drawn live from your machine and scale. Export the video and share it.
+OnlyShots films your espresso shot with its graph on top, drawn live from your machine and scale: pressure, flow, weight, temperature, any mix you like. Export the video and share it.
 
 RECORD A SHOT
 • Connects to a Gaggiuino-modded machine over your Wi-Fi, and to a Bluetooth scale.

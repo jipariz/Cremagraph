@@ -57,9 +57,9 @@ ICONS = {
     "ic_bluetooth": [stroke("M7 7.5L16.5 16.5L12 21V3L16.5 7.5L7 16.5")],
     # Nothing leaves the device: a squared shield, its point at 45°, with a tick.
     "ic_shield": [stroke("M4.75 3.75H19.25V13L12 20.25L4.75 13Z"), stroke("M8.5 11L11 13.5L15.5 9")],
-    # An espresso machine: the body, the group head over the cup.
-    "ic_machine": [stroke("M4.75 3.75H19.25V9.75H4.75Z"), stroke("M4.75 9.75V20.25H19.25"), fill(rect(10, 9.75, 4, 2.5)),
-                   stroke("M9.5 14.5V18.5H14.5V14.5")],
+    # An espresso machine, solid: the housing, its column and drip tray, the group head over the cup.
+    "ic_machine": [fill(rect(4, 3, 16, 7)), fill(rect(4, 10, 3, 10)), fill(rect(4, 19, 16, 2)),
+                   fill(rect(10.5, 10, 3, 2.5)), fill(rect(9.5, 14, 5, 4))],
     # A video: the camera body and its lens.
     "ic_film": [stroke(rect(2.75, 6.75, 13, 10.5)), fill("M17.5 12L21.5 8V16Z")],
     # Settings as an instrument's sliders: two rails, two square knobs.

@@ -41,7 +41,7 @@ interface NetworkMachine {
     /** The live source for the machine at [host]:[port], not started yet. */
     fun source(client: HttpClient, host: String, port: Int): WebSocketShotSource
 
-    /** The machine's own shot history, read without a live connection (the phones' "edit a video"). */
+    /** The machine's own shot history, read without a live connection (the phones' "compose a video"). */
     fun history(client: HttpClient, host: String, port: Int): MachineHistory = MachineHistory.None
 }
 

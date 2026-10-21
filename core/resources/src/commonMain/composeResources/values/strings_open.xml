@@ -26,7 +26,7 @@
     <string name="open_phone_shot_title">Shot</string>
     <string name="open_phone_shot_machine">a .shot file, or straight from your machine</string>
     <string name="open_shot_file_detail">.shot or .json, from SproFiler or a download</string>
-    <string name="open_header_edit">edit a video</string>
+    <string name="open_header_edit">compose a video</string>
     <string name="open_sheet_title">the shot</string>
     <string name="open_from_file">From a file</string>
     <string name="open_from_machine">From the machine</string>

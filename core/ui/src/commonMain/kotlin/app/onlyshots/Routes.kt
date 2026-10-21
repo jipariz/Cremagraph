@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 
-/** The phones' first screen: record a shot live, or edit a video already filmed. */
+/** The phones' first screen: record a shot live, or compose a video from one already filmed. */
 @Serializable data object StartRoute : NavKey
 
 @Serializable data object HomeRoute : NavKey

@@ -184,10 +184,6 @@ object SharedKeys {
 
     /** The frame being filmed on the record screen, which becomes the editor's frame once saved. */
     const val TAKE_FRAME = "take-frame"
-
-    /** A start-screen way in and the screen it opens. */
-    const val START_RECORD = "start-record"
-    const val START_EDIT = "start-edit"
 }
 
 private val SharedBoundsMotion = BoundsTransform { _, _ -> tween(CgMotion.LONG, easing = CgMotion.Emphasized) }

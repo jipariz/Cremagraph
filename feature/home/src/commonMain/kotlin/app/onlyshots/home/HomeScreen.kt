@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -51,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.PRIVACY_URL
-import app.onlyshots.SharedKeys
 import app.onlyshots.StopRuleChoice
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
@@ -125,7 +123,6 @@ import app.onlyshots.layout.LayoutKind
 import app.onlyshots.layout.LocalWindowLayout
 import app.onlyshots.layout.WidePanes
 import app.onlyshots.platform.rememberBluetoothPermission
-import app.onlyshots.shareBounds
 import app.onlyshots.sources.ConnectionState
 import app.onlyshots.sources.ble.FoundBleDevice
 import app.onlyshots.sources.machine.FoundMachine
@@ -256,15 +253,12 @@ fun HomeBody(
 }
 
 @Composable
-/** The same header as the phones' "edit a video": back to Start and the flow's name. Help is on Start. */
+/** The same header as the phones' "compose a video": back to Start and the flow's name. Help is on Start. */
 private fun Header(onBack: () -> Unit) {
     HeaderBack(
         stringResource(Res.string.home_title),
         onBack = onBack,
-        // Where Start's "record live" card lands.
-        modifier =
-            Modifier.shareBounds(SharedKeys.START_RECORD, clip = RoundedCornerShape(12.dp))
-                .padding(vertical = CgSpace.S8),
+        modifier = Modifier.padding(vertical = CgSpace.S8),
     )
 }
 

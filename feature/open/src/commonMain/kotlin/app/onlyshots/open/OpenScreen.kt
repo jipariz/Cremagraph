@@ -38,7 +38,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.onlyshots.SharedKeys
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
@@ -79,7 +78,6 @@ import app.onlyshots.core.resources.text
 import app.onlyshots.platform.rememberShotFilePicker
 import app.onlyshots.platform.rememberVideoPicker
 import app.onlyshots.platform.videoDrop
-import app.onlyshots.shareBounds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.compose.resources.stringResource
@@ -296,10 +294,7 @@ private fun Page(onBack: (() -> Unit)?, modifier: Modifier, content: @Composable
                 HeaderBack(
                     stringResource(Res.string.open_header_edit),
                     onBack = onBack,
-                    // Where Start's "edit a video" card lands.
-                    modifier =
-                        Modifier.shareBounds(SharedKeys.START_EDIT, clip = RoundedCornerShape(12.dp))
-                            .padding(vertical = CgSpace.S8),
+                    modifier = Modifier.padding(vertical = CgSpace.S8),
                 )
             } else {
                 Row(

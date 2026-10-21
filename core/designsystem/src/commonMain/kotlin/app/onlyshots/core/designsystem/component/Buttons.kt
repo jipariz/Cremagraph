@@ -114,7 +114,7 @@ fun CgRoundButton(
 
 /** The one back button: a 44 dp square key with a hairline edge, on every screen that has a way back. */
 @Composable
-fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val back = stringResource(Res.string.core_back)
     Box(
         modifier
@@ -122,11 +122,16 @@ fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .size(CgSize.Touch)
             .background(CgColors.Surface.Base.copy(alpha = 0.85f))
             .border(CgStroke.Hairline, CgColors.Line.Hairline)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = back },
         contentAlignment = Alignment.Center,
     ) {
-        CgIcon(CgIcons.ChevronLeft, size = 20.dp)
+        // Inert (mid-take), the chevron goes grey: still there, not to be pressed.
+        CgIcon(
+            CgIcons.ChevronLeft,
+            size = 20.dp,
+            tint = if (enabled) CgColors.Text.Primary else CgColors.Text.Secondary,
+        )
     }
 }
 

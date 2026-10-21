@@ -32,7 +32,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.onlyshots.camera.CameraState
 import app.onlyshots.core.designsystem.CgColors
-import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.resources.Res
@@ -57,7 +56,7 @@ fun LensPicker(state: CameraState, onZoom: (Float) -> Unit, modifier: Modifier =
                 val on = i == active
                 val description = stringResource(Res.string.record_zoom_lens, zoomLabel(stop))
                 Box(
-                    Modifier.size(width = STOP_WIDTH, height = CgSize.Touch)
+                    Modifier.size(width = STOP_WIDTH, height = STOP_HEIGHT)
                         .background(if (on) CgColors.Brand.Bone else Color.Transparent)
                         .clickable { onZoom(stop) }
                         .semantics {
@@ -100,6 +99,9 @@ fun zoomLabel(zoom: Float): String {
 }
 
 private val STOP_WIDTH = 52.dp
+
+/** A lens stop's height: the canvas's 40, a strip low enough to sit over the shutter bar. */
+private val STOP_HEIGHT = 40.dp
 
 /**
  * The square where the user tapped to focus: it appears at its size, blinks twice while the camera settles, like a

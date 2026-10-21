@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,6 +31,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
@@ -176,18 +176,18 @@ fun RuleRow(
 }
 
 /**
- * A rule while it runs: its words in Mono capitals, and "done" in green once it has happened or "waiting" until then.
+ * A rule while it runs, as a log line: "done" in green once it has happened or "waiting" in amber until then, then the
+ * rule's words, all in Mono capitals.
  */
 @Composable
 fun RuleStatusRow(text: String, done: Boolean, modifier: Modifier = Modifier, mark: @Composable () -> Unit = {}) {
     Row(
-        modifier.fillMaxWidth().heightIn(min = CgSize.Touch).padding(horizontal = CgSpace.S16),
+        modifier.fillMaxWidth().padding(horizontal = CgSpace.S16, vertical = CgSpace.S8),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         mark()
-        Text(text.caps(), style = CgTheme.type.labelStrong, modifier = Modifier.weight(1f))
-        val ink by animateColorAsState(if (done) CgColors.Status.Success else CgColors.Text.Secondary, CgMotion.short())
+        val ink by animateColorAsState(if (done) CgColors.Status.Success else CgColors.Status.Warning, CgMotion.short())
         AnimatedContent(
             done,
             transitionSpec = { tick() },
@@ -195,10 +195,11 @@ fun RuleStatusRow(text: String, done: Boolean, modifier: Modifier = Modifier, ma
         ) { now ->
             Text(
                 stringResource(if (now) Res.string.core_rule_done else Res.string.core_rule_waiting).caps(),
-                style = CgTheme.type.labelStrong,
+                style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp),
                 color = ink,
             )
         }
+        Text(text.caps(), style = CgTheme.type.data, modifier = Modifier.weight(1f))
     }
 }
 
@@ -228,7 +229,10 @@ fun TakeNotice(text: String, modifier: Modifier = Modifier, action: String? = nu
     }
 }
 
-/** The source a take uses: a square live dot and its name in Mono capitals, on a 44 dp key with a hairline edge. */
+/**
+ * The source a take uses: a square live dot and its name in Mono capitals, on a 44 dp key with a hairline edge; grey
+ * when there is none.
+ */
 @Composable
 fun SourceChip(text: String, live: Boolean, modifier: Modifier = Modifier) {
     Row(
@@ -242,9 +246,11 @@ fun SourceChip(text: String, live: Boolean, modifier: Modifier = Modifier) {
     ) {
         val dot by animateColorAsState(if (live) CgColors.Status.Live else CgColors.Text.Disabled, CgMotion.medium())
         Box(Modifier.size(6.dp).background(dot))
+        // No source: the words go grey with the dot.
         Text(
             text.caps(),
             style = CgTheme.type.labelStrong.copy(letterSpacing = CgTheme.type.data.letterSpacing),
+            color = if (live) CgColors.Text.Primary else CgColors.Text.Secondary,
             maxLines = 1,
         )
     }

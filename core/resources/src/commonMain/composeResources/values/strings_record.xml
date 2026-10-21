@@ -38,6 +38,8 @@
     <string name="record_started_by_hand">started by hand</string>
     <string name="record_started_with_shot">started with the shot</string>
     <string name="record_started_before">started with the shot · %1$s s before</string>
+    <string name="record_rule_start">start</string>
+    <string name="record_rule_stop">stop</string>
     <string name="record_no_data_hint">no machine · record by hand, add the shot in the editor</string>
 
     <!-- A shot's title when the machine names none -->
@@ -69,6 +71,7 @@
     <string name="record_pre_roll">pre-roll</string>
     <string name="record_pre_roll_hint_scale">seconds of picture kept from before the first drops land: 6–8 s also shows the shot getting going</string>
     <string name="record_pre_roll_hint">seconds of picture kept from before the shot started</string>
+    <string name="record_pre_roll_keep">keep the %1$s s before the pump starts</string>
     <string name="record_seconds">%1$s s</string>
     <string name="record_stops_header">stops</string>
     <string name="record_rule_shot_end">shot end</string>

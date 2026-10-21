@@ -83,6 +83,8 @@ import app.onlyshots.core.resources.UiText
 import app.onlyshots.core.resources.record_armed
 import app.onlyshots.core.resources.record_no_data_hint
 import app.onlyshots.core.resources.record_ready
+import app.onlyshots.core.resources.record_rule_start
+import app.onlyshots.core.resources.record_rule_stop
 import app.onlyshots.core.resources.record_settings
 import app.onlyshots.core.resources.record_simulate_shot
 import app.onlyshots.core.resources.record_status_no_machine
@@ -123,15 +125,17 @@ internal fun TakeTopRow(take: TakeInputs, back: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (back) BackButton(onClick = take.onBack)
+        // Mid-take there is no leaving: the key stays, inert, until the take is saved.
+        if (back) BackButton(onClick = take.onBack, enabled = !take.state.recording)
         val source = machineLabel(take.state.sourceKind)
         SourceChip(
             if (take.state.hasData) source else stringResource(Res.string.record_status_no_machine),
             live = take.state.hasData,
         )
         Spacer(Modifier.weight(1f))
-        // Start, pre-roll and stop rules, as the phone's gear: they need a machine and are closed mid-shot.
-        KeyIn(take.state.hasData && !take.state.recording) {
+        // Start, pre-roll and stop rules, as the phone's gear: they need a machine and a camera, and are closed
+        // mid-shot.
+        KeyIn(take.state.hasData && !take.state.recording && !take.state.noCamera) {
             IconCircleButton(
                 CgIcons.Settings,
                 stringResource(Res.string.record_settings),
@@ -158,6 +162,8 @@ internal fun ReadingsGrid(take: TakeInputs, columns: Int, large: Boolean, only: 
 internal fun RulesBlock(take: TakeInputs, modifier: Modifier = Modifier) {
     val settings = take.settings
     val stop = RecordSession.stopRuleShort(settings.effectiveFor(take.state.sourceKind).stopRule).text()
+    // Without a camera there is no take to rule: the bar holds only the key, greyed.
+    if (take.state.noCamera && !take.state.recording) return
     val mode =
         when {
             take.state.recording -> RulesMode.RUNNING
@@ -207,20 +213,23 @@ private fun RulesGrid(start: String, stop: String) {
             mergeDescendants = true
         ) {}
     ) {
-        RuleCell(CgIcons.Play, start, Modifier.weight(1f))
+        RuleCell(CgIcons.Play, stringResource(Res.string.record_rule_start), start, Modifier.weight(1f))
         Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Line.Hairline))
-        RuleCell(CgIcons.Stop, stop, Modifier.weight(1f))
+        RuleCell(CgIcons.Stop, stringResource(Res.string.record_rule_stop), stop, Modifier.weight(1f))
     }
 }
 
+/** One rule's cell: what it is in grey (▶ START), and under it the rule itself. */
 @Composable
-private fun RuleCell(icon: ImageVector, text: String, modifier: Modifier) {
-    Row(
+private fun RuleCell(icon: ImageVector, label: String, text: String, modifier: Modifier) {
+    Column(
         modifier.heightIn(min = CgSize.Touch).padding(horizontal = CgSpace.S16, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(CgSpace.S4),
     ) {
-        CgIcon(icon, tint = CgColors.Text.Secondary, size = 16.dp)
+        Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S6), verticalAlignment = Alignment.CenterVertically) {
+            CgIcon(icon, tint = CgColors.Text.Secondary, size = 10.dp)
+            Text(label.caps(), style = CgTheme.type.data, color = CgColors.Text.Secondary)
+        }
         Text(text.caps(), style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp))
     }
 }

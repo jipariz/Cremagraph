@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -39,8 +38,9 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 
 /**
- * Figma "Status chip" over the camera view: a 44 dp ink cell with a hairline edge, a square dot and Mono capitals.
- * Recording turns it the record red with white letters.
+ * Figma "Status chip" over the camera view: a compact ink cell with a hairline edge, a square dot and Mono capitals; it
+ * says, it is not a key, so it is only as tall as its line. Recording turns it the record red with white letters, a
+ * size up.
  */
 @Composable
 fun StatusChip(text: String, recording: Boolean, modifier: Modifier = Modifier, dot: Color? = null) {
@@ -55,17 +55,16 @@ fun StatusChip(text: String, recording: Boolean, modifier: Modifier = Modifier, 
         modifier
             // Opaque, not a tint: over a dark frame a translucent chip is unreadable.
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
-            .heightIn(min = CgSize.Touch)
             .background(ground)
             .border(CgStroke.Hairline, edge)
-            .padding(horizontal = CgSpace.S12),
+            .padding(horizontal = 10.dp, vertical = CgSpace.S6),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
     ) {
         if (dot != null) Box(Modifier.size(6.dp).background(dot))
         Text(
             text.caps(),
-            style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp),
+            style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp, fontSize = if (recording) 13.sp else 12.sp),
             color = if (recording) Color.White else CgColors.Text.Primary,
         )
     }
@@ -78,8 +77,9 @@ enum class BannerKind {
 }
 
 /**
- * Figma "Banner": one line of copy in a cell edged in the kind's colour, the words in that colour too, and an optional
- * key outlined the same way. A field of saturated colour across the screen outweighed everything under it.
+ * Figma "Banner": one line of Mono capitals in a cell edged in the kind's colour, the words in that colour too, over
+ * the ink at 90 %, and an optional key outlined the same way. A field of saturated colour across the screen outweighed
+ * everything under it.
  */
 @Composable
 fun Banner(
@@ -98,15 +98,15 @@ fun Banner(
     Row(
         modifier
             .fillMaxWidth()
-            .background(CgColors.Surface.Base)
+            .background(CgColors.Surface.Base.copy(alpha = 0.9f))
             .border(CgStroke.Hairline, if (kind == BannerKind.Info) CgColors.Line.Hairline else tone)
             .padding(horizontal = CgSpace.S12, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text,
-            style = CgTheme.type.caption,
+            text.caps(),
+            style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp),
             color = tone,
             modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
         )

@@ -10,6 +10,7 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -39,17 +41,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -67,6 +74,7 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.Banner
 import app.onlyshots.core.designsystem.component.BannerKind
 import app.onlyshots.core.designsystem.component.CgButton
+import app.onlyshots.core.designsystem.component.CgButtonKind
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.EditorSheetSlot
 import app.onlyshots.core.designsystem.component.Pill
@@ -376,6 +384,14 @@ fun RecordBody(
                 )
             }
         }
+        // While a take runs, the whole screen is edged in the record red, as a tally light: no doubt it is filming.
+        if (state.recording) {
+            Box(
+                Modifier.matchParentSize()
+                    .border(RECORDING_EDGE, CgColors.Status.Record)
+                    .testTag(TestTags.RecordingEdge)
+            )
+        }
     }
 
     // Where the sheets go: on a fold the right page, all of it; on a tablet 640 dp wide at most, as every sheet; on a
@@ -389,7 +405,7 @@ fun RecordBody(
         else Modifier.widthIn(max = SHEET_MAX_WIDTH).fillMaxHeight(0.72f).wrapContentHeight(Alignment.Bottom)
     // The graph for this and the next recordings; a recorded video keeps its own copy, edited in the editor.
     Box(sheetArea, contentAlignment = Alignment.BottomCenter) {
-        EditorSheetSlot(graphSheet, sheetSize) { sheet ->
+        EditorSheetSlot(graphSheet, sheetSize, scrim = true, onScrimTap = { graphSheet = null }) { sheet ->
             EditorSheet(
                 title =
                     stringResource(if (sheet == EditSheet.STYLE) Res.string.record_style else Res.string.record_data),
@@ -546,23 +562,30 @@ private fun CameraPane(
                 )
                 focusAt?.let { FocusRing(it, focusTaps) }
             } else {
-                Column(
-                    Modifier.align(Alignment.Center).padding(CgSpace.S24),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
-                ) {
-                    Text(
-                        stringResource(Res.string.record_needs_camera),
-                        style = CgTheme.type.caption,
-                        color = CgColors.Text.Secondary,
-                        textAlign = TextAlign.Center,
-                    )
-                    CgButton(allowCameraLabel, onClick = onAllowCamera)
+                // No picture: the viewfinder's marks on the part of the window the controls leave, and why.
+                Viewfinder(clear ?: shownIn(frame, shown), frame)
+                Box(Modifier.matchParentSize().padding(shownPadding(frameW, frameH, shown))) {
+                    Column(
+                        Modifier.align(Alignment.CenterStart).padding(horizontal = CgSpace.S16 * 2),
+                        verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
+                    ) {
+                        Text(
+                            stringResource(Res.string.record_needs_camera),
+                            style = CgTheme.type.screenTitle.copy(letterSpacing = 0.sp, lineHeight = 26.sp),
+                        )
+                        CgButton(
+                            allowCameraLabel,
+                            onClick = onAllowCamera,
+                            kind = CgButtonKind.Signal,
+                            modifier = Modifier.testTag(TestTags.RecordAllowCamera),
+                        )
+                    }
                 }
             }
             // Without a machine there is nothing to draw: the screen is a camera, and the shot comes in the editor.
+            // Without a camera neither: no picture to draw it over.
             AnimatedVisibility(
-                !tiny && state.hasData,
+                !tiny && state.hasData && granted,
                 Modifier.fillMaxSize(),
                 enter = fadeIn(CgMotion.long()),
                 exit = fadeOut(CgMotion.medium()),
@@ -598,7 +621,7 @@ private fun CameraPane(
             }
             // Placed by hand before a shot; while recording nothing on the picture moves.
             AnimatedVisibility(
-                !tiny && !state.recording && state.hasData,
+                !tiny && !state.recording && state.hasData && granted,
                 Modifier.fillMaxSize(),
                 enter = fadeIn(CgMotion.medium()),
                 exit = fadeOut(CgMotion.short()),
@@ -689,6 +712,63 @@ private fun graphBounds(shown: NormRect, clear: Rect?, frame: Rect, capture: Vid
     // Never less room than the smallest graph: a sliver of window keeps the whole frame instead.
     if (right - left < NormRect.minW(capture) || bottom - top < NormRect.minH(capture)) return NormRect(0f, 0f, 1f, 1f)
     return NormRect(left, top, right - left, bottom - top)
+}
+
+/** What of the [frame] (root px) is on screen: its [shown] fractions. */
+private fun shownIn(frame: Rect, shown: NormRect): Rect =
+    Rect(
+        frame.left + frame.width * shown.x,
+        frame.top + frame.height * shown.y,
+        frame.left + frame.width * shown.right,
+        frame.top + frame.height * shown.bottom,
+    )
+
+/** The padding that brings a frame of [frameW] × [frameH] in to the part of it on screen. */
+private fun shownPadding(frameW: Dp, frameH: Dp, shown: NormRect): PaddingValues =
+    PaddingValues(
+        start = frameW * shown.x,
+        top = frameH * shown.y,
+        end = frameW * (1f - shown.right),
+        bottom = frameH * (1f - shown.bottom),
+    )
+
+/**
+ * A viewfinder with no picture in it: four corner marks round [area] (root px) and a cross in its middle, in hairline
+ * grey, drawn in the [frame]'s own coordinates.
+ */
+@Composable
+private fun BoxScope.Viewfinder(area: Rect, frame: Rect) {
+    Box(
+        Modifier.matchParentSize().drawBehind {
+            if (area.isEmpty || frame.isEmpty) return@drawBehind
+            val inset = CgSpace.S16.toPx()
+            val arm = CgSpace.S16.toPx()
+            val l = area.left - frame.left + inset
+            val t = area.top - frame.top + inset
+            val r = area.right - frame.left - inset
+            val b = area.bottom - frame.top - inset
+            val stroke = Stroke(1.5.dp.toPx(), cap = StrokeCap.Square)
+            fun mark(x: Float, y: Float, dx: Float, dy: Float) {
+                drawPath(
+                    Path().apply {
+                        moveTo(x, y + dy * arm)
+                        lineTo(x, y)
+                        lineTo(x + dx * arm, y)
+                    },
+                    CgColors.Line.Hairline,
+                    style = stroke,
+                )
+            }
+            mark(l, t, 1f, 1f)
+            mark(r, t, -1f, 1f)
+            mark(l, b, 1f, -1f)
+            mark(r, b, -1f, -1f)
+            val c = Offset((l + r) / 2f, (t + b) / 2f)
+            val half = arm / 2f
+            drawLine(CgColors.Line.Hairline, c - Offset(half, 0f), c + Offset(half, 0f), stroke.width)
+            drawLine(CgColors.Line.Hairline, c - Offset(0f, half), c + Offset(0f, half), stroke.width)
+        }
+    )
 }
 
 /** Why the camera or the last take failed, over the picture. */
@@ -802,3 +882,6 @@ internal fun KeyIn(visible: Boolean, content: @Composable () -> Unit) {
         content()
     }
 }
+
+/** The record-red edge round the screen while a take runs. */
+private val RECORDING_EDGE = 4.dp

@@ -24,7 +24,7 @@ LOGO = HERE.parent / "logo" / "kit"
 INK, BONE, SIGNAL, LINE, MUTE, BLUE = "#0B0B0B", "#E8E6E1", "#FF5A1F", "#3A3A38", "#A3A19B", "#7FA7B8"
 
 PHONE = [
-    ("Main", "01 / START", "YOUR SHOT,\nWITH ITS GRAPH", "Film espresso with its graph on top: pressure, flow, weight or temp."),
+    ("Main", "01 / START", "YOUR SHOT,\nWITH ITS GRAPH", "Film espresso with its live graph from your machine and scale."),
     ("Home-Found", "02 / CONNECT", "FINDS YOUR\nMACHINE AND SCALE", "Gaggiuino over Wi-Fi, scales over Bluetooth."),
     ("Rec-Recording", "03 / RECORD", "STARTS WHEN\nTHE SHOT DOES", "Recording follows the brew switch."),
     ("Rec-Graph", "04 / PLACE", "THE GRAPH WHERE\nYOU WANT IT", "Drag it, resize it, pick what it shows."),
@@ -115,7 +115,7 @@ def feature() -> str:
         f'<svg width="420" height="280" style="position:absolute;left:-1px;top:-1px">{paths}</svg>{ticks(418, 278, 12)}</div>'
     )
     logo = f'<img src="{(LOGO / "onlyshots-horizontal-on-dark.svg").as_uri()}" style="position:absolute;left:64px;top:154px;height:64px">'
-    body = logo + copy(64, 250, 400, None, "YOUR SHOT,\nWITH ITS GRAPH", "Record espresso with its live graph: pressure, flow, weight or temp.", 30) + card
+    body = logo + copy(64, 250, 400, None, "YOUR SHOT,\nWITH ITS GRAPH", "Record espresso with its live graph from your machine and scale.", 30) + card
     return frame(1024, 500, 25, body)
 
 

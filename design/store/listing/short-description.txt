@@ -1,1 +1,1 @@
-Film your espresso shot with its live graph: pressure, flow, weight or temp.
+Film your espresso shot with its live graph from your machine and scale.

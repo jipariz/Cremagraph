@@ -628,7 +628,7 @@ private fun Preview(modifier: Modifier) {
                 shot = SampleShots.zer0,
                 videoTimeUs = PREVIEW_AT_US,
                 shotStartUs = 0L,
-                settings = OverlaySettings(styleId = style.id, rect = NormRect.Default),
+                settings = OverlaySettings(styleId = style.id, rect = PREVIEW_RECT),
                 style = style,
                 title = PREVIEW_TITLE,
                 fonts = CgTheme.overlayFonts,
@@ -647,6 +647,8 @@ private fun Preview(modifier: Modifier) {
 private const val PREVIEW_STYLE = "instrument"
 private const val PREVIEW_AT_US = 30_000_000L
 private const val PREVIEW_TITLE = "Zer0 · Gaggiuino"
+/** Up over the group head, so the cup and the stream under it stay in view. */
+private val PREVIEW_RECT = NormRect.Default.copy(y = 60f / NormRect.REF_H)
 
 /** What it does, which shots it reads, which videos it takes: three cells in a hairline grid. */
 @Composable

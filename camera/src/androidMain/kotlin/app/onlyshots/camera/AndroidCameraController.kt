@@ -107,6 +107,9 @@ class AndroidCameraController(
     /** [arm] is waiting for the camera; see there. */
     private var arming = false
     private var fourK = false
+
+    /** What [setFourK] asked for: applied by [applyQuality] once the camera is open and says whether it records 4K. */
+    private var wantFourK = false
     private var triggerVideoUs: Long? = null
     private var preRollSeconds = 0
     private var preRollUs = 0L
@@ -234,6 +237,16 @@ class AndroidCameraController(
     }
 
     override fun setFourK(on: Boolean) {
+        wantFourK = on
+        applyQuality()
+    }
+
+    /**
+     * 4K when asked for and the camera records it, else 1080p. Whether it does is only known once CameraX has opened the
+     * camera, which can be after the record screen asks: [arm] applies it again then, before the first file starts.
+     */
+    private fun applyQuality() {
+        val on = wantFourK && _state.value.supports4k
         if (on == fourK || armed) return
         fourK = on
         val quality = if (on) CxQuality.UHD else CxQuality.FHD
@@ -350,6 +363,9 @@ class AndroidCameraController(
             _state.update { it.copy(error = CameraError.NoRearCamera) }
             return
         }
+        // The camera is open now, so whether it records 4K is known: the first take gets the quality asked for.
+        readCamera()
+        applyQuality()
         armed = true
         this.preRollSeconds = preRollSeconds
         preRollUs = preRollSeconds * 1_000_000L

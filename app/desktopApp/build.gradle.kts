@@ -23,6 +23,18 @@ dependencies {
     implementation(projects.core.resources)
     implementation(compose.desktop.currentOs)
     implementation(libs.kotlinx.coroutines.swing)
+    testImplementation(kotlin("test"))
+    testImplementation(libs.compose.ui.test)
+}
+
+// The smoke test starts the app's own Koin, which keeps the library under the user's home: a throwaway one here.
+tasks.test {
+    val home = layout.buildDirectory.dir("test-home").get().asFile
+    doFirst {
+        home.deleteRecursively()
+        home.mkdirs()
+    }
+    systemProperty("user.home", home.absolutePath)
 }
 
 compose.desktop {

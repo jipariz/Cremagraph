@@ -80,6 +80,7 @@ import app.onlyshots.core.resources.style_tile_description
 import app.onlyshots.core.resources.style_your_styles
 import app.onlyshots.overlay.GraphStyles
 import app.onlyshots.shareBounds
+import app.onlyshots.testTagsAsResourceIds
 import org.jetbrains.compose.resources.stringResource
 
 /** What the picker can ask for, besides picking a style. */
@@ -247,7 +248,13 @@ private fun StyleTile(
                 picked,
                 Modifier.fillMaxWidth().height(TILE_HEIGHT).shareBounds(SharedKeys.style(style.id), clip = TileShape),
             )
-            DropdownMenu(expanded = open, onDismissRequest = { open = false }) { menu { open = false } }
+            DropdownMenu(
+                expanded = open,
+                onDismissRequest = { open = false },
+                modifier = Modifier.testTagsAsResourceIds(),
+            ) {
+                menu { open = false }
+            }
         }
         Text(
             style.name,

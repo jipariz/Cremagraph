@@ -113,6 +113,7 @@ import app.onlyshots.core.resources.core_export_keep_editing
 import app.onlyshots.core.resources.core_export_left
 import app.onlyshots.core.resources.core_export_making
 import app.onlyshots.core.resources.core_export_more
+import app.onlyshots.testTagsAsResourceIds
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -202,7 +203,13 @@ fun SplitButton(
                                 .semantics { contentDescription = moreWays }
                                 .padding(horizontal = CgSpace.S12, vertical = CgSpace.S8),
                     )
-                    DropdownMenu(expanded = open, onDismissRequest = { open = false }) { menu { open = false } }
+                    DropdownMenu(
+                        expanded = open,
+                        onDismissRequest = { open = false },
+                        modifier = Modifier.testTagsAsResourceIds(),
+                    ) {
+                        menu { open = false }
+                    }
                 }
             }
         }

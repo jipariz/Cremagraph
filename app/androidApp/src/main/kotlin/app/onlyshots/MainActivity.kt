@@ -11,7 +11,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import app.onlyshots.di.initKoin
 import org.koin.android.ext.koin.androidContext
@@ -41,6 +47,7 @@ private fun markBounds(icon: View): Rect? {
     return Rect(left, top, left + side, top + side)
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // First: it swaps the starting theme for the app's before anything (edge to edge) builds the window from it.
@@ -80,6 +87,12 @@ class MainActivity : ComponentActivity() {
             main.postDelayed({ if (!splash.released) splash.release() }, SPLASH_FALLBACK_MS)
         }
         // Recording survives rotation and posture changes: the activity handles config changes itself.
-        setContent { OnlyShotsApp(splash) }
+        setContent {
+            // Test tags as resource ids, so the UI Automator smoke tests (:app:uitests) find controls by
+            // app.onlyshots.TestTags.
+            Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }, propagateMinConstraints = true) {
+                OnlyShotsApp(splash)
+            }
+        }
     }
 }

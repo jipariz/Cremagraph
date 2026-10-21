@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.testTagsAsResourceIds
 
 /**
  * A bottom sheet over a dimmed screen (Home's address, the recording settings). It looks like [EditorSheet], the
@@ -23,6 +24,7 @@ import app.onlyshots.core.designsystem.CgSpace
 fun CgSheet(title: String, onDismiss: () -> Unit, content: @Composable () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        modifier = Modifier.testTagsAsResourceIds(),
         containerColor = CgColors.Surface.Bar,
         contentColor = CgColors.Text.Primary,
         shape = CgShape.Sheet,

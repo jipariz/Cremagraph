@@ -1,6 +1,6 @@
 name: pr
 
-# Every pull request: formatting, the version check, the shared tests and the screenshot tests.
+# Every pull request: formatting, the version check, the shared tests, the screenshot tests and the UI tests.
 # PRs from this repository's branches run on our self-hosted Mac (labels self-hosted, macOS, ARM64). PRs from forks run
 # on a GitHub-hosted runner instead, so a stranger's code never runs on that machine.
 
@@ -40,6 +40,18 @@ jobs:
         run: ./gradlew testAndroidHostTest --stacktrace
       - name: Screenshot tests (layoutlib on the JVM, no device)
         run: ./gradlew :screenshots:verifyMugshot --stacktrace
+      # The phone app and the editor driven through their test tags at phone, tablet and foldable sizes, exporting
+      # through FFmpeg; and the desktop app as main starts it.
+      - name: UI tests (the apps' flows on the JVM)
+        run: ./gradlew :uitests:desktopTest :app:desktopApp:test --stacktrace
+      - name: UI test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-report
+          path: |
+            uitests/build/reports/tests/desktopTest/
+            app/desktopApp/build/reports/tests/test/
       # Golden, actual and the changed pixels in red: without these a failure is only reproducible locally.
       - name: Screenshot report
         if: failure()

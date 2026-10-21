@@ -30,6 +30,7 @@ import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.testTagsAsResourceIds
 
 /**
  * The one text field: a rounded box on the raised surface, no outline, an orange cursor, [placeholder] in dim text
@@ -90,7 +91,7 @@ fun CgDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {},
-        modifier = modifier,
+        modifier = modifier.testTagsAsResourceIds(),
         containerColor = CgColors.Surface.Bar,
         shape = CgShape.Dialog,
         text = { CgDialogCard(title, confirm, dismiss, text, confirmEnabled, content) },

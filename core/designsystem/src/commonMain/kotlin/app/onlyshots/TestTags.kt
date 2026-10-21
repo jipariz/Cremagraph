@@ -1,5 +1,7 @@
 package app.onlyshots
 
+import androidx.compose.ui.Modifier
+
 /**
  * Stable names for the controls and screens UI tests drive (`:uitests`, the Android UI Automator and iOS XCUITest smoke
  * tests, where they appear as resource ids and accessibility identifiers). A tag names what a node does, never how it
@@ -93,3 +95,10 @@ object TestTags {
     /** One style editor tab: `styleTab("panel")`. */
     fun styleTab(name: String) = "styleEditor.tab.$name"
 }
+
+/**
+ * Shows the test tags under this node to UI Automator as resource ids. Each app root sets it; a dialog, sheet or menu
+ * is a window of its own and doesn't inherit it, so each sets it again. Android only: iOS shows tags as accessibility
+ * identifiers by itself.
+ */
+expect fun Modifier.testTagsAsResourceIds(): Modifier

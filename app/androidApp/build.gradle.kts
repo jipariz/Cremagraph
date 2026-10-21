@@ -12,6 +12,8 @@ plugins {
 dependencies {
     implementation(projects.app.shared)
     implementation(libs.androidx.activity.compose)
+    // The root that exposes test tags as resource ids (MainActivity).
+    implementation(libs.compose.foundation)
     // The system splash (Android 12+, backported below): the mark recording its shot, then the app's own hand-off.
     implementation(libs.androidx.splashscreen)
     // Installs the baseline profile shipped in the APK where the store has not compiled it already.

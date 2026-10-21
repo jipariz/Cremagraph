@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -61,6 +62,9 @@ import app.onlyshots.core.resources.privacy_use_network_why
 import app.onlyshots.core.resources.privacy_use_photos
 import app.onlyshots.core.resources.privacy_use_photos_why
 import app.onlyshots.core.resources.privacy_uses_title
+import app.onlyshots.layout.LayoutKind
+import app.onlyshots.layout.LocalWindowLayout
+import app.onlyshots.layout.WidePanes
 import org.jetbrains.compose.resources.stringResource
 
 /** Where problems and ideas go: the project's issues. */
@@ -72,86 +76,134 @@ const val SUPPORT_ISSUES_URL = "https://github.com/parez-dev/OnlyShots/issues"
  */
 @Composable
 fun PrivacyScreen(onBack: () -> Unit, modifier: Modifier = Modifier, version: String = AppVersion.NAME) {
-    val uri = LocalUriHandler.current
-    Box(modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding(), Alignment.TopCenter) {
-        Column(Modifier.widthIn(max = 720.dp).fillMaxSize()) {
-            HeaderBack(
-                stringResource(Res.string.privacy_title),
-                onBack = onBack,
-                modifier = Modifier.padding(vertical = CgSpace.S8),
-            )
-            Column(
-                Modifier.weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = CgSpace.S16, end = CgSpace.S16, top = CgSpace.S8, bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
-            ) {
-                Text(stringResource(Res.string.privacy_updated), style = data, color = CgColors.Text.Secondary)
-                // The one thing to know, first and in bold, as the page has it.
-                val lead = stringResource(Res.string.privacy_lead)
-                val leadDetail = stringResource(Res.string.privacy_lead_detail)
-                Column(
-                    Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Brand.Signal).padding(CgSpace.S12),
-                    verticalArrangement = Arrangement.spacedBy(CgSpace.S6),
-                ) {
-                    Text(lead, style = CgTheme.type.label.copy(letterSpacing = 0.em))
-                    Text(leadDetail, style = body, color = CgColors.Text.Secondary)
-                }
-                Section(stringResource(Res.string.privacy_uses_title), framed = true) {
-                    Use(
-                        stringResource(Res.string.privacy_use_camera),
-                        stringResource(Res.string.privacy_use_camera_why),
-                    )
-                    Use(
-                        stringResource(Res.string.privacy_use_network),
-                        stringResource(Res.string.privacy_use_network_why),
-                    )
-                    Use(
-                        stringResource(Res.string.privacy_use_bluetooth),
-                        stringResource(Res.string.privacy_use_bluetooth_why),
-                    )
-                    Use(
-                        stringResource(Res.string.privacy_use_photos),
-                        stringResource(Res.string.privacy_use_photos_why),
-                        last = true,
-                    )
-                }
-                Section(stringResource(Res.string.privacy_stored_title)) {
-                    Paragraph(stringResource(Res.string.privacy_stored))
-                }
-                Section(stringResource(Res.string.privacy_sharing_title)) {
-                    Paragraph(stringResource(Res.string.privacy_sharing))
-                }
-                Section(stringResource(Res.string.privacy_children_title)) {
-                    Paragraph(stringResource(Res.string.privacy_children))
-                }
-                Section(stringResource(Res.string.privacy_changes_title)) {
-                    Paragraph(stringResource(Res.string.privacy_changes))
-                }
-                Box(
-                    Modifier.fillMaxWidth()
-                        .padding(vertical = CgSpace.S8)
-                        .height(CgStroke.Hairline)
-                        .background(CgColors.Line.Hairline)
+    val layout = LocalWindowLayout.current
+    val header: @Composable () -> Unit = {
+        HeaderBack(
+            stringResource(Res.string.privacy_title),
+            onBack = onBack,
+            modifier = Modifier.padding(vertical = CgSpace.S8),
+        )
+    }
+    Box(modifier.fillMaxSize().background(CgColors.Surface.Base)) {
+        when {
+            // A book foldable: the lead and what the app uses on the left page, the rest on the right.
+            layout.kind == LayoutKind.Wide && layout.fold ->
+                WidePanes(
+                    layout,
+                    Modifier.fillMaxSize().safeDrawingPadding(),
+                    gap = false,
+                    main = {
+                        Column(Modifier.fillMaxSize()) {
+                            header()
+                            Scrolling(Modifier.weight(1f)) { LeadAndUses() }
+                        }
+                    },
+                    panel = {
+                        Scrolling(
+                            Modifier.fillMaxSize().background(CgColors.Surface.Base).padding(top = CgSize.Touch)
+                        ) {
+                            Sections(version)
+                        }
+                    },
                 )
-                Section(stringResource(Res.string.privacy_support_title)) {
-                    Paragraph(stringResource(Res.string.privacy_support))
-                    Text(
-                        "github.com/parez-dev/OnlyShots/issues ↗",
-                        style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em),
-                        color = CgColors.Text.Primary,
-                        modifier =
-                            Modifier.heightIn(min = CgSize.Touch).wrapContentHeight().clickable(role = Role.Button) {
-                                uri.openUri(SUPPORT_ISSUES_URL)
-                            },
-                    )
+            // A wide window: the same two halves as columns under one header.
+            layout.kind == LayoutKind.Wide ->
+                Box(Modifier.fillMaxSize().safeDrawingPadding(), Alignment.TopCenter) {
+                    Column(Modifier.widthIn(max = WIDE_MAX).fillMaxSize().padding(horizontal = CgSpace.S24)) {
+                        header()
+                        Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                            Scrolling(Modifier.weight(1f)) { LeadAndUses() }
+                            Scrolling(Modifier.weight(1f)) { Sections(version) }
+                        }
+                    }
                 }
-                Text(stringResource(Res.string.core_version, version), style = data, color = CgColors.Text.Secondary)
-            }
+            else ->
+                Box(Modifier.fillMaxSize().safeDrawingPadding(), Alignment.TopCenter) {
+                    Column(Modifier.widthIn(max = 720.dp).fillMaxSize()) {
+                        header()
+                        Scrolling(Modifier.weight(1f)) {
+                            LeadAndUses()
+                            Sections(version)
+                        }
+                    }
+                }
         }
     }
 }
+
+/** A column of the policy that scrolls on its own. */
+@Composable
+private fun Scrolling(modifier: Modifier, content: @Composable () -> Unit) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(start = CgSpace.S16, end = CgSpace.S16, top = CgSpace.S8, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
+    ) {
+        content()
+    }
+}
+
+/** When it was updated, the one thing to know, and what the app uses and why. */
+@Composable
+private fun LeadAndUses() {
+    Text(stringResource(Res.string.privacy_updated), style = data, color = CgColors.Text.Secondary)
+    // The one thing to know, first and in bold, as the page has it.
+    val lead = stringResource(Res.string.privacy_lead)
+    val leadDetail = stringResource(Res.string.privacy_lead_detail)
+    Column(
+        Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Brand.Signal).padding(CgSpace.S12),
+        verticalArrangement = Arrangement.spacedBy(CgSpace.S6),
+    ) {
+        Text(lead, style = CgTheme.type.label.copy(letterSpacing = 0.em))
+        Text(leadDetail, style = body, color = CgColors.Text.Secondary)
+    }
+    Section(stringResource(Res.string.privacy_uses_title), framed = true) {
+        Use(stringResource(Res.string.privacy_use_camera), stringResource(Res.string.privacy_use_camera_why))
+        Use(stringResource(Res.string.privacy_use_network), stringResource(Res.string.privacy_use_network_why))
+        Use(stringResource(Res.string.privacy_use_bluetooth), stringResource(Res.string.privacy_use_bluetooth_why))
+        Use(
+            stringResource(Res.string.privacy_use_photos),
+            stringResource(Res.string.privacy_use_photos_why),
+            last = true,
+        )
+    }
+}
+
+/** What is stored and shared, children, changes, support and the version. */
+@Composable
+private fun Sections(version: String) {
+    val uri = LocalUriHandler.current
+    Section(stringResource(Res.string.privacy_stored_title)) { Paragraph(stringResource(Res.string.privacy_stored)) }
+    Section(stringResource(Res.string.privacy_sharing_title)) { Paragraph(stringResource(Res.string.privacy_sharing)) }
+    Section(stringResource(Res.string.privacy_children_title)) {
+        Paragraph(stringResource(Res.string.privacy_children))
+    }
+    Section(stringResource(Res.string.privacy_changes_title)) { Paragraph(stringResource(Res.string.privacy_changes)) }
+    Box(
+        Modifier.fillMaxWidth()
+            .padding(vertical = CgSpace.S8)
+            .height(CgStroke.Hairline)
+            .background(CgColors.Line.Hairline)
+    )
+    Section(stringResource(Res.string.privacy_support_title)) {
+        Paragraph(stringResource(Res.string.privacy_support))
+        Text(
+            "github.com/parez-dev/OnlyShots/issues ↗",
+            style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em),
+            color = CgColors.Text.Primary,
+            modifier =
+                Modifier.heightIn(min = CgSize.Touch).wrapContentHeight().clickable(role = Role.Button) {
+                    uri.openUri(SUPPORT_ISSUES_URL)
+                },
+        )
+    }
+    Text(stringResource(Res.string.core_version, version), style = data, color = CgColors.Text.Secondary)
+}
+
+/** A wide window's two columns together at most. */
+private val WIDE_MAX = 1120.dp
 
 private val body
     @Composable get() = CgTheme.type.body.copy(lineHeight = CgTheme.type.body.fontSize * 1.5f)

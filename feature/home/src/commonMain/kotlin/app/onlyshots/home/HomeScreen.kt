@@ -37,6 +37,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
@@ -79,8 +81,10 @@ import app.onlyshots.core.designsystem.component.ScaleDeviceRow
 import app.onlyshots.core.designsystem.component.SectionHeader
 import app.onlyshots.core.designsystem.component.SegmentedControl
 import app.onlyshots.core.designsystem.component.SettingRow
+import app.onlyshots.core.designsystem.component.SheetHeader
 import app.onlyshots.core.designsystem.component.SkeletonRow
 import app.onlyshots.core.designsystem.component.rememberListSettled
+import app.onlyshots.core.designsystem.component.signalRule
 import app.onlyshots.core.model.AppVersion
 import app.onlyshots.core.model.RecordingSettings
 import app.onlyshots.core.model.SourceKind
@@ -169,8 +173,22 @@ fun HomeScreen(
         onBack = onBack,
         take = take,
         onRecording = viewModel::updateRecording,
+        foldPage =
+            if (state.addressSheet && LocalWindowLayout.current.fold) {
+                {
+                    AddressPage(
+                        address = state.address,
+                        onAddress = viewModel::setAddress,
+                        onConnect = viewModel::addByAddress,
+                        onDismiss = viewModel::closeAddress,
+                    )
+                }
+            } else {
+                null
+            },
+        onFoldPageDismiss = viewModel::closeAddress,
     )
-    if (state.addressSheet) {
+    if (state.addressSheet && !LocalWindowLayout.current.fold) {
         AddressSheet(
             address = state.address,
             onAddress = viewModel::setAddress,
@@ -194,6 +212,12 @@ fun HomeBody(
     onRecording: ((RecordingSettings) -> RecordingSettings) -> Unit = {},
     onSample: () -> Unit = {},
     onBack: () -> Unit = {},
+    /**
+     * On a book foldable, what a phone shows in a sheet (adding a machine by its address) takes the right page, in
+     * place of the next take, and the left one dims; [onFoldPageDismiss] closes it from there.
+     */
+    foldPage: (@Composable () -> Unit)? = null,
+    onFoldPageDismiss: () -> Unit = {},
 ) {
     val layout = LocalWindowLayout.current
     if (layout.kind == LayoutKind.Wide) {
@@ -203,26 +227,63 @@ fun HomeBody(
                 layout,
                 Modifier.fillMaxSize().safeDrawingPadding(),
                 main = {
-                    Column(Modifier.fillMaxSize()) {
-                        Header(onBack)
-                        Column(
-                            Modifier.weight(1f)
-                                .fillMaxWidth()
-                                .verticalScroll(rememberScrollState())
-                                .padding(
-                                    start = CgSpace.S24,
-                                    end = CgSpace.S24,
-                                    top = CgSpace.S6,
-                                    bottom = CgSpace.S24,
-                                ),
-                            verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
-                        ) {
-                            Machines(state, onMachine, onAddByAddress)
-                            Scales(state, onScale, onAllowBluetooth)
+                    Box(Modifier.fillMaxSize()) {
+                        BoxWithConstraints(Modifier.fillMaxSize()) {
+                            // Room for both lists side by side (a tablet on its side): machines and scales as two
+                            // columns; otherwise one under the other.
+                            val columns = !layout.fold && maxWidth >= TWO_COLUMNS
+                            val side = if (layout.fold) CgSpace.S16 else 32.dp
+                            Column(Modifier.fillMaxSize().padding(horizontal = side - CgSpace.S16)) {
+                                Header(onBack)
+                                if (columns) {
+                                    Row(
+                                        Modifier.weight(1f)
+                                            .fillMaxWidth()
+                                            .verticalScroll(rememberScrollState())
+                                            .padding(horizontal = CgSpace.S16)
+                                            .padding(top = CgSpace.S16, bottom = CgSpace.S24),
+                                        horizontalArrangement = Arrangement.spacedBy(32.dp),
+                                    ) {
+                                        Column(
+                                            Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
+                                        ) {
+                                            Machines(state, onMachine, onAddByAddress)
+                                        }
+                                        Column(
+                                            Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
+                                        ) {
+                                            Scales(state, onScale, onAllowBluetooth)
+                                        }
+                                    }
+                                } else {
+                                    Column(
+                                        Modifier.weight(1f)
+                                            .fillMaxWidth()
+                                            .verticalScroll(rememberScrollState())
+                                            .padding(horizontal = CgSpace.S16)
+                                            .padding(top = CgSpace.S6, bottom = CgSpace.S24),
+                                        verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
+                                    ) {
+                                        Machines(state, onMachine, onAddByAddress)
+                                        Scales(state, onScale, onAllowBluetooth)
+                                    }
+                                }
+                            }
+                        }
+                        if (foldPage != null) {
+                            Box(
+                                Modifier.fillMaxSize()
+                                    .background(CgColors.Surface.Scrim.copy(alpha = 0.6f))
+                                    .clickable(onClick = onFoldPageDismiss)
+                            )
                         }
                     }
                 },
-                panel = { NextTakePane(state, take, onRecording, onOpenCamera, onSample) },
+                panel = {
+                    if (foldPage != null) foldPage() else NextTakePane(state, take, onRecording, onOpenCamera, onSample)
+                },
             )
         }
         return
@@ -375,32 +436,47 @@ private fun dotOf(status: RowStatus) =
 @Composable
 private fun AddressSheet(address: String, onAddress: (String) -> Unit, onConnect: () -> Unit, onDismiss: () -> Unit) {
     CgSheet(title = stringResource(Res.string.home_add_by_address), onDismiss = onDismiss) {
-        Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S16)) {
-            Text(
-                stringResource(Res.string.home_address_note),
-                style = CgTheme.type.bodySmall,
-                color = CgColors.Text.Secondary,
-            )
-            val label = stringResource(Res.string.home_address_label)
-            Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
-                SectionLabel(label)
-                CgTextField(
-                    value = address,
-                    onValueChange = onAddress,
-                    label = label,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-                    keyboardActions = KeyboardActions(onGo = { onConnect() }),
-                    modifier = Modifier.fillMaxWidth().testTag(TestTags.HomeAddressField),
-                )
-            }
-            CgButton(
-                stringResource(Res.string.home_connect),
-                onClick = onConnect,
-                kind = CgButtonKind.Signal,
-                enabled = address.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().testTag(TestTags.HomeAddressConnect),
+        AddressForm(address, onAddress, onConnect)
+    }
+}
+
+/** The address sheet as a book foldable's right page: the same header and form under a signal rule. */
+@Composable
+private fun AddressPage(address: String, onAddress: (String) -> Unit, onConnect: () -> Unit, onDismiss: () -> Unit) {
+    Column(Modifier.fillMaxSize().signalRule().padding(top = CgStroke.Rule)) {
+        SheetHeader(stringResource(Res.string.home_add_by_address), onDone = onDismiss)
+        Box(Modifier.padding(CgSpace.S16)) { AddressForm(address, onAddress, onConnect) }
+    }
+}
+
+/** What adding a machine by its address asks for: the note, the address and connect. */
+@Composable
+private fun AddressForm(address: String, onAddress: (String) -> Unit, onConnect: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S16)) {
+        Text(
+            stringResource(Res.string.home_address_note),
+            style = CgTheme.type.bodySmall,
+            color = CgColors.Text.Secondary,
+        )
+        val label = stringResource(Res.string.home_address_label)
+        Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
+            SectionLabel(label)
+            CgTextField(
+                value = address,
+                onValueChange = onAddress,
+                label = label,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
+                keyboardActions = KeyboardActions(onGo = { onConnect() }),
+                modifier = Modifier.fillMaxWidth().testTag(TestTags.HomeAddressField),
             )
         }
+        CgButton(
+            stringResource(Res.string.home_connect),
+            onClick = onConnect,
+            kind = CgButtonKind.Signal,
+            enabled = address.isNotBlank(),
+            modifier = Modifier.fillMaxWidth().testTag(TestTags.HomeAddressConnect),
+        )
     }
 }
 
@@ -418,7 +494,11 @@ private fun NextTakePane(
 ) {
     val settings = take.settings
     // A short panel (a tablet on its side) tightens up, so the rules still show above the record button.
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(
+        Modifier.fillMaxSize().drawBehind {
+            drawLine(CgColors.Line.Hairline, Offset.Zero, Offset(0f, size.height), CgStroke.Hairline.toPx())
+        }
+    ) {
         val compact = maxHeight < COMPACT_PANEL_HEIGHT
         val gap = if (compact) CgSpace.S12 else 20.dp
         Column(
@@ -445,7 +525,7 @@ private fun NextTakePane(
                                 }
                             }
                         },
-                        style = CgTheme.type.sheetTitle,
+                        style = if (compact) CgTheme.type.cardTitle else CgTheme.type.pivot,
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -484,6 +564,7 @@ private fun NextTakePane(
                                     stringResource(r.unit),
                                     Modifier.weight(1f),
                                     color = r.kind.color(),
+                                    large = !compact,
                                 )
                             }
                         }
@@ -686,3 +767,6 @@ private fun FooterLink(label: String, modifier: Modifier = Modifier, onClick: ()
             modifier.heightIn(min = CgSize.Touch).wrapContentHeight().clickable(role = Role.Button, onClick = onClick),
     )
 }
+
+/** A wide Home's first page this wide or more puts machines and scales side by side. */
+private val TWO_COLUMNS = 600.dp

@@ -15,6 +15,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -71,8 +73,12 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -101,6 +107,7 @@ import app.onlyshots.core.designsystem.component.SegmentedControl
 import app.onlyshots.core.designsystem.component.StatusChip
 import app.onlyshots.core.designsystem.component.TopChip
 import app.onlyshots.core.designsystem.component.TwoPane
+import app.onlyshots.core.designsystem.component.signalRule
 import app.onlyshots.core.model.NormRect
 import app.onlyshots.core.model.Shot
 import app.onlyshots.core.model.SidecarCodec
@@ -431,12 +438,13 @@ fun EditBody(
     // A flip's cover screen: there is no room to edit, only to say so.
     if (layout.kind == LayoutKind.Tiny) {
         Box(Modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding().then(keys)) {
-            BackButton(onClick = leave, modifier = Modifier.align(Alignment.TopStart).padding(CgSpace.S8))
+            BackButton(onClick = leave, modifier = Modifier.align(Alignment.TopStart).padding(CgSpace.S16))
             Text(
                 stringResource(Res.string.edit_open_the_phone),
-                style = CgTheme.type.cardTitle,
+                style = CgTheme.type.screenTitle,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.align(Alignment.Center).padding(CgSpace.S24),
+                modifier =
+                    Modifier.align(Alignment.Center).padding(start = CgSpace.S24, end = CgSpace.S24, bottom = 76.dp),
             )
         }
         return
@@ -522,6 +530,8 @@ fun EditBody(
                             )
                             .dp,
                     panelWidth = sidePanelWidthDp(maxWidth.value).dp,
+                    // The panel meets the picture at a hairline, as on the desk, rather than across a gap.
+                    gap = false,
                     animateOn = video.format,
                     main = {
                         Column(Modifier.fillMaxSize()) {
@@ -557,6 +567,7 @@ fun EditBody(
                         // cut.
                         AnimatedContent(
                             graphPanel,
+                            modifier = Modifier.fillMaxSize().startRule(),
                             transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) },
                             label = "panel",
                         ) { graph ->
@@ -1101,77 +1112,109 @@ private fun VideoPanel(
     // The machine's shots, for the list under the file.
     LaunchedEffect(ui.hasShotHistory) { if (ui.hasShotHistory) actions.loadShots() }
     var changingShot by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().padding(CgSpace.S16)) {
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).animateContentSize(CgMotion.sizeSpec),
-            verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
-        ) {
-            PanelLabel(stringResource(Res.string.edit_shot))
+    Column(Modifier.fillMaxSize()) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).animateContentSize(CgMotion.sizeSpec)) {
             val shot = video.shot
-            if (shot != null && !changingShot) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("${shot.profileName} · ${machineLabel(shot.source)}".caps(), style = CgTheme.type.label)
-                        Text(shotDetail(video), style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+            // Picking another shot: the section is marked with the signal along its edge while it is open.
+            PanelSection(marked = shot == null || changingShot) {
+                PanelLabel(stringResource(Res.string.edit_shot))
+                if (shot != null && !changingShot) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(width = 4.dp, height = 36.dp).background(machineColor(shot.source)))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                "${shot.profileName} · ${machineLabel(shot.source)}".caps(),
+                                style = CgTheme.type.label,
+                            )
+                            Text(shotDetail(video), style = CgTheme.type.data, color = CgColors.Text.Secondary)
+                        }
+                        Pill(stringResource(Res.string.edit_change), onClick = { changingShot = true })
                     }
-                    Pill(stringResource(Res.string.edit_change), onClick = { changingShot = true })
-                }
-                if (video.syncLocked) {
-                    Pill(
-                        stringResource(Res.string.edit_graph_start),
-                        onClick = actions::unlockShotStart,
-                        icon = CgIcons.Lock,
+                    if (video.syncLocked) {
+                        Pill(
+                            stringResource(Res.string.edit_graph_start),
+                            onClick = actions::unlockShotStart,
+                            icon = CgIcons.Lock,
+                        )
+                    } else if (video.shotStartByClock() != null) {
+                        Pill(stringResource(Res.string.edit_match_by_clock), onClick = actions::matchByClock)
+                    }
+                } else {
+                    ShotSheetContent(
+                        video,
+                        ui.shots,
+                        onPick = {
+                            actions.pickShot(it)
+                            changingShot = false
+                        },
+                        onFile = onPickShotFile,
+                        onMatchByClock = actions::matchByClock,
+                        onUnlock = actions::unlockShotStart,
+                        onFromMachine = LocalFromMachine.current,
                     )
-                } else if (video.shotStartByClock() != null) {
-                    Pill(stringResource(Res.string.edit_match_by_clock), onClick = actions::matchByClock)
+                    if (shot != null) Pill(stringResource(Res.string.edit_done), onClick = { changingShot = false })
                 }
-            } else {
-                ShotSheetContent(
-                    video,
-                    ui.shots,
-                    onPick = {
-                        actions.pickShot(it)
-                        changingShot = false
-                    },
-                    onFile = onPickShotFile,
-                    onMatchByClock = actions::matchByClock,
-                    onUnlock = actions::unlockShotStart,
-                    onFromMachine = LocalFromMachine.current,
-                )
-                if (shot != null) Pill(stringResource(Res.string.edit_done), onClick = { changingShot = false })
             }
-            Spacer(Modifier.height(CgSpace.S8))
-            PanelLabel(stringResource(Res.string.edit_frame))
-            FormatPicker(
-                FORMAT_OPTIONS,
-                VideoFormat.entries.indexOf(video.format),
-                onPick = { actions.setFormat(VideoFormat.entries[it]) },
-                compact = true,
-            )
-            Pill(
-                if (reframing) stringResource(Res.string.edit_done) else stringResource(Res.string.edit_zoom_and_crop),
-                onClick = { onReframing(!reframing) },
-                light = reframing,
-                modifier = Modifier.fillMaxWidth(),
-                fill = true,
-            )
-            if (shot != null) {
-                Spacer(Modifier.height(CgSpace.S8))
-                PanelLabel(stringResource(Res.string.edit_graph))
-                Text((ui.style?.name ?: video.overlay.styleId).caps(), style = CgTheme.type.label)
-                Text(
-                    stringResource(Res.string.edit_tap_graph_hint),
-                    style = CgTheme.type.caption,
-                    color = CgColors.Text.Dim,
+            PanelSection {
+                PanelLabel(stringResource(Res.string.edit_frame))
+                FormatPicker(
+                    FORMAT_OPTIONS,
+                    VideoFormat.entries.indexOf(video.format),
+                    onPick = { actions.setFormat(VideoFormat.entries[it]) },
+                    compact = true,
                 )
+                Pill(
+                    if (reframing) stringResource(Res.string.edit_done)
+                    else stringResource(Res.string.edit_zoom_and_crop),
+                    onClick = { onReframing(!reframing) },
+                    light = reframing,
+                    modifier = Modifier.fillMaxWidth(),
+                    fill = true,
+                )
+            }
+            if (shot != null) {
+                PanelSection(gap = CgSpace.S4) {
+                    PanelLabel(stringResource(Res.string.edit_graph))
+                    Text((ui.style?.name ?: video.overlay.styleId).caps(), style = CgTheme.type.label)
+                    Text(
+                        stringResource(Res.string.edit_tap_graph_hint),
+                        style = CgTheme.type.caption,
+                        color = CgColors.Text.Secondary,
+                    )
+                }
             }
         }
-        Spacer(Modifier.height(CgSpace.S16))
-        footer()
+        PanelFooter(footer)
     }
+}
+
+/**
+ * One part of the desk panel (the shot, the frame, the graph): padded, over a hairline. [marked] draws the signal along
+ * its leading edge, for the part that is open for a change.
+ */
+@Composable
+private fun PanelSection(
+    marked: Boolean = false,
+    gap: Dp = 10.dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth()
+            .bottomRule()
+            .then(if (marked) Modifier.leadingSignal() else Modifier)
+            .padding(CgSpace.S16),
+        verticalArrangement = Arrangement.spacedBy(gap),
+        content = content,
+    )
+}
+
+/** The export pinned at the bottom of the desk panel, under a hairline. */
+@Composable
+private fun PanelFooter(footer: @Composable () -> Unit) {
+    Box(Modifier.fillMaxWidth().topRule().padding(horizontal = CgSpace.S16, vertical = CgSpace.S12)) { footer() }
 }
 
 /** "Gaggiuino · 0:40.0 · 3 phases · lined up by the clock": the shot under its name. */
@@ -1209,13 +1252,26 @@ private fun PlayerHalf(
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
             BackButton(onClick = onBack)
             val shot = video.shot
-            Text((shot?.profileName ?: video.file).caps(), style = CgTheme.type.cardTitle, maxLines = 2)
-            if (shot != null)
-                Text(
-                    shotDetail(video).removePrefix(" · "),
-                    style = CgTheme.type.caption,
-                    color = CgColors.Text.Secondary,
-                )
+            Text((shot?.profileName ?: video.file).caps(), style = CgTheme.type.screenTitle, maxLines = 2)
+            if (shot != null) {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .border(CgStroke.Hairline, CgColors.Line.Hairline)
+                        .padding(horizontal = CgSpace.S12, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(width = 4.dp, height = 32.dp).background(machineColor(shot.source)))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("${shot.profileName} · ${machineLabel(shot.source)}".caps(), style = CgTheme.type.label)
+                        Text(
+                            shotDetail(video).removePrefix(" · "),
+                            style = CgTheme.type.data,
+                            color = CgColors.Text.Secondary,
+                        )
+                    }
+                }
+            }
             Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) { UndoRedo(ui, actions) }
         }
@@ -1231,16 +1287,23 @@ private fun PlayerHalf(
                 light = reframing,
             )
             Spacer(Modifier.weight(1f))
-            Text(clock(player.positionUs), style = CgTheme.type.cardTitle)
+            Text(clock(player.positionUs), style = CgTheme.type.pivot)
             Text(
                 stringResource(Res.string.edit_of_duration, clock(video.durationUs)),
                 style = CgTheme.type.caption,
                 color = CgColors.Text.Secondary,
             )
-            Pill(
-                if (player.playing) stringResource(Res.string.edit_pause) else stringResource(Res.string.edit_play),
-                onClick = player::toggle,
-            )
+            val playLabel =
+                if (player.playing) stringResource(Res.string.edit_pause) else stringResource(Res.string.edit_play)
+            Box(
+                Modifier.size(64.dp)
+                    .border(CgStroke.Hairline, CgColors.Brand.Bone)
+                    .clickable(role = Role.Button, onClick = player::toggle)
+                    .semantics { contentDescription = playLabel },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(if (player.playing) "❚❚" else "▶", style = CgTheme.type.screenTitle)
+            }
         }
     }
 }
@@ -1249,8 +1312,13 @@ private fun PlayerHalf(
 @Composable
 private fun ToolChips(ui: EditUiState, video: VideoItem, actions: EditActions, onExport: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(CgSpace.S12),
+        Modifier.fillMaxWidth()
+            .padding(horizontal = CgSpace.S24)
+            .topRule()
+            .horizontalScroll(rememberScrollState())
+            .padding(top = CgSpace.S12, bottom = CgSpace.S24),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (video.shot != null) {
             Pill(
@@ -1329,10 +1397,23 @@ private fun EditPanel(
     footer: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    Column(
-        Modifier.fillMaxSize().padding(CgSpace.S16),
-        verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
-    ) {
+    Column(Modifier.fillMaxSize().signalRule()) {
+        Row(
+            Modifier.fillMaxWidth()
+                .bottomRule()
+                .padding(start = CgSpace.S16, end = CgSpace.S12, top = CgSpace.S12, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
+        ) {
+            Text(title.caps(), style = CgTheme.type.sheetTitle, modifier = Modifier.weight(1f))
+            tools()
+            Pill(
+                stringResource(Res.string.edit_done),
+                onClick = onDone,
+                light = true,
+                modifier = Modifier.testTag(TestTags.SheetDone),
+            )
+        }
         SegmentedControl(
             PanelPages.map { stringResource(it.label) },
             PanelPages.indexOf(page),
@@ -1341,22 +1422,16 @@ private fun EditPanel(
             modifier = Modifier.fillMaxWidth(),
             tags = listOf(TestTags.ToolbarStyle, TestTags.ToolbarData, TestTags.ToolbarText),
         )
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
-            Text(title.caps(), style = CgTheme.type.sheetTitle, modifier = Modifier.weight(1f))
-            tools()
-            Pill(
-                stringResource(Res.string.edit_done),
-                onClick = onDone,
-                modifier = Modifier.testTag(TestTags.SheetDone),
-            )
-        }
         Column(
-            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
             verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
         ) {
             content()
         }
-        footer()
+        PanelFooter(footer)
     }
 }
 
@@ -1395,6 +1470,16 @@ private const val PLAY_MARK_MS = 450
 private fun Modifier.bottomRule(): Modifier = drawBehind {
     val h = CgStroke.Hairline.toPx()
     drawRect(CgColors.Line.Hairline, Offset(0f, size.height - h), Size(size.width, h))
+}
+
+/** A hairline along the leading edge: where the desk panel meets the picture. */
+private fun Modifier.startRule(): Modifier = drawBehind {
+    drawRect(CgColors.Line.Hairline, Offset.Zero, Size(CgStroke.Hairline.toPx(), size.height))
+}
+
+/** The signal along the leading edge: the desk panel's part that is open for a change. */
+private fun Modifier.leadingSignal(): Modifier = drawBehind {
+    drawRect(CgColors.Brand.Signal, Offset.Zero, Size(CgStroke.Rule.toPx(), size.height))
 }
 
 /** A hairline along the top edge: over the timeline's band. */

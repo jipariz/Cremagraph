@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -63,7 +63,6 @@ import app.onlyshots.camera.CameraPreview
 import app.onlyshots.camera.CameraState
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
-import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.Banner
@@ -93,6 +92,7 @@ import app.onlyshots.core.resources.record_focus_locked
 import app.onlyshots.core.resources.record_needs_camera
 import app.onlyshots.core.resources.record_open_settings
 import app.onlyshots.core.resources.record_ready
+import app.onlyshots.core.resources.record_settings_title
 import app.onlyshots.core.resources.record_style
 import app.onlyshots.core.resources.text
 import app.onlyshots.edit.DataSheetContent
@@ -348,7 +348,14 @@ fun RecordBody(
                         first = { pane(Modifier.fillMaxSize(), true) },
                         second = {
                             Box(Modifier.fillMaxSize().background(CgColors.Surface.Bar)) {
-                                if (layout.onItsSide) TabletopPanel(take) else FlexPanel(take)
+                                if (layout.onItsSide)
+                                    TabletopPanel(
+                                        take,
+                                        zoom = { m ->
+                                            if (!state.recording && granted) LensPicker(camera, actions::setZoom, m)
+                                        },
+                                    )
+                                else FlexPanel(take)
                             }
                         },
                     )
@@ -372,9 +379,18 @@ fun RecordBody(
         }
     }
 
+    // Where the sheets go: on a fold the right page, all of it; on a tablet 640 dp wide at most, as every sheet; on a
+    // phone across the bottom.
+    val onFold = layout.fold && layout.kind == LayoutKind.Wide
+    val sheetArea =
+        if (onFold) Modifier.fillMaxSize().padding(start = (layout.splitDp + layout.hingeDp).dp)
+        else Modifier.fillMaxSize()
+    val sheetSize =
+        if (onFold) Modifier.fillMaxSize()
+        else Modifier.widthIn(max = SHEET_MAX_WIDTH).fillMaxHeight(0.72f).wrapContentHeight(Alignment.Bottom)
     // The graph for this and the next recordings; a recorded video keeps its own copy, edited in the editor.
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-        EditorSheetSlot(graphSheet, Modifier.fillMaxHeight(0.72f).wrapContentHeight(Alignment.Bottom)) { sheet ->
+    Box(sheetArea, contentAlignment = Alignment.BottomCenter) {
+        EditorSheetSlot(graphSheet, sheetSize) { sheet ->
             EditorSheet(
                 title =
                     stringResource(if (sheet == EditSheet.STYLE) Res.string.record_style else Res.string.record_data),
@@ -404,7 +420,19 @@ fun RecordBody(
         }
     }
 
-    if (settingsOpen) {
+    if (onFold) {
+        Box(sheetArea, contentAlignment = Alignment.BottomCenter) {
+            EditorSheetSlot(Unit.takeIf { settingsOpen }, Modifier.fillMaxSize()) {
+                EditorSheet(
+                    title = stringResource(Res.string.record_settings_title),
+                    onDone = { settingsOpen = false },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    RecordingSettingsContent(settings, state.sourceKind, actions::updateSettings)
+                }
+            }
+        }
+    } else if (settingsOpen) {
         RecordingSheet(
             settings = settings,
             sourceKind = state.sourceKind,
@@ -696,19 +724,19 @@ private fun WarningBanner(text: String?) {
 private fun BoxScope.TinyControls(state: RecordUiState, actions: RecordActions) {
     Text(
         if (state.recording) state.status.text() else stringResource(Res.string.record_ready),
-        style = CgTheme.type.cardTitle,
+        style = CgTheme.type.label,
+        color = CgColors.Text.Primary,
         modifier =
             Modifier.align(Alignment.TopCenter)
                 .padding(top = CgSpace.S24)
-                .clip(CgShape.Pill)
                 .background(
                     animateColorAsState(
-                            if (state.recording) CgColors.Status.RecordingChip else CgColors.Surface.Raised,
+                            if (state.recording) CgColors.Status.Record else CgColors.Surface.Raised,
                             CgMotion.medium(),
                         )
                         .value
                 )
-                .padding(horizontal = CgSpace.S14, vertical = CgSpace.S4),
+                .padding(horizontal = CgSpace.S14, vertical = CgSpace.S6),
     )
     RecordButton(
         state =
@@ -754,6 +782,9 @@ private data class PaneInputs(
     val picture: @Composable (Modifier, drawFrames: Boolean) -> Unit,
     val capture: VideoFormat,
 )
+
+/** Every sheet on a tablet, at most. */
+private val SHEET_MAX_WIDTH = 640.dp
 
 /** How far out a graph may stand before it is moved in: what moving it between frames rounds off. */
 private const val BOUNDS_SLACK = 0.005f

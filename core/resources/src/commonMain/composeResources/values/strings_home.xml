@@ -87,6 +87,7 @@
     <!-- Shot from the machine -->
     <string name="home_shots_title">shot from the machine</string>
     <string name="home_shots_same_wifi">The machine and this phone need to be on the same Wi‑Fi.</string>
+    <string name="home_shots_pick_machine">pick a machine to see its recent shots</string>
     <string name="home_shots_recent">recent shots · %1$s</string>
     <string name="home_shots_loading">loading…</string>
     <string name="home_shots_none">No shots found. Older firmware cannot share its shots: download the shot file from the machine's web page and pick it from a file.</string>

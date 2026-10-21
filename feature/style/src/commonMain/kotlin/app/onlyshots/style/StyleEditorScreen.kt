@@ -1,6 +1,7 @@
 package app.onlyshots.style
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -69,9 +70,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -405,42 +404,62 @@ fun StyleEditorBody(
         }
     val layout = LocalWindowLayout.current
     if (layout.kind == LayoutKind.Wide) {
-        // The whole frame beside the controls, the colour and save sheets inside the controls' panel.
-        WidePanes(
-            layout,
-            modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding(),
-            // On a medium window the two share it, as the adaptive scaffold split it; the wider panel on an expanded
-            // one.
-            panelWidth =
-                STYLE_PANEL_WIDTH.takeIf {
-                    with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() } >= 840.dp
-                },
-            main = {
-                Column(Modifier.fillMaxSize()) {
-                    header()
-                    Preview(
-                        draft,
-                        image,
-                        live,
-                        luma,
-                        frames.size,
-                        onFrame = { d -> frame = (frame + d).coerceIn(0, (frames.size - 1).coerceAtLeast(0)) },
-                        modifier = Modifier.weight(1f).padding(bottom = CgSpace.S16),
-                        full = true,
-                        sharedKey = sharedKey,
-                    )
-                }
-            },
-            panel = {
-                Box(Modifier.fillMaxSize()) {
+        // The whole frame beside the controls, the colour and save sheets inside the controls' panel (on a fold, the
+        // header and frame on the left page, the tabs, controls and sheets on the right).
+        BoxWithConstraints(modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding()) {
+            WidePanes(
+                layout,
+                Modifier.fillMaxSize(),
+                // On a medium window the two share it, as the adaptive scaffold split it; the wider panel on an
+                // expanded
+                // one.
+                panelWidth = STYLE_PANEL_WIDTH.takeIf { maxWidth >= EXPANDED_WIDTH },
+                // The panel meets the frame at a hairline, as on the canvas.
+                gap = false,
+                main = {
                     Column(Modifier.fillMaxSize()) {
-                        Tabs(tab) { tab = it }
-                        controls(Modifier.fillMaxWidth().weight(1f))
+                        header()
+                        Preview(
+                            draft,
+                            image,
+                            live,
+                            luma,
+                            frames.size,
+                            onFrame = { d -> frame = (frame + d).coerceIn(0, (frames.size - 1).coerceAtLeast(0)) },
+                            modifier = Modifier.weight(1f).padding(bottom = CgSpace.S16),
+                            full = true,
+                            sharedKey = sharedKey,
+                        )
                     }
-                    Box(Modifier.align(Alignment.BottomCenter)) { sheets() }
-                }
-            },
-        )
+                },
+                panel = {
+                    Box(
+                        Modifier.fillMaxSize().background(CgColors.Surface.Base).drawBehind {
+                            drawRect(CgColors.Line.Hairline, Offset.Zero, Size(CgStroke.Hairline.toPx(), size.height))
+                        }
+                    ) {
+                        Column(Modifier.fillMaxSize()) {
+                            Tabs(tab, tall = true) { tab = it }
+                            controls(Modifier.fillMaxWidth().weight(1f))
+                        }
+                        // The controls dim under a sheet; the frame beside stays in full view. A tap on them closes a
+                        // colour.
+                        AnimatedVisibility(
+                            sheet != null,
+                            enter = fadeIn(CgMotion.short()),
+                            exit = fadeOut(CgMotion.short()),
+                        ) {
+                            Box(
+                                Modifier.fillMaxSize()
+                                    .background(CgColors.Surface.Scrim.copy(alpha = 0.6f))
+                                    .pointerInput(Unit) { detectTapGestures { color = null } }
+                            )
+                        }
+                        Box(Modifier.align(Alignment.BottomCenter)) { sheets() }
+                    }
+                },
+            )
+        }
         return
     }
     Box(modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding()) {
@@ -579,6 +598,25 @@ private fun Preview(
 ) {
     val haze = rememberHazeState()
     val drag = live == null && frameCount > 1
+    // What the picture is and what dragging it does: inside the frame when the whole frame shows, else over the
+    // strip.
+    val caption =
+        @Composable {
+            Text(
+                when {
+                    live != null -> live.caption
+                    frameCount > 1 -> stringResource(Res.string.style_preview_drag)
+                    else -> stringResource(Res.string.style_preview_record)
+                }.caps(),
+                style = CgTheme.type.labelStrong,
+                modifier =
+                    Modifier.padding(CgSpace.S8)
+                        .background(CgColors.Surface.Base.copy(alpha = 0.85f))
+                        .border(CgStroke.Hairline, CgColors.Line.Hairline)
+                        .padding(horizontal = CgSpace.S8, vertical = CgSpace.S4),
+                color = CgColors.Text.Primary,
+            )
+        }
     BoxWithConstraints(
         (if (full) modifier.fillMaxSize() else modifier.fillMaxWidth().height(PREVIEW_HEIGHT))
             // Grows out of the tile it was opened from. Drawn in its own layer: the picture under it may be a camera
@@ -587,6 +625,7 @@ private fun Preview(
             .clipToBounds()
             .drawWithContent {
                 drawContent()
+                if (full) return@drawWithContent
                 val h = CgStroke.Hairline.toPx()
                 drawRect(CgColors.Line.Hairline, Offset(0f, size.height - h), Size(size.width, h))
             }
@@ -613,7 +652,11 @@ private fun Preview(
             if (full)
                 Modifier.align(Alignment.Center)
                     .fillMaxHeight()
+                    .padding(CgSpace.S24)
                     .aspectRatio(9f / 16f, matchHeightConstraintsFirst = true)
+                    .border(CgStroke.Hairline, CgColors.Line.Hairline)
+                    .padding(CgStroke.Hairline)
+                    .clipToBounds()
             else
                 Modifier.wrapContentSize(Alignment.TopStart, unbounded = true)
                     .requiredSize(maxWidth, frameH)
@@ -638,32 +681,25 @@ private fun Preview(
                 hazeState = haze,
                 backdropLuma = luma,
             )
+            if (full) caption()
         }
-        Text(
-            when {
-                live != null -> live.caption
-                frameCount > 1 -> stringResource(Res.string.style_preview_drag)
-                else -> stringResource(Res.string.style_preview_record)
-            }.caps(),
-            style = CgTheme.type.labelStrong,
-            modifier =
-                Modifier.padding(CgSpace.S8)
-                    .background(CgColors.Surface.Base.copy(alpha = 0.85f))
-                    .border(CgStroke.Hairline, CgColors.Line.Hairline)
-                    .padding(horizontal = CgSpace.S8, vertical = CgSpace.S4),
-            color = CgColors.Text.Primary,
-        )
+        if (!full) caption()
     }
 }
 
 @Composable
-private fun Tabs(tab: StyleTab, onTab: (StyleTab) -> Unit) {
+private fun Tabs(
+    tab: StyleTab,
+    /** As tall as the header beside it (a wide window), so the two rules line up. */
+    tall: Boolean = false,
+    onTab: (StyleTab) -> Unit,
+) {
     // The underline slides from tab to tab; drawn under the row, so only drawing follows it.
     val at = remember { Animatable(tab.ordinal.toFloat()) }
     LaunchedEffect(tab) { at.animateTo(tab.ordinal.toFloat(), CgMotion.settle()) }
     val count = StyleTab.entries.size
     Row(
-        Modifier.fillMaxWidth().height(CgSize.Touch).drawBehind {
+        Modifier.fillMaxWidth().height(if (tall) HEADER_HEIGHT else CgSize.Touch).drawBehind {
             val w = size.width / count
             val line = CgStroke.Hairline.toPx()
             drawRect(CgColors.Line.Hairline, Offset(0f, size.height - line), Size(size.width, line))
@@ -1014,6 +1050,12 @@ private fun DrawScope.dashedRule(color: Color) {
 
 /** The controls' panel beside the preview on a wide window. */
 private val STYLE_PANEL_WIDTH = 420.dp
+
+/** From here a window is expanded and the panel takes [STYLE_PANEL_WIDTH]; below, half the width. */
+private val EXPANDED_WIDTH = 840.dp
+
+/** The header: a 44 dp key with 8 dp around it. */
+private val HEADER_HEIGHT = CgSize.Touch + CgSpace.S8 * 2
 private val PREVIEW_SHIFT = 120.dp
 
 /** Where the graph sits in the 390 × 693 frame: 14 px in, under the shift, 170 tall — Figma's layout. */

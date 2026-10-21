@@ -3,10 +3,10 @@ package app.onlyshots.record
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.onlyshots.TestTags
@@ -69,8 +70,6 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
-import app.onlyshots.core.designsystem.component.CgButton
-import app.onlyshots.core.designsystem.component.CgButtonKind
 import app.onlyshots.core.designsystem.component.IconCircleButton
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.ReadingTile
@@ -92,6 +91,8 @@ import app.onlyshots.core.resources.record_simulate_shot
 import app.onlyshots.core.resources.record_status_no_machine
 import app.onlyshots.core.resources.record_stops
 import app.onlyshots.core.resources.text
+import app.onlyshots.layout.LayoutKind
+import app.onlyshots.layout.LocalWindowLayout
 import app.onlyshots.machineLabel
 import org.jetbrains.compose.resources.stringResource
 
@@ -270,60 +271,60 @@ internal fun TakeStatus(state: RecordUiState, modifier: Modifier = Modifier) {
     }
 }
 
-/** The clock and the quality on the left, the record button on the right; "simulate shot" in a debug build. */
+/**
+ * The clock and the quality on the left, the record button on the right and "simulate shot" beside it, where there is
+ * one. [clock] is how large the clock is: as large as the posture's panel has room for. Armed, the word is the signal.
+ */
 @Composable
-internal fun TakeFooter(take: TakeInputs) {
+internal fun TakeFooter(take: TakeInputs, clock: TextStyle = CgTheme.type.cardTitle) {
     val state = take.state
-    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(CgSpace.S16),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                // While filming, the take's one clock (the brew's, once the shot runs); before, a word says where
-                // things stand. One gives way to the other with a fade.
-                AnimatedContent(
-                    state.recording,
-                    transitionSpec = {
-                        fadeIn(CgMotion.medium()) togetherWith
-                            fadeOut(CgMotion.short()) using
-                            SizeTransform { _, _ -> CgMotion.sizeSpec }
-                    },
-                    label = "clock",
-                ) { recording ->
-                    if (recording) Text(state.status.text(), style = CgTheme.type.cardTitle)
-                    else
-                        Text(
-                            when {
-                                state.phase == RecordPhase.ARMED -> stringResource(Res.string.record_armed)
-                                else -> stringResource(Res.string.record_ready)
-                            },
-                            style = CgTheme.type.cardTitle,
-                        )
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S16),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
+            // While filming, the take's one clock (the brew's, once the shot runs); before, a word says where
+            // things stand. One gives way to the other with a fade.
+            AnimatedContent(
+                state.recording,
+                transitionSpec = {
+                    fadeIn(CgMotion.medium()) togetherWith
+                        fadeOut(CgMotion.short()) using
+                        SizeTransform { _, _ -> CgMotion.sizeSpec }
+                },
+                label = "clock",
+            ) { recording ->
+                if (recording) Text(state.status.text(), style = clock)
+                else {
+                    val armed = state.phase == RecordPhase.ARMED
+                    Text(
+                        stringResource(if (armed) Res.string.record_armed else Res.string.record_ready).caps(),
+                        style = clock,
+                        color = if (armed) CgColors.Brand.Signal else CgColors.Text.Primary,
+                    )
                 }
-                Text(
-                    takeQuality(take.camera.supports4k, take.camera.micOn).text(),
-                    style = CgTheme.type.caption,
-                    color = CgColors.Text.Secondary,
-                )
             }
-            RecordButton(
-                state.buttonState(),
-                onClick = take.actions::recordPressed,
-                modifier = Modifier.testTag(TestTags.RecordButton),
+            Text(
+                takeQuality(take.camera.supports4k, take.camera.micOn).text(),
+                style = CgTheme.type.caption,
+                color = CgColors.Text.Secondary,
             )
         }
+        RecordButton(
+            state.buttonState(),
+            onClick = take.actions::recordPressed,
+            modifier = Modifier.testTag(TestTags.RecordButton),
+        )
         AnimatedVisibility(
             take.canSimulate,
-            enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
-            exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+            enter = fadeIn(CgMotion.medium()) + expandHorizontally(CgMotion.sizeSpec),
+            exit = fadeOut(CgMotion.short()) + shrinkHorizontally(CgMotion.sizeSpec),
         ) {
-            CgButton(
+            Pill(
                 stringResource(Res.string.record_simulate_shot),
                 onClick = take.actions::simulateShot,
-                kind = CgButtonKind.Secondary,
-                modifier = Modifier.testTag(TestTags.RecordSimulate),
+                modifier = Modifier.widthIn(max = SIMULATE_WIDTH).testTag(TestTags.RecordSimulate),
             )
         }
     }
@@ -337,6 +338,7 @@ internal fun TakeFooter(take: TakeInputs) {
 internal fun PanelColumn(
     modifier: Modifier = Modifier,
     footer: TakeInputs? = null,
+    clock: TextStyle = CgTheme.type.cardTitle,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(modifier.fillMaxSize().padding(CgSpace.S16, CgSpace.S16, CgSpace.S16, CgSpace.S24)) {
@@ -346,47 +348,82 @@ internal fun PanelColumn(
             content = content,
         )
         footer?.let {
-            Spacer(Modifier.size(CgSpace.S16))
-            TakeFooter(it)
+            // Under a hairline, the clock and the button: where the thumb expects them.
+            Spacer(Modifier.size(CgSpace.S12))
+            Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
+            Spacer(Modifier.size(CgSpace.S12))
+            TakeFooter(it, clock)
         }
     }
 }
 
 /**
- * A book foldable resting on its side: under the camera, the source, the rules and the readings that matter before a
- * shot, and the button.
+ * A book foldable resting on its side: under the camera, the source along the top; then the status, the rules and the
+ * readings that matter before a shot on the left, and beside them, past a hairline, the lenses, the clock and the
+ * button. [zoom] is the lenses' strip, where the camera has more than one.
  */
 @Composable
-internal fun TabletopPanel(take: TakeInputs, modifier: Modifier = Modifier) {
-    PanelColumn(modifier, footer = take) {
+internal fun TabletopPanel(
+    take: TakeInputs,
+    modifier: Modifier = Modifier,
+    zoom: @Composable (Modifier) -> Unit = {},
+) {
+    Column(
+        modifier.fillMaxSize().padding(start = CgSpace.S24, end = CgSpace.S24, top = CgSpace.S12, bottom = CgSpace.S16),
+        verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
+    ) {
         TakeTopRow(take, back = true)
-        RulesBlock(take, Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline))
-        // Recording, every reading; before, the two that matter, faded one into the other.
-        AnimatedContent(
-            take.state.recording,
-            transitionSpec = {
-                fadeIn(CgMotion.medium()) togetherWith
-                    fadeOut(CgMotion.short()) using
-                    SizeTransform { _, _ -> CgMotion.sizeSpec }
-            },
-            label = "tabletop",
-        ) { recording ->
-            if (recording) ReadingsGrid(take, columns = 4, large = false)
-            else ReadingsGrid(take, columns = 2, large = false, only = setOf(Quantity.Temperature, Quantity.Weight))
+        Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(CgSpace.S24)) {
+            Column(
+                Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
+            ) {
+                if (take.state.statusWorthShowing) TakeStatus(take.state)
+                RulesBlock(take, Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline))
+                // Recording, every reading; before, the two that matter, faded one into the other.
+                AnimatedContent(
+                    take.state.recording,
+                    transitionSpec = {
+                        fadeIn(CgMotion.medium()) togetherWith
+                            fadeOut(CgMotion.short()) using
+                            SizeTransform { _, _ -> CgMotion.sizeSpec }
+                    },
+                    label = "tabletop",
+                ) { recording ->
+                    if (recording) ReadingsGrid(take, columns = 4, large = false)
+                    else
+                        ReadingsGrid(
+                            take,
+                            columns = 2,
+                            large = true,
+                            only = setOf(Quantity.Temperature, Quantity.Weight),
+                        )
+                }
+                Banners(take.camera, take.saveError)
+            }
+            Column(
+                Modifier.width(TABLETOP_SIDE)
+                    .fillMaxHeight()
+                    .drawBehind { drawRect(CgColors.Line.Hairline, size = Size(CgStroke.Hairline.toPx(), size.height)) }
+                    .padding(start = CgSpace.S24),
+                verticalArrangement = Arrangement.spacedBy(CgSpace.S16, Alignment.Bottom),
+            ) {
+                zoom(Modifier)
+                TakeFooter(take, clock = CgTheme.type.pivot)
+            }
         }
-        Banners(take.camera, take.saveError)
     }
 }
 
 /**
- * A flip in flex mode: the camera stands in the upper half, and the lower half is the controls. Back, the source and
- * the graph, the readings, the rules, and the clock with the button.
+ * A flip in flex mode: the camera stands in the upper half, and the lower half is the controls. Back and the source,
+ * the readings as large cells, the rules, and under a hairline the clock, large, with the button.
  */
 @Composable
 internal fun FlexPanel(take: TakeInputs, modifier: Modifier = Modifier) {
-    PanelColumn(modifier, footer = take) {
+    PanelColumn(modifier, footer = take, clock = CgTheme.type.valueLarge) {
         TakeTopRow(take, back = true)
-        ReadingsGrid(take, columns = 2, large = false)
+        ReadingsGrid(take, columns = 2, large = true)
         RulesBlock(take, Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline))
         Banners(take.camera, take.saveError)
     }
@@ -419,11 +456,18 @@ internal fun RecordUiState.buttonState(): RecordButtonState =
     }
 
 /**
- * The full-screen camera's controls, floating over the picture on soft shades: back, the source and the settings along
- * the top; the rules and the record button along the bottom held upright, the button down the trailing edge on its
- * side. [zoom] is the lenses' pill: over the rules held upright, beside the button (standing, `vertical`) on its side.
+ * The full-screen camera's controls, floating over the picture: back, the source and the settings along the top, the
+ * status under them, the rules and the record key at the bottom. Where they go follows the window
+ * ([LocalWindowLayout]):
+ * - a phone held upright: a bar of its own across the bottom (the lenses just over it, the rules as two cells, the
+ *   record key in the middle and "simulate shot" to its right), as the camera apps have it;
+ * - a tablet held upright: the lenses, the key and the rules float at the bottom, centred, the rules as a card;
+ * - on its side: the lenses, the key and "simulate shot" down the trailing edge, the rules at the bottom on the start;
+ * - an open book foldable: never across the fold. The top row, the status and the rules on the left page; the lenses
+ *   and the key at the foot of the right page, where the graph is kept.
  *
- * [onClear] gets what of the window, in root px, the controls leave free: the graph is kept there.
+ * [zoom] is the lenses' strip, standing (`vertical`) on its side. [onClear] gets what of the window, in root px, the
+ * controls leave free: the graph is kept there.
  */
 @Composable
 internal fun FloatingControls(
@@ -435,23 +479,33 @@ internal fun FloatingControls(
     onClear: (Rect) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val layout = LocalWindowLayout.current
+    val fold = layout.fold && layout.kind == LayoutKind.Wide
+    val tablet = layout.kind == LayoutKind.Wide
     val state = take.state
     var top by remember { mutableStateOf(Rect.Zero) }
     var bottom by remember { mutableStateOf(Rect.Zero) }
     var side by remember { mutableStateOf(Rect.Zero) }
     var window by remember { mutableStateOf(Rect.Zero) }
+    // The right page's left edge on a fold, in root px: the graph is kept on that page.
+    var page by remember { mutableStateOf(Rect.Zero) }
     // The upright bottom bar's height, so the status chip can stand just over it.
     var bottomPx by remember { mutableIntStateOf(0) }
     val bottomHeight = with(LocalDensity.current) { bottomPx.toDp() }
-    LaunchedEffect(top, bottom, side, window, landscape) {
+    LaunchedEffect(top, bottom, side, window, page, landscape, fold) {
         if (window.isEmpty) return@LaunchedEffect
         onClear(
-            Rect(
-                window.left,
-                top.bottom.coerceAtLeast(window.top),
-                if (landscape && !side.isEmpty) side.left else window.right,
-                if (bottom.isEmpty) window.bottom else bottom.top,
-            )
+            when {
+                fold && !page.isEmpty ->
+                    Rect(page.left, page.top, page.right, if (bottom.isEmpty) page.bottom else bottom.top)
+                else ->
+                    Rect(
+                        window.left,
+                        top.bottom.coerceAtLeast(window.top),
+                        if (landscape && !side.isEmpty) side.left else window.right,
+                        if (bottom.isEmpty) window.bottom else bottom.top,
+                    )
+            }
         )
     }
     val status = @Composable { m: Modifier -> if (state.statusWorthShowing) TakeStatus(state, m) }
@@ -466,7 +520,59 @@ internal fun FloatingControls(
                 )
             }
         }
+    val recordKey =
+        @Composable {
+            RecordButton(
+                state.buttonState(),
+                onClick = take.actions::recordPressed,
+                modifier = Modifier.testTag(TestTags.RecordButton),
+            )
+        }
+    // The key centred, "simulate shot" to its right.
+    val keyRow =
+        @Composable { m: Modifier ->
+            Row(m, verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.weight(1f))
+                recordKey()
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { simulate() }
+            }
+        }
+    val rulesCard = @Composable { m: Modifier -> RulesBlock(take, m.border(CgStroke.Hairline, CgColors.Line.Hairline)) }
     Box(modifier.fillMaxSize().onGloballyPositioned { window = it.boundsInRoot() }) {
+        if (fold) {
+            // Two pages meeting at the fold, measured from the window's edge as the layout is.
+            Box(Modifier.fillMaxHeight().width(layout.splitDp.dp)) {
+                Column(
+                    Modifier.fillMaxSize().safeDrawingPadding().padding(CgSpace.S16),
+                    verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
+                ) {
+                    Box(Modifier.onGloballyPositioned { top = it.boundsInRoot() }) { TakeTopRow(take, back = true) }
+                    Banners(take.camera, take.saveError)
+                    status(Modifier)
+                    Spacer(Modifier.weight(1f))
+                    rulesCard(Modifier.fillMaxWidth())
+                }
+            }
+            Box(
+                Modifier.fillMaxSize().padding(start = (layout.splitDp + layout.hingeDp).dp).onGloballyPositioned {
+                    page = it.boundsInRoot()
+                }
+            ) {
+                Column(
+                    Modifier.align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .safeDrawingPadding()
+                        .padding(CgSpace.S16)
+                        .onGloballyPositioned { bottom = it.boundsInRoot() },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
+                ) {
+                    zoom(Modifier, false)
+                    keyRow(Modifier.fillMaxWidth())
+                }
+            }
+            return@Box
+        }
         if (landscape)
             Box(
                 Modifier.align(Alignment.CenterEnd)
@@ -474,34 +580,27 @@ internal fun FloatingControls(
                     .width(SIDE_SHADE)
                     .background(Brush.horizontalGradient(listOf(Color.Transparent, SHADE)))
             )
-        Box(Modifier.fillMaxSize().safeDrawingPadding().padding(CgSpace.S12)) {
+        Box(Modifier.fillMaxSize().safeDrawingPadding().padding(if (tablet) CgSpace.S24 else CgSpace.S12)) {
             Column(
                 Modifier.align(Alignment.TopStart).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
+                // On its side the status stands at the trailing edge, over the key.
+                horizontalAlignment = if (landscape) Alignment.End else Alignment.Start,
             ) {
                 Box(Modifier.onGloballyPositioned { top = it.boundsInRoot() }) { TakeTopRow(take, back = true) }
                 Banners(take.camera, take.saveError)
-                if (!graphOnTop) status(Modifier)
+                if (!graphOnTop || landscape) status(Modifier)
             }
             if (landscape) {
-                // The lenses to the button's start, where the thumb is.
-                Row(
+                // Down the trailing edge: the lenses standing over the key, "simulate shot" under it.
+                Column(
                     Modifier.align(Alignment.CenterEnd).onGloballyPositioned { side = it.boundsInRoot() },
-                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
-                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
                 ) {
                     zoom(Modifier, true)
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
-                    ) {
-                        RecordButton(
-                            state.buttonState(),
-                            onClick = take.actions::recordPressed,
-                            modifier = Modifier.testTag(TestTags.RecordButton),
-                        )
-                        simulate()
-                    }
+                    recordKey()
+                    simulate()
                 }
                 Column(
                     Modifier.align(Alignment.BottomStart).widthIn(max = RULES_WIDTH).onGloballyPositioned {
@@ -509,14 +608,27 @@ internal fun FloatingControls(
                     },
                     verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
                 ) {
-                    if (graphOnTop) status(Modifier)
-                    RulesBlock(take, Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline))
+                    rulesCard(Modifier)
+                }
+            } else if (tablet) {
+                // A tablet held upright: the lenses, the key and the rules float at the foot of the picture.
+                Column(
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().onGloballyPositioned {
+                        bottom = it.boundsInRoot()
+                    },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
+                ) {
+                    if (graphOnTop) status(Modifier.align(Alignment.Start))
+                    zoom(Modifier, false)
+                    keyRow(Modifier.widthIn(max = RULES_WIDTH).fillMaxWidth())
+                    rulesCard(Modifier.widthIn(max = RULES_WIDTH))
                 }
             } else if (graphOnTop) {
                 status(Modifier.align(Alignment.BottomStart).padding(bottom = bottomHeight))
             }
         }
-        if (!landscape) {
+        if (!landscape && !tablet) {
             // Held upright, the bottom is a bar of its own across the window, as the camera apps have it: the
             // lenses just over it, then the rules as two cells, then the record key in the middle and "simulate
             // shot" to its right.
@@ -550,18 +662,7 @@ internal fun FloatingControls(
                             )
                         },
                     )
-                    Row(
-                        Modifier.fillMaxWidth().padding(top = CgSpace.S16, start = CgSpace.S16, end = CgSpace.S16),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Spacer(Modifier.weight(1f))
-                        RecordButton(
-                            state.buttonState(),
-                            onClick = take.actions::recordPressed,
-                            modifier = Modifier.testTag(TestTags.RecordButton),
-                        )
-                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { simulate() }
-                    }
+                    keyRow(Modifier.fillMaxWidth().padding(top = CgSpace.S16, start = CgSpace.S16, end = CgSpace.S16))
                 }
             }
         }
@@ -574,6 +675,9 @@ private val SIDE_SHADE = 200.dp
 
 /** "simulate shot" at most: two short lines beside the record key. */
 private val SIMULATE_WIDTH = 120.dp
+
+/** The tabletop panel's trailing column: the lenses, the clock and the key. */
+private val TABLETOP_SIDE = 400.dp
 
 /** The rules strip at most: on a tablet it does not run across the whole picture. */
 private val RULES_WIDTH = 480.dp

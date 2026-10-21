@@ -3,9 +3,12 @@ package app.onlyshots.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
+import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
@@ -38,6 +42,8 @@ import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.ChoiceCard
 import app.onlyshots.core.designsystem.component.IconCircleButton
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
+import app.onlyshots.core.designsystem.component.SheetHeader
+import app.onlyshots.core.designsystem.component.signalRule
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.app_name
 import app.onlyshots.core.resources.home_about
@@ -47,6 +53,10 @@ import app.onlyshots.core.resources.home_start_question
 import app.onlyshots.core.resources.home_start_record_detail
 import app.onlyshots.core.resources.home_start_record_title
 import app.onlyshots.core.resources.start_title
+import app.onlyshots.layout.LayoutKind
+import app.onlyshots.layout.LocalWindowLayout
+import app.onlyshots.layout.PANEL_WIDTH
+import app.onlyshots.layout.WidePanes
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -56,86 +66,223 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun StartScreen(onRecord: () -> Unit, onEdit: () -> Unit, onPrivacy: (() -> Unit)? = null) {
     var help by remember { mutableStateOf(false) }
-    StartBody(onRecord = onRecord, onEdit = onEdit, onHelp = { help = true })
-    if (help) {
-        CgSheet(title = stringResource(Res.string.home_about), onDismiss = { help = false }) {
-            HelpContent(
-                onPrivacy =
-                    onPrivacy?.let { open ->
-                        {
-                            help = false
-                            open()
+    val title = stringResource(Res.string.home_about)
+    val content: @Composable () -> Unit = {
+        HelpContent(
+            onPrivacy =
+                onPrivacy?.let { open ->
+                    {
+                        help = false
+                        open()
+                    }
+                }
+        )
+    }
+    // On a book foldable the help takes the right page, in place of the choices; elsewhere it is a sheet.
+    val fold = LocalWindowLayout.current.fold
+    StartBody(
+        onRecord = onRecord,
+        onEdit = onEdit,
+        onHelp = { help = true },
+        helpPage =
+            if (help && fold) {
+                {
+                    Column(Modifier.fillMaxSize().signalRule().padding(top = CgStroke.Rule)) {
+                        SheetHeader(title, onDone = { help = false })
+                        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(CgSpace.S16)) {
+                            content()
                         }
                     }
-            )
+                }
+            } else {
+                null
+            },
+    )
+    if (help && !fold) CgSheet(title = title, onDismiss = { help = false }) { content() }
+}
+
+/**
+ * The start screen from plain callbacks, so the screenshot tests can draw it. A phone has one column, the choices at
+ * the bottom where the thumb is. A wide window turned on its side puts the headline on the left and the choices in a
+ * panel on the right (one page each on a book foldable); an upright one stays a column, the two choices side by side.
+ */
+@Composable
+fun StartBody(
+    onRecord: () -> Unit,
+    onEdit: () -> Unit,
+    modifier: Modifier = Modifier,
+    onHelp: () -> Unit = {},
+    /** On a book foldable, the help as the right page, in place of the choices. */
+    helpPage: (@Composable () -> Unit)? = null,
+) {
+    val layout = LocalWindowLayout.current
+    BoxWithConstraints(modifier.fillMaxSize().background(CgColors.Surface.Base).drawBehind { drawGrid() }) {
+        when {
+            layout.kind != LayoutKind.Wide -> PhoneStart(onRecord, onEdit, onHelp)
+            layout.fold || maxWidth > maxHeight ->
+                WidePanes(
+                    layout,
+                    panelWidth = PANEL_WIDTH,
+                    gap = false,
+                    main = {
+                        Column(
+                            Modifier.fillMaxSize()
+                                .safeDrawingPadding()
+                                .padding(horizontal = if (layout.fold) CgSpace.S16 else 48.dp)
+                                .padding(top = if (layout.fold) 48.dp else 40.dp, bottom = 32.dp),
+                            verticalArrangement = Arrangement.spacedBy(28.dp),
+                        ) {
+                            StartHeader(onHelp = null, big = !layout.fold)
+                            if (layout.fold) Spacer(Modifier.weight(1f))
+                            Headline(big = !layout.fold)
+                        }
+                    },
+                ) {
+                    if (layout.fold && helpPage != null) {
+                        helpPage()
+                        return@WidePanes
+                    }
+                    Column(
+                        Modifier.fillMaxSize()
+                            .drawBehind {
+                                drawLine(
+                                    CgColors.Line.Hairline,
+                                    Offset.Zero,
+                                    Offset(0f, size.height),
+                                    CgStroke.Hairline.toPx(),
+                                )
+                            }
+                            .safeDrawingPadding()
+                            .padding(horizontal = if (layout.fold) CgSpace.S16 else CgSpace.S24)
+                            .padding(top = if (layout.fold) 48.dp else 40.dp, bottom = 32.dp),
+                        verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { HelpKey(onHelp) }
+                        Spacer(Modifier.weight(1f))
+                        Choices(onRecord, onEdit, sideBySide = false)
+                    }
+                }
+            else ->
+                Column(
+                    Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 40.dp, vertical = 40.dp),
+                    verticalArrangement = Arrangement.spacedBy(32.dp),
+                ) {
+                    StartHeader(onHelp = onHelp, big = true)
+                    Headline(big = true)
+                    Spacer(Modifier.weight(1f))
+                    Choices(onRecord, onEdit, sideBySide = true)
+                }
         }
     }
 }
 
-/** The start screen from plain callbacks, so the screenshot tests can draw it. */
+/** The phone's start: one column, the headline scrolling if the window is short, the choices at the bottom. */
 @Composable
-fun StartBody(onRecord: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Modifier, onHelp: () -> Unit = {}) {
-    Box(
-        modifier.fillMaxSize().background(CgColors.Surface.Base).drawBehind { drawGrid() }.safeDrawingPadding(),
-        Alignment.TopCenter,
-    ) {
-        // A phone column; on a tablet it stays one, centred.
+private fun PhoneStart(onRecord: () -> Unit, onEdit: () -> Unit, onHelp: () -> Unit) {
+    Box(Modifier.fillMaxSize().safeDrawingPadding(), Alignment.TopCenter) {
         Column(Modifier.widthIn(max = 480.dp).fillMaxSize().padding(horizontal = CgSpace.S16)) {
-            Row(
-                Modifier.fillMaxWidth().height(60.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OnlyShotsMark(splashTarget = true)
-                Text(
-                    stringResource(Res.string.app_name).caps(),
-                    style = CgTheme.type.label.copy(letterSpacing = CgTheme.type.labelStrong.letterSpacing),
-                    modifier = Modifier.weight(1f),
-                )
-                IconCircleButton(
-                    CgIcons.Help,
-                    stringResource(Res.string.home_about),
-                    onClick = onHelp,
-                    modifier = Modifier.testTag(TestTags.StartHelp),
-                )
-            }
-            // The headline scrolls if the window is short; the two choices stay at the bottom, where the thumb is.
+            StartHeader(onHelp = onHelp, big = false)
             Column(
                 Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
             ) {
                 Spacer(Modifier.height(CgSpace.S24))
-                Text(stringResource(Res.string.start_title), style = CgTheme.type.pivot)
+                Headline(big = false)
             }
-            Column(
-                Modifier.fillMaxWidth().padding(top = CgSpace.S16, bottom = CgSpace.S24),
-                verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
-            ) {
-                Text(
-                    stringResource(Res.string.home_start_question).caps(),
-                    style = CgTheme.type.labelStrong,
-                    color = CgColors.Text.Secondary,
+            Box(Modifier.padding(top = CgSpace.S16, bottom = CgSpace.S24)) {
+                Choices(onRecord, onEdit, sideBySide = false)
+            }
+        }
+    }
+}
+
+/** The mark (where the splash lands) and the name; the help key at the end when [onHelp] is given. */
+@Composable
+private fun StartHeader(onHelp: (() -> Unit)?, big: Boolean) {
+    Row(
+        Modifier.fillMaxWidth().height(if (big) CgSize.Touch else 60.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (big) CgSpace.S12 else 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OnlyShotsMark(splashTarget = true)
+        Text(
+            stringResource(Res.string.app_name).caps(),
+            style =
+                (if (big) CgTheme.type.screenTitle else CgTheme.type.label).copy(
+                    letterSpacing = CgTheme.type.labelStrong.letterSpacing
+                ),
+            modifier = Modifier.weight(1f),
+        )
+        if (onHelp != null) HelpKey(onHelp)
+    }
+}
+
+@Composable
+private fun HelpKey(onHelp: () -> Unit) {
+    IconCircleButton(
+        CgIcons.Help,
+        stringResource(Res.string.home_about),
+        onClick = onHelp,
+        modifier = Modifier.testTag(TestTags.StartHelp),
+    )
+}
+
+/** "Your shot, with its graph": the phone's headline, or the large Mono one of a wide window. */
+@Composable
+private fun Headline(big: Boolean) {
+    Text(
+        stringResource(Res.string.start_title),
+        style =
+            if (big) {
+                CgTheme.type.valueLarge.copy(
+                    letterSpacing = CgTheme.type.pivot.letterSpacing,
+                    lineHeight = CgTheme.type.valueLarge.fontSize * 1.1f,
                 )
-                // The two choices as one grid: cells meeting on a hairline.
-                Column {
-                    ChoiceCard(
-                        icon = CgIcons.Record,
-                        tileColor = CgColors.Status.Record,
-                        title = stringResource(Res.string.home_start_record_title),
-                        detail = stringResource(Res.string.home_start_record_detail),
-                        onClick = onRecord,
-                        signal = true,
-                        modifier = Modifier.testTag(TestTags.StartRecord),
-                    )
-                    ChoiceCard(
-                        icon = CgIcons.Film,
-                        tileColor = CgColors.Surface.Raised,
-                        title = stringResource(Res.string.home_start_edit_title),
-                        detail = stringResource(Res.string.home_start_edit_detail),
-                        onClick = onEdit,
-                        modifier = Modifier.testTag(TestTags.StartCompose),
-                    )
-                }
+            } else {
+                CgTheme.type.pivot
+            },
+    )
+}
+
+/** The question and the two ways in, as one grid of cells meeting on a hairline: stacked, or [sideBySide]. */
+@Composable
+private fun Choices(onRecord: () -> Unit, onEdit: () -> Unit, sideBySide: Boolean) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
+        Text(
+            stringResource(Res.string.home_start_question).caps(),
+            style = CgTheme.type.labelStrong,
+            color = CgColors.Text.Secondary,
+        )
+        val record: @Composable (Modifier) -> Unit = { m ->
+            ChoiceCard(
+                icon = CgIcons.Record,
+                tileColor = CgColors.Status.Record,
+                title = stringResource(Res.string.home_start_record_title),
+                detail = stringResource(Res.string.home_start_record_detail),
+                onClick = onRecord,
+                signal = true,
+                modifier = m.testTag(TestTags.StartRecord),
+            )
+        }
+        val compose: @Composable (Modifier) -> Unit = { m ->
+            ChoiceCard(
+                icon = CgIcons.Film,
+                tileColor = CgColors.Surface.Raised,
+                title = stringResource(Res.string.home_start_edit_title),
+                detail = stringResource(Res.string.home_start_edit_detail),
+                onClick = onEdit,
+                modifier = m.testTag(TestTags.StartCompose),
+            )
+        }
+        if (sideBySide) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                record(Modifier.weight(1f).fillMaxHeight())
+                compose(Modifier.weight(1f).fillMaxHeight())
+            }
+        } else {
+            Column {
+                record(Modifier)
+                compose(Modifier)
             }
         }
     }

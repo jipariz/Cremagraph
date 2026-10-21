@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -27,7 +28,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.PathEffect
@@ -132,24 +133,29 @@ fun OverlayEditLayer(
             Modifier.offset(maxWidth * rect.x, maxHeight * rect.y)
                 .size(maxWidth * rect.w, maxHeight * rect.h)
                 .onGloballyPositioned { coords[0] = it }
-                .drawBehind {
-                    if (chrome == 0f) return@drawBehind
-                    // A signal outline, thicker while it is held.
+                .drawWithCache {
+                    // The outline's stroke is made again only when its width changes (while it thickens under the
+                    // finger), not on every frame the graph is drawn.
                     val stroke = (1f + 1f * grab).dp.toPx()
-                    drawRect(
-                        CgColors.Brand.Signal.copy(alpha = chrome),
-                        topLeft = Offset(stroke / 2, stroke / 2),
-                        size = Size(size.width - stroke, size.height - stroke),
-                        style = Stroke(stroke),
-                    )
-                    // Every corner resizes: a filled signal square centred on it, a size larger while held.
+                    val outline = Stroke(stroke)
                     val grip = (GRIP + 4f * grab).dp.toPx()
-                    for (cx in floatArrayOf(0f, size.width)) for (cy in floatArrayOf(0f, size.height)) {
+                    onDrawBehind {
+                        if (chrome == 0f) return@onDrawBehind
+                        val signal = CgColors.Brand.Signal.copy(alpha = chrome)
+                        // A signal outline, thicker while it is held.
                         drawRect(
-                            CgColors.Brand.Signal.copy(alpha = chrome),
-                            topLeft = Offset(cx - grip / 2, cy - grip / 2),
-                            size = Size(grip, grip),
+                            signal,
+                            topLeft = Offset(stroke / 2, stroke / 2),
+                            size = Size(size.width - stroke, size.height - stroke),
+                            style = outline,
                         )
+                        // Every corner resizes: a filled signal square centred on it, a size larger while held.
+                        fun corner(cx: Float, cy: Float) =
+                            drawRect(signal, topLeft = Offset(cx - grip / 2, cy - grip / 2), size = Size(grip, grip))
+                        corner(0f, 0f)
+                        corner(0f, size.height)
+                        corner(size.width, 0f)
+                        corner(size.width, size.height)
                     }
                 }
                 .testTag(TestTags.Graph)
@@ -161,7 +167,7 @@ fun OverlayEditLayer(
                         true
                     }
                 }
-                .pointerInput(frameW, frameH) {
+                .pointerInput(frameW, frameH, format) {
                     val touch = CgSize.Touch.toPx()
                     val pullX = SNAP_PULL.dp.toPx() / frameW
                     val pullY = SNAP_PULL.dp.toPx() / frameH
@@ -256,18 +262,23 @@ fun OverlayEditLayer(
 /** Dashed orange hairlines across the frame where the graph snapped. */
 @Composable
 private fun Guides(snap: OverlaySnap.Snapped) {
-    Canvas(Modifier.fillMaxSize()) {
-        val w = CgStroke.Hairline.toPx()
-        val dash = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))
-        snap.vertical?.let {
-            val y = it.guide * size.height
-            drawLine(CgColors.Brand.Signal, Offset(0f, y), Offset(size.width, y), w, pathEffect = dash)
+    // The dash is made once per density, not on every frame of the drag.
+    Spacer(
+        Modifier.fillMaxSize().drawWithCache {
+            val w = CgStroke.Hairline.toPx()
+            val dash = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))
+            onDrawBehind {
+                snap.vertical?.let {
+                    val y = it.guide * size.height
+                    drawLine(CgColors.Brand.Signal, Offset(0f, y), Offset(size.width, y), w, pathEffect = dash)
+                }
+                snap.horizontal?.let {
+                    val x = it.guide * size.width
+                    drawLine(CgColors.Brand.Signal, Offset(x, 0f), Offset(x, size.height), w, pathEffect = dash)
+                }
+            }
         }
-        snap.horizontal?.let {
-            val x = it.guide * size.width
-            drawLine(CgColors.Brand.Signal, Offset(x, 0f), Offset(x, size.height), w, pathEffect = dash)
-        }
-    }
+    )
 }
 
 /**

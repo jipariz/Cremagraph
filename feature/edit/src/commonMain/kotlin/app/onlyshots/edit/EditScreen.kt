@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,10 +52,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
@@ -73,6 +72,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -83,6 +83,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import app.onlyshots.SharedKeys
 import app.onlyshots.StyleEditorRoute
 import app.onlyshots.TestTags
@@ -257,7 +260,9 @@ fun EditScreen(
     // button and the system back alike. An open sheet is put down before anything else.
     var askLeave by remember { mutableStateOf(false) }
     val leave = { if (ui.kept || !askBeforeLeaving) onBack() else askLeave = true }
-    BackHandler { if (ui.sheet != null && ui.exporting == null) viewModel.closeSheet() else leave() }
+    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None)) {
+        if (ui.sheet != null && ui.exporting == null) viewModel.closeSheet() else leave()
+    }
     if (askLeave) {
         CgDialog(
             title = stringResource(Res.string.edit_leave_title),
@@ -949,6 +954,8 @@ private fun Picture(
                 ?.takeIf { doneOnPicture || !reframing }
                 ?.let { set ->
                     // It travels between the two rather than jumping.
+                    // It travels between the two rather than jumping; the slide is read in layout, so only the key
+                    // moves, not the picture recomposing under it.
                     val bias by animateFloatAsState(if (reframing) 1f else -1f, CgMotion.settle(), label = "switch")
                     Pill(
                         if (reframing) stringResource(Res.string.edit_done)
@@ -958,7 +965,8 @@ private fun Picture(
                         icon = if (reframing) null else CgIcons.Frame,
                         overVideo = true,
                         modifier =
-                            Modifier.align(BiasAlignment(1f, bias))
+                            Modifier.align(Alignment.TopEnd)
+                                .biasedDown { bias }
                                 .padding(horizontal = CgSpace.S8)
                                 .graphicsLayer { alpha = keys }
                                 .testTag(TestTags.EditFrame),
@@ -1348,7 +1356,7 @@ private fun PlayerHalf(
                 light = reframing,
             )
             Spacer(Modifier.weight(1f))
-            Text(clock(player.positionUs), style = CgTheme.type.pivot)
+            PlayheadClock(player)
             Text(
                 stringResource(Res.string.edit_of_duration, clock(video.durationUs)),
                 style = CgTheme.type.caption,
@@ -1554,6 +1562,29 @@ private fun PlayMark(taps: Int, playing: Boolean, idle: Boolean, modifier: Modif
 }
 
 private const val PLAY_MARK_HOLD_MS = 300
+
+/**
+ * Where the playhead is, as a clock: its own scope, changing only when the shown time does (tenths), so playback does
+ * not recompose the half of the screen around it every frame.
+ */
+@Composable
+private fun PlayheadClock(player: PlayerState) {
+    val shown by remember(player) { derivedStateOf { clock(player.positionUs) } }
+    Text(shown, style = CgTheme.type.pivot)
+}
+
+/**
+ * Places the content down its parent's height as `BiasAlignment(_, bias)` would (−1 top, 1 bottom), reading [bias]
+ * while laying out: an animated bias then moves the content without recomposing anything.
+ */
+private fun Modifier.biasedDown(bias: () -> Float): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints.copy(minHeight = 0))
+    val height = if (constraints.hasBoundedHeight) constraints.maxHeight else placeable.height
+    layout(placeable.width, height) {
+        val space = (height - placeable.height).toFloat()
+        placeable.place(0, (space / 2f * (1f + bias())).roundToInt())
+    }
+}
 
 /** A hairline along the bottom edge: under the top bars. */
 private fun Modifier.bottomRule(): Modifier = drawBehind {

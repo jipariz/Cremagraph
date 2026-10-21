@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -624,6 +625,8 @@ private fun Preview(
                 color = CgColors.Text.Primary,
             )
         }
+    // The drag outlives a recomposition (more frames loaded): it steps through the frames as they are now.
+    val frameBy by rememberUpdatedState(onFrame)
     BoxWithConstraints(
         (if (full) modifier.fillMaxSize() else modifier.fillMaxWidth().height(PREVIEW_HEIGHT))
             // Grows out of the tile it was opened from. Drawn in its own layer: the picture under it may be a camera
@@ -643,11 +646,11 @@ private fun Preview(
                     acc += dx
                     val step = 24.dp.toPx()
                     while (acc > step) {
-                        onFrame(-1)
+                        frameBy(-1)
                         acc -= step
                     }
                     while (acc < -step) {
-                        onFrame(1)
+                        frameBy(1)
                         acc += step
                     }
                 }
@@ -797,8 +800,11 @@ internal fun ReadabilityWarning(s: GraphStyle, luma: Float, change: ((GraphStyle
                 style = CgTheme.type.caption,
                 color = CgColors.Text.Secondary,
             )
+            // The whole 44 dp cell takes the tap; the amber key drawn in it is smaller.
             Box(
-                Modifier.heightIn(min = CgSize.Touch).padding(top = CgSpace.S4),
+                Modifier.heightIn(min = CgSize.Touch)
+                    .clickable(role = Role.Button) { change { it.fixReadability(luma) } }
+                    .padding(top = CgSpace.S4),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 Text(
@@ -808,7 +814,6 @@ internal fun ReadabilityWarning(s: GraphStyle, luma: Float, change: ((GraphStyle
                     modifier =
                         Modifier.heightIn(min = 36.dp)
                             .background(CgColors.Status.Warning)
-                            .clickable(role = Role.Button) { change { it.fixReadability(luma) } }
                             .padding(horizontal = CgSpace.S12, vertical = 10.dp),
                 )
             }
@@ -920,17 +925,19 @@ private fun HueStrip(current: Int, onPick: (Int) -> Unit) {
     val (_, s0, v0) = current.toHsv()
     val sat = if (s0 < 0.15f) 0.6f else s0
     val value = if (v0 < 0.3f) 0.9f else v0
+    // The caller's pick carries the colour's current opacity: keep the gestures calling the latest one.
+    val pickNow by rememberUpdatedState(onPick)
     Canvas(
         Modifier.fillMaxWidth()
             .height(32.dp)
             .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .pointerInput(sat, value) {
-                fun pick(x: Float) = onPick(hsv((x / size.width).coerceIn(0f, 1f) * 360f, sat, value))
+                fun pick(x: Float) = pickNow(hsv((x / size.width).coerceIn(0f, 1f) * 360f, sat, value))
                 detectTapGestures { pick(it.x) }
             }
             .pointerInput(sat, value) {
                 detectHorizontalDragGestures { change, _ ->
-                    onPick(hsv((change.position.x / size.width).coerceIn(0f, 1f) * 360f, sat, value))
+                    pickNow(hsv((change.position.x / size.width).coerceIn(0f, 1f) * 360f, sat, value))
                 }
             }
     ) {

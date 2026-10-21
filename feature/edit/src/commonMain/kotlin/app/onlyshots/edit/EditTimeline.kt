@@ -132,6 +132,11 @@ fun EditTimeline(
     val act by rememberUpdatedState(actions)
     // Compact, the strip is drawn [COMPACT_SHIFT] higher: gestures read where they would land on the full timeline.
     val shift by rememberUpdatedState(if (compact) COMPACT_SHIFT else 0)
+    // The pump start arrives once the sound is read (and goes when the start is locked): snap to the one there now.
+    val pump by rememberUpdatedState(pumpUs)
+    // Drawn every frame of playback: the header's styles made once, the playhead's triangle refilled in place.
+    val headerStyles = remember(type) { HeaderStyles(type) }
+    val playheadTri = remember { Path() }
     val description = stringResource(Res.string.edit_timeline_description)
     val words =
         HeaderWords(
@@ -227,7 +232,7 @@ fun EditTimeline(
                                     TimelineMath.snap(
                                         pressView.us(x),
                                         listOf(
-                                            SnapTarget.PUMP_START to pumpUs,
+                                            SnapTarget.PUMP_START to pump,
                                             SnapTarget.PLAYHEAD to playheadNow(),
                                         ),
                                         pull,
@@ -284,16 +289,16 @@ fun EditTimeline(
             translate(top = -COMPACT_SHIFT.dp.toPx()) {
                 strip(item, v, pad, thumbnails, sweep?.value)
                 flag(item, v)
-                playheadMark(v)
+                playheadMark(v, playheadTri)
             }
         } else {
-            header(text, type, words, v)
+            header(text, headerStyles, words, v)
             overview(item, v, pad)
             ruler(text, type, v, pad)
             strip(item, v, pad, thumbnails, sweep?.value)
             wave(v, pad, waveform, pumpUs, item.durationUs)
             flag(item, v)
-            playheadMark(v)
+            playheadMark(v, playheadTri)
         }
     }
 }
@@ -301,15 +306,23 @@ fun EditTimeline(
 /** The header's words, put into words in composition for the canvas to draw. */
 private class HeaderWords(val trim: String, val zoom: String, val length: String, val cut: String?)
 
+/** The header's text styles, made once per typography rather than on every frame it is drawn. */
+private class HeaderStyles(type: CgTypography) {
+    val style = type.data.copy(color = CgColors.Text.Primary)
+    val dim = style.copy(color = CgColors.Text.Dim)
+    val warning = style.copy(color = CgColors.Status.Warning)
+    val clock = style.copy(color = CgColors.Text.Primary, fontWeight = FontWeight.SemiBold)
+}
+
 private fun DrawScope.header(
     text: TextMeasurer,
-    type: CgTypography,
+    styles: HeaderStyles,
     words: HeaderWords,
     v: TimelineView,
 ) {
     // The trim in Mono capitals, in full; the length beside it dimmer.
-    val style = type.data.copy(color = CgColors.Text.Primary)
-    val dim = style.copy(color = CgColors.Text.Dim)
+    val style = styles.style
+    val dim = styles.dim
     val left =
         if (v.zoomed) "${clock(v.us(PAD.dp.toPx()))} – ${clock(v.us(size.width - PAD.dp.toPx()))}" else words.trim
     // A trim that cuts into the shot cuts the graph too: said in place of the length, where it is seen while dragging.
@@ -322,10 +335,9 @@ private fun DrawScope.header(
         }
     val top = (HEADER_BASELINE - 13).dp.toPx()
     drawText(text, left, Offset(PAD.dp.toPx(), top), style)
-    val r = text.measure(right, if (cut != null) style.copy(color = CgColors.Status.Warning) else dim)
+    val r = text.measure(right, if (cut != null) styles.warning else dim)
     drawText(r, topLeft = Offset(size.width - PAD.dp.toPx() - r.size.width, top))
-    val c =
-        text.measure(clock(v.playheadUs), style.copy(color = CgColors.Text.Primary, fontWeight = FontWeight.SemiBold))
+    val c = text.measure(clock(v.playheadUs), styles.clock)
     drawText(c, topLeft = Offset((size.width - c.size.width) / 2f, top))
 }
 
@@ -438,9 +450,10 @@ private fun DrawScope.strip(
         drawRect(scrim, Offset(pad, top), Size((v.x(item.trimInUs) - pad).coerceAtLeast(0f), h))
         val out = v.x(item.trimOutUs)
         drawRect(scrim, Offset(out, top), Size((size.width - pad - out).coerceAtLeast(0f), h))
-        for (us in listOf(item.trimInUs, item.trimOutUs)) {
+        // The two handles, the in one inside its edge and the out one inside its own (no list made per frame).
+        fun handle(us: Long, inSide: Boolean) {
             val w = HANDLE_W.dp.toPx()
-            val x = v.x(us) - if (us == item.trimInUs) 0f else w
+            val x = v.x(us) - if (inSide) 0f else w
             drawRect(CgColors.Text.Primary, Offset(x, top), Size(w, h))
             drawRect(
                 CgColors.Text.Dim,
@@ -448,6 +461,8 @@ private fun DrawScope.strip(
                 Size(2.dp.toPx(), 18.dp.toPx()),
             )
         }
+        handle(item.trimInUs, inSide = true)
+        handle(item.trimOutUs, inSide = item.trimOutUs == item.trimInUs)
     }
 }
 
@@ -483,16 +498,15 @@ private fun DrawScope.flag(item: VideoItem, v: TimelineView) {
     drawRect(color, Offset(x, 44.dp.toPx()), Size(16.dp.toPx(), 12.dp.toPx()))
 }
 
-private fun DrawScope.playheadMark(v: TimelineView) {
+/** The playhead: a line and a triangle on top, the triangle refilled into [tri] (kept by the caller) each frame. */
+private fun DrawScope.playheadMark(v: TimelineView, tri: Path) {
     val x = v.x(v.playheadUs)
     drawRect(CgColors.Text.Primary, Offset(x - 1.dp.toPx(), 44.dp.toPx()), Size(2.dp.toPx(), 84.dp.toPx()))
-    val tri =
-        Path().apply {
-            moveTo(x - 5.dp.toPx(), 44.dp.toPx())
-            lineTo(x + 5.dp.toPx(), 44.dp.toPx())
-            lineTo(x, 51.dp.toPx())
-            close()
-        }
+    tri.rewind()
+    tri.moveTo(x - 5.dp.toPx(), 44.dp.toPx())
+    tri.lineTo(x + 5.dp.toPx(), 44.dp.toPx())
+    tri.lineTo(x, 51.dp.toPx())
+    tri.close()
     drawPath(tri, CgColors.Text.Primary)
 }
 

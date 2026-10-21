@@ -354,11 +354,12 @@ fun SkeletonRow(
             .fillMaxWidth()
             .then(if (LocalInspectionMode.current) Modifier.alpha(0.6f) else Modifier.shimmer(shimmer))
             .border(CgStroke.Hairline, CgColors.Line.Divider)
-            .padding(CgSpace.S16),
+            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S14),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(width = 4.dp, height = 36.dp).background(CgColors.Line.Divider))
+        // The empty square where the found row's icon will sit.
+        Box(Modifier.size(ROW_TILE).border(CgStroke.Hairline, CgColors.Line.Divider))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
             Bar(bars.first, 12.dp)
             Bar(bars.second, 10.dp)

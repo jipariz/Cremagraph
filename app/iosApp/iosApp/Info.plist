@@ -17,7 +17,16 @@
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>UILaunchScreen</key>
-    <dict/>
+    <dict>
+        <!-- The splash's first frame: espresso and the finished mark, centred at 154 pt like the app's splash, which
+             carries on from it (design/splash/SPEC.md). -->
+        <key>UIColorName</key>
+        <string>LaunchBackground</string>
+        <key>UIImageName</key>
+        <string>LaunchMark</string>
+        <key>UIImageRespectsSafeAreaInsets</key>
+        <false/>
+    </dict>
     <key>CFBundleDisplayName</key>
     <string>OnlyShots</string>
     <key>NSCameraUsageDescription</key>

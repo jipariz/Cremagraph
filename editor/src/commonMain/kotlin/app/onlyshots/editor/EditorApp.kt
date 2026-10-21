@@ -21,6 +21,8 @@ import app.onlyshots.PrivacyRoute
 import app.onlyshots.RouteSaving
 import app.onlyshots.ScreenMotion
 import app.onlyshots.SharedMotion
+import app.onlyshots.SplashHost
+import app.onlyshots.SplashState
 import app.onlyshots.StyleEditorRoute
 import app.onlyshots.back
 import app.onlyshots.backTo
@@ -58,10 +60,14 @@ fun EditorApp(
     stores: StoreLinks? = null,
     /** Given the back stack, so a host can tie it to its own history: the web's browser back button. */
     history: (@Composable (NavBackStack<NavKey>) -> Unit)? = null,
+    /** The cold start's splash, played over the editor while it starts; null for none (the web's is in its page). */
+    splash: SplashState? = null,
+    /** Whether the editor has started, for the splash to hand over; it never waits longer than that. */
+    ready: () -> Boolean = { true },
 ) {
     CgTheme {
         CompositionLocalProvider(LocalExportWording provides exportWording) {
-            EditorNav(machineShots, host, stores, history)
+            SplashHost(splash, ready) { EditorNav(machineShots, host, stores, history) }
         }
     }
 }

@@ -79,7 +79,7 @@ fun StartBody(onRecord: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Mod
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                OnlyShotsMark()
+                OnlyShotsMark(splashTarget = true)
                 Text(
                     stringResource(Res.string.app_name),
                     style = CgTheme.type.cardTitle,

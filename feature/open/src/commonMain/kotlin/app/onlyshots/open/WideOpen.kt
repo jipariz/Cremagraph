@@ -222,7 +222,7 @@ private fun Header(note: String?, gutter: Dp, narrow: Boolean, onPrivacy: (() ->
     val brand =
         @Composable {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                OnlyShotsMark()
+                OnlyShotsMark(splashTarget = true)
                 Text(
                     stringResource(Res.string.app_name),
                     style = CgTheme.type.body.copy(fontSize = 22.sp, fontWeight = FontWeight.Normal),

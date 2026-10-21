@@ -1,5 +1,6 @@
 package app.onlyshots.di
 
+import app.onlyshots.Startup
 import app.onlyshots.connect.sourceFactory
 import app.onlyshots.core.model.ShotHistory
 import app.onlyshots.devTools
@@ -61,7 +62,12 @@ fun initKoin(platform: KoinAppDeclaration = {}) {
     // The sidecars are the source of truth: rebuild the index from them, and drop share copies
     // older than a day.
     CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-        koin.get<Library>().reconcile()
+        try {
+            koin.get<Library>().reconcile()
+        } finally {
+            // Read or not, the app has started: the splash never waits on a library that cannot be read.
+            Startup.ready = true
+        }
         koin.get<ShareTempFiles>().cleanup(Clock.System.now().toEpochMilliseconds())
     }
     // A machine set up earlier is picked up again here; the holder stays paused until the app is

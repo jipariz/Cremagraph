@@ -12,6 +12,8 @@ plugins {
 dependencies {
     implementation(projects.app.shared)
     implementation(libs.androidx.activity.compose)
+    // The system splash (Android 12+, backported below): the mark recording its shot, then the app's own hand-off.
+    implementation(libs.androidx.splashscreen)
     // Installs the baseline profile shipped in the APK where the store has not compiled it already.
     implementation(libs.androidx.profileinstaller)
     baselineProfile(projects.app.baselineprofile)

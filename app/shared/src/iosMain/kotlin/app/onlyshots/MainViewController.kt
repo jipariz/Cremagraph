@@ -15,7 +15,10 @@ fun MainViewController(): UIViewController {
         initKoin()
         koinStarted = true
     }
-    return ComposeUIViewController { OnlyShotsApp() }
+    // The launch screen shows the finished mark (design/splash/launch.py); the app carries on with the pulse and the
+    // hand-off as soon as it draws.
+    val splash = SplashState(held = true).apply { release() }
+    return ComposeUIViewController { OnlyShotsApp(splash) }
 }
 
 /**

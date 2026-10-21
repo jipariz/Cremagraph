@@ -128,7 +128,7 @@ internal fun Record(
         sampleLuma = { _, _, _, _ -> null },
         picture = { modifier, _ -> picture(modifier) },
         capture = capture,
-        live = state.shot.samples.lastOrNull(),
+        live = { state.shot.samples.lastOrNull() },
         graphSelectedAtFirst = graphSelected,
     )
 }

@@ -50,11 +50,6 @@
     <string name="edit_timeline_trim">trim %1$s – %2$s</string>
     <string name="edit_timeline_zoom">zoom</string>
     <string name="edit_timeline_seconds">%1$s s</string>
-    <string name="edit_snapped_to">snapped to %1$s</string>
-    <string name="edit_snap_playhead">playhead</string>
-    <string name="edit_snap_shot_start">shot start</string>
-    <string name="edit_snap_shot_end">shot end</string>
-    <string name="edit_snap_pump_start">pump start</string>
     <string name="edit_cut_both">graph cut at both ends</string>
     <string name="edit_cut_head">graph starts mid-shot</string>
     <string name="edit_cut_tail">graph ends mid-shot</string>

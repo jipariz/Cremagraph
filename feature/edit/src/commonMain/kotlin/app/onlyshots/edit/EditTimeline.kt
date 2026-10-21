@@ -3,7 +3,6 @@ package app.onlyshots.edit
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -46,22 +45,14 @@ import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.CgTypography
-import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
-import app.onlyshots.core.resources.edit_snap_playhead
-import app.onlyshots.core.resources.edit_snap_pump_start
-import app.onlyshots.core.resources.edit_snap_shot_end
-import app.onlyshots.core.resources.edit_snap_shot_start
-import app.onlyshots.core.resources.edit_snapped_to
 import app.onlyshots.core.resources.edit_timeline_description
 import app.onlyshots.core.resources.edit_timeline_seconds
 import app.onlyshots.core.resources.edit_timeline_trim
 import app.onlyshots.core.resources.edit_timeline_zoom
 import kotlin.math.abs
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** What the timeline asks the screen to do; trims and the flag carry `push`, so one drag is one undo step. */
@@ -106,18 +97,10 @@ fun EditTimeline(
                     label = "sweep",
                 )
         else null
-    // Every label of a frame (header, ruler ticks, snap label) fits, so none is laid out again on the next.
+    // Every label of a frame (header, ruler ticks) fits, so none is laid out again on the next.
     val text = rememberTextMeasurer(cacheSize = TEXT_CACHE)
     val haptic = LocalHapticFeedback.current
     val type = CgTheme.type
-    var snapLabel by remember { mutableStateOf<StringResource?>(null) }
-    var snapNonce by remember { mutableStateOf(0) }
-    LaunchedEffect(snapNonce) {
-        if (snapLabel != null) {
-            delay(SNAP_LABEL_MS)
-            snapLabel = null
-        }
-    }
     // What is drawn eases to a jump (a tap on the overview, "start here", a zoom key) and follows playback and the
     // finger exactly: a drag or a pinch sets [moving] for as long as it lasts.
     var moving by remember { mutableStateOf(false) }
@@ -138,15 +121,10 @@ fun EditTimeline(
         val target = zoomFactor ?: 1f
         if (moving) shownZoom.snapTo(target) else shownZoom.animateTo(target, CgMotion.settle())
     }
-    // The snap label fades out rather than vanishing, still saying what it said.
-    var lastSnapLabel by remember { mutableStateOf<StringResource?>(null) }
-    if (snapLabel != null) lastSnapLabel = snapLabel
-    val labelAlpha by animateFloatAsState(if (snapLabel != null) 1f else 0f, CgMotion.medium(), label = "snap")
     val current by rememberUpdatedState(item)
     val zoom by rememberUpdatedState(zoomFactor)
     val act by rememberUpdatedState(actions)
     val description = stringResource(Res.string.edit_timeline_description)
-    val snapText = lastSnapLabel?.let { stringResource(Res.string.edit_snapped_to, stringResource(it)) }
     val words =
         HeaderWords(
             trim = stringResource(Res.string.edit_timeline_trim, clock(item.trimInUs), clock(item.trimOutUs)),
@@ -179,14 +157,13 @@ fun EditTimeline(
                         else TimelineMath.hitHandle(down.position.x, current, view(), GRAB.dp.toPx())
                     var push = true
                     var lastX = down.position.x
-                    var lastSnap: StringResource? = null
-                    fun snapped(label: StringResource?) {
-                        if (label != null && label != lastSnap) {
+                    // A snap is felt, not shown: a tick as the handle catches a target.
+                    var lastSnap: SnapTarget? = null
+                    fun snapped(target: SnapTarget?) {
+                        if (target != null && target != lastSnap) {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            snapLabel = label
-                            snapNonce++
                         }
-                        lastSnap = label
+                        lastSnap = target
                     }
                     fun apply(x: Float) {
                         val v = view()
@@ -206,9 +183,9 @@ fun EditTimeline(
                             TimelineHandle.TRIM_OUT -> {
                                 val targets =
                                     listOf(
-                                        Res.string.edit_snap_playhead to playheadNow(),
-                                        Res.string.edit_snap_shot_start to current.shotStartInVideoUs,
-                                        Res.string.edit_snap_shot_end to current.shotEndInVideoUs,
+                                        SnapTarget.PLAYHEAD to playheadNow(),
+                                        SnapTarget.SHOT_START to current.shotStartInVideoUs,
+                                        SnapTarget.SHOT_END to current.shotEndInVideoUs,
                                     )
                                 val (us, label) = TimelineMath.snap(v.us(x), targets, pull)
                                 snapped(label)
@@ -221,8 +198,8 @@ fun EditTimeline(
                                     TimelineMath.snap(
                                         v.us(x),
                                         listOf(
-                                            Res.string.edit_snap_pump_start to pumpUs,
-                                            Res.string.edit_snap_playhead to playheadNow(),
+                                            SnapTarget.PUMP_START to pumpUs,
+                                            SnapTarget.PLAYHEAD to playheadNow(),
                                         ),
                                         pull,
                                     )
@@ -281,7 +258,6 @@ fun EditTimeline(
         wave(v, pad, waveform, pumpUs, item.durationUs)
         flag(item, v)
         playheadMark(v)
-        if (labelAlpha > 0f) snapText?.let { label(text, type, it, v, labelAlpha) }
     }
 }
 
@@ -481,22 +457,12 @@ private fun DrawScope.playheadMark(v: TimelineView) {
     drawPath(tri, CgColors.Text.Primary)
 }
 
-/** "snapped to playhead", in a signal box over the overview, centred on the playhead. */
-private fun DrawScope.label(
-    text: TextMeasurer,
-    type: CgTypography,
-    label: String,
-    v: TimelineView,
-    alpha: Float,
-) {
-    val measured = text.measure(label.caps(), type.labelStrong.copy(color = CgColors.Text.OnLight))
-    val w = measured.size.width + 20.dp.toPx()
-    val h = 20.dp.toPx()
-    val pad = PAD.dp.toPx()
-    val left = (v.x(v.playheadUs) - w / 2f).coerceIn(pad, (size.width - pad - w).coerceAtLeast(pad))
-    val top = OVERVIEW.dp.toPx() - 7.dp.toPx()
-    drawRect(CgColors.Brand.Signal, Offset(left, top), Size(w, h), alpha = alpha)
-    drawText(measured, topLeft = Offset(left + 10.dp.toPx(), top + (h - measured.size.height) / 2f), alpha = alpha)
+/** What a dragged handle catches on. */
+private enum class SnapTarget {
+    PLAYHEAD,
+    SHOT_START,
+    SHOT_END,
+    PUMP_START,
 }
 
 /** The view for a zoom given as a multiple of the fitted scale, capped at [TimelineMath.MAX_PX_PER_SECOND]. */
@@ -532,7 +498,6 @@ private const val WAVE_H = 16
 private const val HANDLE_W = 10
 private const val GRAB = 22
 private const val SNAP = 8
-private const val SNAP_LABEL_MS = 1_400L
 
 /** Text layouts kept between frames: more than a wide timeline's labels in one frame. */
 private const val TEXT_CACHE = 32

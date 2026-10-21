@@ -23,6 +23,7 @@ import app.onlyshots.video.VideoInfo
 import app.onlyshots.video.VideoProbe
 import kotlin.time.Clock
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -119,11 +120,14 @@ class OpenViewModel(
         viewModelScope.launch {
             val withShot = item.copy(shot = chosen.shot, shotStartInVideoUs = null)
             withContext(Dispatchers.Default) { library.save(withShot) }
+            onOpened(item.id)
+            // Cleared once the editor has taken over the screen, not before: its picture grows out of the picked tile,
+            // which has to stay put while it does.
+            delay(CLEAR_AFTER_OPEN_MS)
             picked.value = null
             pickedFile.value = null
             pickedThumb.value = null
             shot.value = null
-            onOpened(item.id)
         }
     }
 
@@ -194,3 +198,6 @@ internal val Opening: UiText = Res.string.open_status_opening.text()
  * once one is decoded.
  */
 data class PickedFile(val name: String, val widthPx: Int, val heightPx: Int, val thumb: ImageBitmap? = null)
+
+/** Longer than the screen change into the editor, so the picked tile is still there while the picture leaves it. */
+private const val CLEAR_AFTER_OPEN_MS = 700L

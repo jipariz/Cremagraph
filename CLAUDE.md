@@ -25,6 +25,8 @@ variants. Only CI secret: `VERCEL_TOKEN` (org secret, web deploy on `main`).
 ./gradlew ktfmtCheck                                   # format gate. Fix: ktfmtFormat
 ./gradlew :app:androidApp:assembleDebug                # Android debug APK
 ./gradlew :app:androidApp:assembleRelease              # R8 on, unsigned
+./gradlew :app:androidApp:generateBaselineProfile     # baseline profile, phone API 33+ (ANDROID_SERIAL=…)
+./gradlew :app:baselineprofile:connectedBenchmarkReleaseAndroidTest  # cold start with vs without it
 ./gradlew :app:desktopApp:run                          # desktop editor
 ./gradlew :app:desktopApp:hotRun --auto                # same, Compose Hot Reload
 ./gradlew :app:webApp:composeCompatibilityBrowserDistribution  # web: wasm + JS fallback
@@ -42,7 +44,8 @@ Format: ktfmt `kotlinLangStyle`, 4 spaces, width 120. Run `ktfmtFormat` before c
 
 ## Build quirks
 
-- **Layout:** apps in `app/` (`:app:shared`, `:app:androidApp`, `:app:desktopApp`, `:app:webApp`, `app/iosApp`).
+- **Layout:** apps in `app/` (`:app:shared`, `:app:androidApp`, `:app:desktopApp`, `:app:webApp`, `app/iosApp`,
+  `:app:baselineprofile`).
   Libraries at root. Entry modules hold only entry code + packaging. Shared code in `:app:shared` or below.
 - **AGP 9:** libraries use `com.android.kotlin.multiplatform.library`. Test sets: `androidHostTest` (JVM),
   `androidDeviceTest`. Not `test`/`androidTest`. `:app:androidApp` = plain `com.android.application`, built-in Kotlin,
@@ -57,6 +60,10 @@ Format: ktfmt `kotlinLangStyle`, 4 spaces, width 120. Run `ktfmtFormat` before c
 - **Desktop:** runs `EditorApp()`. FFmpeg from JavaCV, host natives only (`desktopNatives` in
   `video/build.gradle.kts`): build runs on OS built on. No camera, machines, scales. Packaged app has trimmed JDK
   (`modules(...)` in `app/desktopApp/build.gradle.kts`): new JDK API → `suggestRuntimeModules` + launch packaged app.
+- **Baseline profile:** `:app:baselineprofile` (`com.android.test`) runs UI Automator journeys (`Journeys.kt`: start,
+  then record the sample shot and export it) and writes `app/androidApp/src/release/generated/baselineProfiles/`, checked
+  in; release builds never regenerate it. Journeys find buttons by their words: reword one, regenerate. ProfileInstaller
+  installs it outside the store.
 - **R8** breaks reflection quietly. Touch keep rules or serialization? Walk README's six release paths by hand.
 
 ## CI

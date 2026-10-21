@@ -1,5 +1,11 @@
 package app.onlyshots.edit
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -43,6 +49,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
@@ -106,25 +113,33 @@ fun OverlayEditLayer(
         val frameW = constraints.maxWidth.toFloat()
         val frameH = constraints.maxHeight.toFloat()
         val coords = remember { arrayOfNulls<LayoutCoordinates>(1) }
-        val chrome = selected || dragging
+        // The outline and grips fade in on selection and thicken under the finger, instead of popping.
+        val chrome by animateFloatAsState(if (selected || dragging) 1f else 0f, CgMotion.short(), label = "chrome")
+        val grab by animateFloatAsState(if (dragging) 1f else 0f, CgMotion.short(), label = "grab")
 
-        if (dragging) snap?.let { Guides(it) }
+        // The guides fade in where the graph snapped and out when it lets go.
+        var lastSnap by remember { mutableStateOf<OverlaySnap.Snapped?>(null) }
+        val guides = if (dragging) snap?.takeIf { it.vertical != null || it.horizontal != null } else null
+        if (guides != null) lastSnap = guides
+        AnimatedVisibility(guides != null, enter = fadeIn(CgMotion.short()), exit = fadeOut(CgMotion.short())) {
+            lastSnap?.let { Guides(it) }
+        }
 
         Box(
             Modifier.offset(maxWidth * rect.x, maxHeight * rect.y)
                 .size(maxWidth * rect.w, maxHeight * rect.h)
                 .onGloballyPositioned { coords[0] = it }
                 .drawBehind {
-                    if (!chrome) return@drawBehind
-                    val stroke = (if (dragging) 3f else 1.5f).dp.toPx()
+                    if (chrome == 0f) return@drawBehind
+                    val stroke = (1.5f + 1.5f * grab).dp.toPx()
                     drawRect(
-                        Color.White.copy(alpha = 0.92f),
+                        Color.White.copy(alpha = 0.92f * chrome),
                         topLeft = Offset(stroke / 2, stroke / 2),
                         size = Size(size.width - stroke, size.height - stroke),
                         style = Stroke(stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f))),
                     )
                     // The corners that resize wear a thick bracket along the outline: where the finger lands.
-                    val bracket = (if (dragging) 6f else 4f).dp.toPx()
+                    val bracket = (4f + 2f * grab).dp.toPx()
                     val arm = 18.dp.toPx()
                     val y = size.height - bracket / 2
                     fun corner(x: Float, inward: Float) {
@@ -134,7 +149,11 @@ fun OverlayEditLayer(
                                 lineTo(x, y)
                                 lineTo(x + inward * arm, y)
                             }
-                        drawPath(path, Color.White, style = Stroke(bracket, cap = StrokeCap.Square))
+                        drawPath(
+                            path,
+                            Color.White.copy(alpha = chrome),
+                            style = Stroke(bracket, cap = StrokeCap.Square),
+                        )
                     }
                     corner(size.width - bracket / 2, -1f)
                     if (leftGrip) corner(bracket / 2, 1f)
@@ -223,9 +242,16 @@ fun OverlayEditLayer(
             snap
                 ?.let { s -> listOfNotNull(s.vertical?.place, s.horizontal?.place).map { stringResource(it.label) } }
                 ?.joinToString(" · ")
-        if (dragging && !snapName.isNullOrEmpty()) {
+        var lastName by remember { mutableStateOf("") }
+        val showName = dragging && !snapName.isNullOrEmpty()
+        if (showName) lastName = snapName.orEmpty()
+        AnimatedVisibility(
+            showName,
+            enter = fadeIn(CgMotion.short()) + scaleIn(CgMotion.springy(), initialScale = 0.85f),
+            exit = fadeOut(CgMotion.short()),
+        ) {
             Text(
-                snapName,
+                lastName,
                 style = CgTheme.type.labelStrong,
                 color = CgColors.Text.OnLight,
                 modifier =
@@ -238,9 +264,13 @@ fun OverlayEditLayer(
             )
         }
 
-        if (selected && !dragging && toolbar != null) {
-            Box(
-                Modifier.fillMaxWidth().wrapContentWidth().offset(y = (maxHeight * rect.y - 52.dp).coerceAtLeast(8.dp))
+        // The toolbar rises into place over the graph when it is picked, and steps aside while it is dragged.
+        if (toolbar != null) {
+            AnimatedVisibility(
+                selected && !dragging,
+                Modifier.fillMaxWidth().wrapContentWidth().offset(y = (maxHeight * rect.y - 52.dp).coerceAtLeast(8.dp)),
+                enter = fadeIn(CgMotion.short()) + slideInVertically(CgMotion.offsetSpec) { it / 3 },
+                exit = fadeOut(CgMotion.short()),
             ) {
                 toolbar()
             }

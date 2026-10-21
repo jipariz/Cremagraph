@@ -1,5 +1,10 @@
 package app.onlyshots.edit
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +38,7 @@ import app.onlyshots.connect.label
 import app.onlyshots.connect.labelRes
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.CgButton
@@ -364,48 +370,84 @@ fun ExportSheetContent(
     onCancel: () -> Unit,
 ) {
     val wording = LocalExportWording.current
-    if (savedToGallery) {
-        Text(
-            "${stringResource(wording.saved)} · ${quality.label} · ${clock(item.trimmedDurationUs)}",
-            style = CgTheme.type.bodySmall,
-            color = CgColors.Text.Secondary,
-        )
-        Pill(
-            stringResource(wording.next),
-            onClick = onNextShot,
-            modifier = Modifier.fillMaxWidth(),
-            light = true,
-            fill = true,
-        )
-        return
-    }
-    if (exporting != null) {
-        ProgressLine(exporting)
-        Row(Modifier.fillMaxWidth()) {
-            Text("${(exporting * 100).toInt()} %", style = CgTheme.type.label, modifier = Modifier.weight(1f))
-            Text(
-                leftMs?.let { stringResource(Res.string.edit_time_left, clock(it * 1000)) }
-                    ?: stringResource(Res.string.edit_working_out),
-                style = CgTheme.type.caption,
-                color = CgColors.Text.Dim,
-            )
+    // Options → progress → saved: each step fades into the next, and the sheet eases to its height.
+    val step =
+        when {
+            savedToGallery -> ExportStep.SAVED
+            exporting != null -> ExportStep.MAKING
+            else -> ExportStep.OPTIONS
         }
-        Text(stringResource(Res.string.edit_keep_open), style = CgTheme.type.caption, color = CgColors.Text.Dim)
-        Pill(
-            stringResource(Res.string.edit_cancel),
-            onClick = onCancel,
-            modifier = Modifier.fillMaxWidth(),
-            fill = true,
-        )
-        return
+    AnimatedContent(
+        step,
+        transitionSpec = {
+            fadeIn(CgMotion.medium()) togetherWith
+                fadeOut(CgMotion.short()) using
+                SizeTransform { _, _ -> CgMotion.sizeSpec }
+        },
+        label = "export",
+    ) { shown ->
+        Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
+            when (shown) {
+                ExportStep.SAVED -> {
+                    Text(
+                        "${stringResource(wording.saved)} · ${quality.label} · ${clock(item.trimmedDurationUs)}",
+                        style = CgTheme.type.bodySmall,
+                        color = CgColors.Text.Secondary,
+                    )
+                    Pill(
+                        stringResource(wording.next),
+                        onClick = onNextShot,
+                        modifier = Modifier.fillMaxWidth(),
+                        light = true,
+                        fill = true,
+                    )
+                }
+                ExportStep.MAKING -> {
+                    val done = exporting ?: 1f
+                    ProgressLine(done)
+                    Row(Modifier.fillMaxWidth()) {
+                        Text("${(done * 100).toInt()} %", style = CgTheme.type.label, modifier = Modifier.weight(1f))
+                        Text(
+                            leftMs?.let { stringResource(Res.string.edit_time_left, clock(it * 1000)) }
+                                ?: stringResource(Res.string.edit_working_out),
+                            style = CgTheme.type.caption,
+                            color = CgColors.Text.Dim,
+                        )
+                    }
+                    Text(
+                        stringResource(Res.string.edit_keep_open),
+                        style = CgTheme.type.caption,
+                        color = CgColors.Text.Dim,
+                    )
+                    Pill(
+                        stringResource(Res.string.edit_cancel),
+                        onClick = onCancel,
+                        modifier = Modifier.fillMaxWidth(),
+                        fill = true,
+                    )
+                }
+                ExportStep.OPTIONS -> {
+                    val what = exportSummary(item, quality, sound, wording)
+                    ListRow(
+                        stringResource(wording.save),
+                        "$what · ${stringResource(wording.saveWhere)}",
+                        onClick = onSaveToGallery,
+                    )
+                    wording.share?.let { share ->
+                        val where = wording.shareWhere?.let { " · ${stringResource(it)}" }.orEmpty()
+                        ListRow(stringResource(share), "$what$where", onClick = onShare)
+                    }
+                    Text(stringResource(wording.footer), style = CgTheme.type.caption, color = CgColors.Text.Dim)
+                }
+            }
+        }
     }
-    val what = exportSummary(item, quality, sound, wording)
-    ListRow(stringResource(wording.save), "$what · ${stringResource(wording.saveWhere)}", onClick = onSaveToGallery)
-    wording.share?.let { share ->
-        val where = wording.shareWhere?.let { " · ${stringResource(it)}" }.orEmpty()
-        ListRow(stringResource(share), "$what$where", onClick = onShare)
-    }
-    Text(stringResource(wording.footer), style = CgTheme.type.caption, color = CgColors.Text.Dim)
+}
+
+private enum class ExportStep {
+    OPTIONS,
+    MAKING,
+    SAVED,
 }
 
 /** What an export will make, in one line: "1080p · 9:16 · 0:47 · with sound". */

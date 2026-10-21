@@ -1,5 +1,11 @@
 package app.onlyshots.style
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,11 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.onlyshots.connect.label
 import app.onlyshots.connect.labelRes
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.CgToggle
@@ -849,17 +857,34 @@ private fun GlossControls(
 @Composable
 private fun More(label: String, content: @Composable () -> Unit) {
     var open by remember { mutableStateOf(false) }
-    Text(
-        (if (open) "▾ " else "▸ ") + label,
-        style = CgTheme.type.labelStrong,
-        color = CgColors.Text.Secondary,
-        modifier =
-            Modifier.fillMaxWidth()
-                .heightIn(min = 36.dp)
-                .clickable(role = Role.Button) { open = !open }
-                .padding(top = CgSpace.S8),
-    )
-    if (open) Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) { content() }
+    // The arrow turns down as the rows open under it, and back as they fold away.
+    val turn by animateFloatAsState(if (open) 90f else 0f, CgMotion.settle(), label = "arrow")
+    Row(
+        Modifier.fillMaxWidth()
+            .heightIn(min = 36.dp)
+            .clickable(role = Role.Button) { open = !open }
+            .padding(top = CgSpace.S8)
+    ) {
+        Text(
+            "▸",
+            style = CgTheme.type.labelStrong,
+            color = CgColors.Text.Secondary,
+            modifier = Modifier.alignByBaseline().graphicsLayer { rotationZ = turn },
+        )
+        Text(
+            " $label",
+            style = CgTheme.type.labelStrong,
+            color = CgColors.Text.Secondary,
+            modifier = Modifier.alignByBaseline(),
+        )
+    }
+    AnimatedVisibility(
+        open,
+        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
+        exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) { content() }
+    }
 }
 
 /** [v] to the nearest multiple of [by], as the float a literal of that value is (2.6, not 2.6000001). */

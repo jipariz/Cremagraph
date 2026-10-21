@@ -1,5 +1,11 @@
 package app.onlyshots.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +23,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -24,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,13 +52,16 @@ import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.PRIVACY_URL
 import app.onlyshots.SUPPORT_URL
+import app.onlyshots.SharedKeys
 import app.onlyshots.StopRuleChoice
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.AddRow
+import app.onlyshots.core.designsystem.component.Arriving
 import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.CgStepper
@@ -68,6 +79,7 @@ import app.onlyshots.core.designsystem.component.SectionHeader
 import app.onlyshots.core.designsystem.component.SegmentedControl
 import app.onlyshots.core.designsystem.component.SettingRow
 import app.onlyshots.core.designsystem.component.SkeletonRow
+import app.onlyshots.core.designsystem.component.rememberListSettled
 import app.onlyshots.core.model.AppVersion
 import app.onlyshots.core.model.RecordingSettings
 import app.onlyshots.core.model.SourceKind
@@ -119,6 +131,7 @@ import app.onlyshots.layout.LayoutKind
 import app.onlyshots.layout.LocalWindowLayout
 import app.onlyshots.layout.WidePanes
 import app.onlyshots.platform.rememberBluetoothPermission
+import app.onlyshots.shareBounds
 import app.onlyshots.sources.ConnectionState
 import app.onlyshots.sources.ble.FoundBleDevice
 import app.onlyshots.sources.machine.FoundMachine
@@ -270,7 +283,10 @@ private fun Header(onBack: () -> Unit, onHelp: () -> Unit) {
     HeaderBack(
         stringResource(Res.string.home_title),
         onBack = onBack,
-        modifier = Modifier.padding(vertical = CgSpace.S8),
+        // Where Start's "record live" card lands.
+        modifier =
+            Modifier.shareBounds(SharedKeys.START_RECORD, clip = RoundedCornerShape(12.dp))
+                .padding(vertical = CgSpace.S8),
         action = { IconCircleButton(CgIcons.Help, stringResource(Res.string.home_about), onClick = onHelp) },
     )
 }
@@ -284,17 +300,23 @@ private fun Machines(state: HomeUiState, onMachine: (FoundMachine) -> Unit, onAd
         trailingColor = if (state.machines.isEmpty()) CgColors.Status.Highlight else CgColors.Text.Dim,
         searching = state.machines.isEmpty(),
     )
+    // Machines turn up one by one as the search finds them: each slides open rather than pushing the list down.
+    val settled = rememberListSettled()
     for (row in rows) {
-        MachineRow(
-            name = row.name.text(),
-            detail = row.detail,
-            tileColor = machineColor(row.kind),
-            status = stringResource(row.status.label),
-            statusDot = dotOf(row.status),
-            selected = row.selected,
-            onClick = { row.found?.let(onMachine) },
-            enabled = row.found != null || row.selected,
-        )
+        key(row.kind, row.selected, row.found?.host ?: row.detail) {
+            Arriving(settled) {
+                MachineRow(
+                    name = row.name.text(),
+                    detail = row.detail,
+                    tileColor = machineColor(row.kind),
+                    status = stringResource(row.status.label),
+                    statusDot = dotOf(row.status),
+                    selected = row.selected,
+                    onClick = { row.found?.let(onMachine) },
+                    enabled = row.found != null || row.selected,
+                )
+            }
+        }
     }
     if (state.machines.isEmpty()) SkeletonRow()
     AddRow(
@@ -332,14 +354,19 @@ private fun Scales(state: HomeUiState, onScale: (FoundBleDevice) -> Unit, onAllo
             onClick = {},
         )
     }
+    val settled = rememberListSettled()
     for (device in others) {
-        ScaleDeviceRow(
-            name = device.name,
-            detail = stringResource(Res.string.home_scale_detail),
-            bars = signalBars(device.advertisement.rssi),
-            action = ScaleAction.Connect,
-            onAction = { onScale(device) },
-        )
+        key(device.id) {
+            Arriving(settled) {
+                ScaleDeviceRow(
+                    name = device.name,
+                    detail = stringResource(Res.string.home_scale_detail),
+                    bars = signalBars(device.advertisement.rssi),
+                    action = ScaleAction.Connect,
+                    onAction = { onScale(device) },
+                )
+            }
+        }
     }
     if (state.bluetoothDenied) {
         ConnectScaleCard(
@@ -442,11 +469,12 @@ private fun NextTakePane(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val live = state.connection == ConnectionState.Connected && take.live != null
-                        Box(
-                            Modifier.size(8.dp)
-                                .clip(CircleShape)
-                                .background(if (live) CgColors.Status.Live else CgColors.Text.Dim)
-                        )
+                        val dot by
+                            animateColorAsState(
+                                if (live) CgColors.Status.Live else CgColors.Text.Dim,
+                                CgMotion.medium(),
+                            )
+                        Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
                         Text(
                             takeStatus(state, take.live).text(),
                             style = CgTheme.type.caption,
@@ -454,9 +482,16 @@ private fun NextTakePane(
                         )
                     }
                     val readings = takeReadings(state, take.live)
-                    if (readings.isNotEmpty()) {
+                    // The tiles open under the status once the machine sends its first reading.
+                    var shown by remember { mutableStateOf(readings) }
+                    if (readings.isNotEmpty()) shown = readings
+                    AnimatedVisibility(
+                        readings.isNotEmpty(),
+                        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
+                        exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+                    ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
-                            for (r in readings) {
+                            for (r in shown) {
                                 ReadingTile(
                                     stringResource(r.label),
                                     r.value,
@@ -582,7 +617,14 @@ private fun ReadingKind.color(): Color =
  */
 @Composable
 private fun SampleLink(state: HomeUiState, onSample: () -> Unit, modifier: Modifier = Modifier) {
-    if (!state.sample) Box(modifier) { FooterLink(stringResource(Res.string.home_try_sample), onClick = onSample) }
+    AnimatedVisibility(
+        !state.sample,
+        modifier,
+        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
+        exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+    ) {
+        FooterLink(stringResource(Res.string.home_try_sample), onClick = onSample)
+    }
 }
 
 /**

@@ -1,8 +1,5 @@
 package app.onlyshots.core.designsystem
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.SpringSpec
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -102,14 +99,4 @@ object CgSize {
     /** Minimum touch target. */
     val Touch = 44.dp
     val Record = 70.dp
-}
-
-/** How things move. */
-object CgMotion {
-    /**
-     * A layout settling into a new shape (a format picked, a panel moving): about 300 ms and no overshoot, so a picture
-     * growing towards a panel never runs past it.
-     */
-    fun <T> layout(): SpringSpec<T> =
-        spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
 }

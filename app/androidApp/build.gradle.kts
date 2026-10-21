@@ -3,6 +3,7 @@ import javax.inject.Inject
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 // The Android app: the activity, the manifest, launcher icons and the release build. Everything it shows is in
@@ -11,6 +12,17 @@ plugins {
 dependencies {
     implementation(projects.app.shared)
     implementation(libs.androidx.activity.compose)
+    // Installs the baseline profile shipped in the APK where the store has not compiled it already.
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(projects.app.baselineprofile)
+}
+
+// The release build compiles the code the journeys in :app:baselineprofile run ahead of time, and lays out the dex
+// files for startup. The profile is checked in (src/release/generated/baselineProfiles/): a release build never needs
+// a device.
+baselineProfile {
+    dexLayoutOptimization = true
+    automaticGenerationDuringBuild = false
 }
 
 // ponytail: Compose's resource plugin never packages a KMP *library* module's resources into an
@@ -86,5 +98,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
+// The build types the baseline profile plugin adds for its journeys (nonMinifiedRelease, benchmarkRelease) copy the
+// release one, which has no signing config: a debug key so they install on the phone. The store build is untouched.
+android.buildTypes
+    .matching { it.name.startsWith("nonMinified") || it.name.startsWith("benchmark") }
+    .configureEach { signingConfig = android.signingConfigs.getByName("debug") }
 
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }

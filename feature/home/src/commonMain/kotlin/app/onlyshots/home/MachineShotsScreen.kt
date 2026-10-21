@@ -1,5 +1,12 @@
 package app.onlyshots.home
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,11 +18,13 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -24,13 +33,16 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.component.Arriving
 import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.designsystem.component.MachineRow
 import app.onlyshots.core.designsystem.component.SectionHeader
 import app.onlyshots.core.designsystem.component.ShotRow
 import app.onlyshots.core.designsystem.component.SkeletonRow
+import app.onlyshots.core.designsystem.component.rememberListSettled
 import app.onlyshots.core.model.Shot
 import app.onlyshots.core.model.ShotSummary
 import app.onlyshots.core.resources.Res
@@ -43,6 +55,7 @@ import app.onlyshots.core.resources.home_shots_same_wifi
 import app.onlyshots.core.resources.home_shots_title
 import app.onlyshots.core.resources.text
 import app.onlyshots.edit.machineColor
+import app.onlyshots.shareBounds
 import app.onlyshots.sources.machine.FoundMachine
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -61,72 +74,126 @@ fun MachineShotsBody(
 ) {
     val machine = state.machine
     Page(title = stringResource(Res.string.home_shots_title), onBack = onBack, modifier = modifier) {
-        Column(
-            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = CgSpace.S16),
-            verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
-        ) {
-            if (machine == null) {
-                SectionHeader(
-                    stringResource(Res.string.home_machines_title),
-                    trailing = foundNote(state.machines.size).text(),
-                    trailingColor = if (state.machines.isEmpty()) CgColors.Status.Highlight else CgColors.Text.Dim,
-                    searching = state.machines.isEmpty(),
-                )
-                for (found in state.machines) {
-                    MachineRow(
-                        name = found.machine.name,
-                        detail = found.label,
-                        tileColor = machineColor(found.machine.kind),
-                        status = stringResource(Res.string.home_row_ready),
-                        statusDot = CgColors.Status.Live,
-                        selected = false,
-                        onClick = { onMachine(found) },
+        // Picking a machine moves on to its shots as a page pushed in place: the machine's row becomes the header of
+        // its shots, and back from them it returns to its row.
+        AnimatedContent(
+            machine,
+            Modifier.weight(1f).fillMaxWidth(),
+            transitionSpec = {
+                val forward = initialState == null
+                (slideInHorizontally(CgMotion.offsetSpec) { if (forward) it / 6 else -it / 6 } +
+                    fadeIn(CgMotion.medium())) togetherWith
+                    (slideOutHorizontally(CgMotion.offsetSpec) { if (forward) -it / 6 else it / 6 } +
+                        fadeOut(CgMotion.short()))
+            },
+            contentKey = { it?.host },
+            label = "machine",
+        ) { shown ->
+            val page = this
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = CgSpace.S16),
+                verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
+            ) {
+                if (shown == null) {
+                    SectionHeader(
+                        stringResource(Res.string.home_machines_title),
+                        trailing = foundNote(state.machines.size).text(),
+                        trailingColor = if (state.machines.isEmpty()) CgColors.Status.Highlight else CgColors.Text.Dim,
+                        searching = state.machines.isEmpty(),
                     )
-                }
-                if (state.machines.isEmpty()) SkeletonRow()
-                Text(
-                    stringResource(Res.string.home_shots_same_wifi),
-                    style = CgTheme.type.caption,
-                    color = CgColors.Text.Dim,
-                )
-            } else {
-                val shots = state.shots
-                SectionHeader(
-                    stringResource(Res.string.home_shots_recent, machine.machine.name),
-                    trailing =
-                        state.busy?.text()
-                            ?: if (shots == null) stringResource(Res.string.home_shots_loading) else null,
-                    trailingColor = CgColors.Status.Highlight,
-                    searching = shots == null || state.busy != null,
-                )
-                when {
-                    shots == null -> repeat(3) { SkeletonRow() }
-                    shots.isEmpty() ->
-                        Text(
-                            state.message?.text() ?: stringResource(Res.string.home_shots_none),
-                            style = CgTheme.type.body,
-                            color = CgColors.Text.Secondary,
-                        )
-                    else ->
-                        for (summary in shots) {
-                            ShotRow(
-                                title = summary.profileName,
-                                subtitle =
-                                    summary.startedAt.toString().take(16).replace('T', ' ') +
-                                        " · " +
-                                        length(summary.durationUs),
-                                machineColor = machineColor(summary.source),
-                                onClick = { onShot(summary) },
-                            )
+                    val settled = rememberListSettled()
+                    for (found in state.machines) {
+                        key(found.host) {
+                            Arriving(settled) {
+                                MachineRow(
+                                    name = found.machine.name,
+                                    detail = found.label,
+                                    tileColor = machineColor(found.machine.kind),
+                                    status = stringResource(Res.string.home_row_ready),
+                                    statusDot = CgColors.Status.Live,
+                                    selected = false,
+                                    onClick = { onMachine(found) },
+                                    modifier = Modifier.shareBounds(machineKey(found), page, CardShape),
+                                )
+                            }
                         }
+                    }
+                    if (state.machines.isEmpty()) SkeletonRow()
+                    Text(
+                        stringResource(Res.string.home_shots_same_wifi),
+                        style = CgTheme.type.caption,
+                        color = CgColors.Text.Dim,
+                    )
+                } else {
+                    val shots = state.shots
+                    SectionHeader(
+                        stringResource(Res.string.home_shots_recent, shown.machine.name),
+                        trailing =
+                            state.busy?.text()
+                                ?: if (shots == null) stringResource(Res.string.home_shots_loading) else null,
+                        trailingColor = CgColors.Status.Highlight,
+                        searching = shots == null || state.busy != null,
+                        modifier = Modifier.shareBounds(machineKey(shown), page, CardShape),
+                    )
+                    // Loading, none, or the shots: one fades into the next.
+                    val list =
+                        when {
+                            shots == null -> ShotsList.LOADING
+                            shots.isEmpty() -> ShotsList.NONE
+                            else -> ShotsList.SHOTS
+                        }
+                    AnimatedContent(
+                        list,
+                        transitionSpec = {
+                            fadeIn(CgMotion.medium()) togetherWith
+                                fadeOut(CgMotion.short()) using
+                                SizeTransform { _, _ -> CgMotion.sizeSpec }
+                        },
+                        label = "shots",
+                    ) { now ->
+                        Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                            when (now) {
+                                ShotsList.LOADING -> repeat(3) { SkeletonRow() }
+                                ShotsList.NONE ->
+                                    Text(
+                                        state.message?.text() ?: stringResource(Res.string.home_shots_none),
+                                        style = CgTheme.type.body,
+                                        color = CgColors.Text.Secondary,
+                                    )
+                                ShotsList.SHOTS ->
+                                    for (summary in shots.orEmpty()) {
+                                        ShotRow(
+                                            title = summary.profileName,
+                                            subtitle =
+                                                summary.startedAt.toString().take(16).replace('T', ' ') +
+                                                    " · " +
+                                                    length(summary.durationUs),
+                                            machineColor = machineColor(summary.source),
+                                            onClick = { onShot(summary) },
+                                        )
+                                    }
+                            }
+                        }
+                    }
+                    state.message
+                        ?.takeIf { shots?.isNotEmpty() == true }
+                        ?.let { Text(it.text(), style = CgTheme.type.body, color = CgColors.Status.Highlight) }
                 }
-                state.message
-                    ?.takeIf { shots?.isNotEmpty() == true }
-                    ?.let { Text(it.text(), style = CgTheme.type.body, color = CgColors.Status.Highlight) }
             }
         }
     }
 }
+
+private enum class ShotsList {
+    LOADING,
+    NONE,
+    SHOTS,
+}
+
+/** A machine's row and the header of its shots: the same thing, one becoming the other. */
+private fun machineKey(found: FoundMachine): Any = "machine-${found.host}"
+
+private val CardShape = RoundedCornerShape(12.dp)
 
 /** A back header over a phone column, centred on a tablet. */
 @Composable

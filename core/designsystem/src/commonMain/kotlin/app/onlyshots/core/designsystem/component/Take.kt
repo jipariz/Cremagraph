@@ -1,5 +1,11 @@
 package app.onlyshots.core.designsystem.component
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +36,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
@@ -57,16 +65,19 @@ fun FormatPicker(
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
         options.forEachIndexed { i, option ->
             val on = i == selected
-            val ink = if (on) CgColors.Text.OnLight else CgColors.Text.Primary
+            val ink by animateColorAsState(if (on) CgColors.Text.OnLight else CgColors.Text.Primary, CgMotion.short())
+            val ground by
+                animateColorAsState(if (on) CgColors.Text.Primary else CgColors.Surface.Raised, CgMotion.short())
+            val edge by animateColorAsState(if (on) ink else CgColors.Text.Secondary, CgMotion.short())
             val shape = if (compact) CgShape.Pill else RoundedCornerShape(CgRadiusTile)
-            val outline = @Composable { FormatOutline(option.ratio, if (on) ink else CgColors.Text.Secondary, compact) }
+            val outline = @Composable { FormatOutline(option.ratio, edge, compact) }
             val label =
                 @Composable { Text(option.label, style = CgTheme.type.labelStrong.copy(fontSize = 13.sp), color = ink) }
             val body =
                 Modifier.weight(1f)
                     .height(if (compact) 48.dp else 72.dp)
                     .clip(shape)
-                    .background(if (on) CgColors.Text.Primary else CgColors.Surface.Raised)
+                    .background(ground)
                     .clickable(role = Role.Button) { onPick(i) }
                     .semantics { this.selected = on }
             if (compact) {
@@ -119,15 +130,25 @@ fun ReadingTile(
             .padding(horizontal = if (large) CgSpace.S14 else CgSpace.S12, vertical = if (large) CgSpace.S12 else 10.dp)
     ) {
         Text(label, style = CgTheme.type.caption, color = CgColors.Text.Secondary, maxLines = 1)
-        Text(
-            buildAnnotatedString {
-                append(value)
-                if (unit.isNotEmpty()) withStyle(SpanStyle(fontSize = if (large) 14.sp else 12.sp)) { append(" $unit") }
-            },
-            style = CgTheme.type.valueLarge.copy(fontSize = if (large) 40.sp else 24.sp),
-            color = color,
-            maxLines = 1,
-        )
+        // The first reading fades in over the dash; after that the number just ticks (ten times a second, a fade on
+        // each would blur it).
+        AnimatedContent(
+            value,
+            contentKey = { v -> v.any { it.isDigit() } },
+            transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) },
+            label = "reading",
+        ) { shown ->
+            Text(
+                buildAnnotatedString {
+                    append(shown)
+                    if (unit.isNotEmpty())
+                        withStyle(SpanStyle(fontSize = if (large) 14.sp else 12.sp)) { append(" $unit") }
+                },
+                style = CgTheme.type.valueLarge.copy(fontSize = if (large) 40.sp else 24.sp),
+                color = color,
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -155,11 +176,21 @@ fun RuleStatusRow(text: String, done: Boolean, modifier: Modifier = Modifier, ma
     ) {
         mark()
         Text(text, style = CgTheme.type.label, modifier = Modifier.weight(1f))
-        Text(
-            stringResource(if (done) Res.string.core_rule_done else Res.string.core_rule_waiting),
-            style = CgTheme.type.caption,
-            color = if (done) CgColors.Status.Live else CgColors.Text.Secondary,
-        )
+        val ink by animateColorAsState(if (done) CgColors.Status.Live else CgColors.Text.Secondary, CgMotion.medium())
+        AnimatedContent(
+            done,
+            transitionSpec = {
+                (fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.8f)) togetherWith
+                    fadeOut(CgMotion.short())
+            },
+            label = "rule",
+        ) { now ->
+            Text(
+                stringResource(if (now) Res.string.core_rule_done else Res.string.core_rule_waiting),
+                style = CgTheme.type.caption,
+                color = ink,
+            )
+        }
     }
 }
 
@@ -195,7 +226,8 @@ fun SourceChip(text: String, live: Boolean, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(8.dp).clip(CircleShape).background(if (live) CgColors.Status.Live else CgColors.Text.Dim))
+        val dot by animateColorAsState(if (live) CgColors.Status.Live else CgColors.Text.Dim, CgMotion.medium())
+        Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
         Text(text, style = CgTheme.type.label, maxLines = 1)
     }
 }

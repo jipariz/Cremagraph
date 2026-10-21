@@ -11,11 +11,16 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import app.onlyshots.EditRoute
+import app.onlyshots.FadeMotion
+import app.onlyshots.LocalSharedTransitionScope
 import app.onlyshots.MachineShotsRoute
+import app.onlyshots.ModalMotion
 import app.onlyshots.NavResults
 import app.onlyshots.OpenRoute
 import app.onlyshots.PrivacyRoute
 import app.onlyshots.RouteSaving
+import app.onlyshots.ScreenMotion
+import app.onlyshots.SharedMotion
 import app.onlyshots.StyleEditorRoute
 import app.onlyshots.back
 import app.onlyshots.backTo
@@ -31,6 +36,7 @@ import app.onlyshots.open.OpenHost
 import app.onlyshots.open.OpenScreen
 import app.onlyshots.open.StoreLinks
 import app.onlyshots.privacy.PrivacyScreen
+import app.onlyshots.rememberNavMotionDecorator
 import app.onlyshots.style.StyleEditorScreen
 
 /** The host's machine shot picker: it hands the shot it loaded to `onPicked`, or goes back. */
@@ -67,69 +73,85 @@ private fun EditorNav(
     stores: StoreLinks?,
     history: (@Composable (NavBackStack<NavKey>) -> Unit)?,
 ) {
-    ProvideWindowLayout {
-        val nav = rememberNavBackStack(RouteSaving, OpenRoute)
-        val results = remember { NavResults() }
-        history?.invoke(nav)
-        val fromMachine = machineShots?.let { { nav.go(MachineShotsRoute) } }
-        NavDisplay(
-            backStack = nav,
-            onBack = { nav.back() },
-            entryDecorators =
-                listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
-            entryProvider =
-                entryProvider {
-                    entry<OpenRoute> {
-                        OpenScreen(
-                            onOpen = { id -> nav.go(EditRoute(id, manual = true)) },
-                            onFromMachine = fromMachine,
-                            pickedShot = results.pickedShot,
-                            onPickedShotUsed = { results.pickedShot.value = null },
-                            host = host,
-                            stores = stores,
-                            onPrivacy = { nav.go(PrivacyRoute) },
-                        )
-                    }
-                    entry<EditRoute> { route ->
-                        val id = route.id
-                        val back = { nav.backTo(OpenRoute) }
-                        EditScreen(
-                            id = id,
-                            onBack = { back() },
-                            onExported = { back() },
-                            askBeforeLeaving = false,
-                            onFromMachine = fromMachine,
-                            pickedShot = results.pickedShot,
-                            onPickedShotUsed = { results.pickedShot.value = null },
-                            onStyleEditor = { nav.go(it.copy(videoId = id)) },
-                            savedStyle = results.savedStyle,
-                            onSavedStyleUsed = { results.savedStyle.value = null },
-                        )
-                    }
-                    if (machineShots != null) {
-                        entry<MachineShotsRoute> {
-                            machineShots(
-                                { shot ->
-                                    results.pickedShot.value = SidecarCodec.json.encodeToString(Shot.serializer(), shot)
-                                    nav.back()
-                                },
-                                { nav.back() },
-                            )
-                        }
-                    }
-                    entry<PrivacyRoute> { PrivacyScreen(onBack = { nav.back() }) }
-                    entry<StyleEditorRoute> { route ->
-                        StyleEditorScreen(
-                            baseId = route.baseId,
-                            editId = route.editId,
-                            videoId = route.videoId,
-                            onClose = { saved ->
-                                if (saved != null) results.savedStyle.value = saved
+    ProvideWindowLayout { SharedMotion { EditorGraph(machineShots, host, stores, history) } }
+}
+
+@Composable
+private fun EditorGraph(
+    machineShots: MachineShots?,
+    host: OpenHost?,
+    stores: StoreLinks?,
+    history: (@Composable (NavBackStack<NavKey>) -> Unit)?,
+) {
+    val nav = rememberNavBackStack(RouteSaving, OpenRoute)
+    val results = remember { NavResults() }
+    history?.invoke(nav)
+    val fromMachine = machineShots?.let { { nav.go(MachineShotsRoute) } }
+    NavDisplay(
+        backStack = nav,
+        onBack = { nav.back() },
+        entryDecorators =
+            listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
+                rememberNavMotionDecorator(),
+            ),
+        sharedTransitionScope = LocalSharedTransitionScope.current,
+        transitionSpec = ScreenMotion.forward(),
+        popTransitionSpec = ScreenMotion.back(),
+        predictivePopTransitionSpec = ScreenMotion.predictiveBack(),
+        entryProvider =
+            entryProvider {
+                entry<OpenRoute> {
+                    OpenScreen(
+                        onOpen = { id -> nav.go(EditRoute(id, manual = true)) },
+                        onFromMachine = fromMachine,
+                        pickedShot = results.pickedShot,
+                        onPickedShotUsed = { results.pickedShot.value = null },
+                        host = host,
+                        stores = stores,
+                        onPrivacy = { nav.go(PrivacyRoute) },
+                    )
+                }
+                entry<EditRoute> { route ->
+                    val id = route.id
+                    val back = { nav.backTo(OpenRoute) }
+                    EditScreen(
+                        id = id,
+                        onBack = { back() },
+                        onExported = { back() },
+                        askBeforeLeaving = false,
+                        onFromMachine = fromMachine,
+                        pickedShot = results.pickedShot,
+                        onPickedShotUsed = { results.pickedShot.value = null },
+                        onStyleEditor = { nav.go(it.copy(videoId = id)) },
+                        savedStyle = results.savedStyle,
+                        onSavedStyleUsed = { results.savedStyle.value = null },
+                    )
+                }
+                if (machineShots != null) {
+                    entry<MachineShotsRoute>(metadata = ModalMotion) {
+                        machineShots(
+                            { shot ->
+                                results.pickedShot.value = SidecarCodec.json.encodeToString(Shot.serializer(), shot)
                                 nav.back()
                             },
+                            { nav.back() },
                         )
                     }
-                },
-        )
-    }
+                }
+                entry<PrivacyRoute>(metadata = ModalMotion) { PrivacyScreen(onBack = { nav.back() }) }
+                entry<StyleEditorRoute>(metadata = FadeMotion) { route ->
+                    StyleEditorScreen(
+                        baseId = route.baseId,
+                        editId = route.editId,
+                        videoId = route.videoId,
+                        onClose = { saved ->
+                            if (saved != null) results.savedStyle.value = saved
+                            nav.back()
+                        },
+                    )
+                }
+            },
+    )
 }

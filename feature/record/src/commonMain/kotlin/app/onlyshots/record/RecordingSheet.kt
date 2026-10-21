@@ -1,9 +1,15 @@
 package app.onlyshots.record
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import app.onlyshots.StopRuleChoice
+import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.CgStepper
@@ -92,17 +98,28 @@ fun RecordingSettingsContent(
             selectedIndex = choices.indexOf(StopRuleChoice.of(effective.stopRule)),
             onSelect = { i -> onChange { it.copy(stopRule = choices[i].rule()) } },
         )
-        effective.stopRule.stepLabel?.let { label ->
-            SettingRow(
-                StopRuleChoice.of(effective.stopRule).parameter?.let { stringResource(it) }.orEmpty(),
-                hint = RecordSession.stopRuleText(effective.stopRule).text(),
-            ) {
-                // Stepped from what is shown, so a scale's stand-in "weight settles" becomes the saved rule.
-                CgStepper(
-                    value = label,
-                    onMinus = { onChange { s -> s.copy(stopRule = s.effectiveFor(sourceKind).stopRule.stepped(-1)) } },
-                    onPlus = { onChange { s -> s.copy(stopRule = s.effectiveFor(sourceKind).stopRule.stepped(1)) } },
-                )
+        // The rule's amount opens under the picker for the rules that have one, and folds away for those that do not.
+        AnimatedVisibility(
+            effective.stopRule.stepLabel != null,
+            enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
+            exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+        ) {
+            effective.stopRule.stepLabel?.let { label ->
+                SettingRow(
+                    StopRuleChoice.of(effective.stopRule).parameter?.let { stringResource(it) }.orEmpty(),
+                    hint = RecordSession.stopRuleText(effective.stopRule).text(),
+                ) {
+                    // Stepped from what is shown, so a scale's stand-in "weight settles" becomes the saved rule.
+                    CgStepper(
+                        value = label,
+                        onMinus = {
+                            onChange { s -> s.copy(stopRule = s.effectiveFor(sourceKind).stopRule.stepped(-1)) }
+                        },
+                        onPlus = {
+                            onChange { s -> s.copy(stopRule = s.effectiveFor(sourceKind).stopRule.stepped(1)) }
+                        },
+                    )
+                }
             }
         }
     }

@@ -187,13 +187,13 @@ internal fun HomeRows() = Sheet {
     MachineRow(
         "Gaggiuino",
         "192.168.1.42",
-        CgColors.Machine.Gaggiuino,
+        CgIcons.Machine,
         "connected",
         CgColors.Status.Live,
         selected = true,
         onClick = {},
     )
-    MachineRow("Gaggiuino", "192.168.1.77", CgColors.Machine.Gaggiuino, "ready", CgColors.Status.Live, false, {})
+    MachineRow("Gaggiuino", "192.168.1.77", CgIcons.Machine, "ready", CgColors.Status.Live, false, {})
     SkeletonRow()
     AddRow("add by address", onClick = {}, subtitle = "IP or name, for machines the search can’t see")
     SectionHeader("Bluetooth scales", trailing = "2 found")

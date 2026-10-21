@@ -357,7 +357,7 @@ private fun Machines(state: HomeUiState, onMachine: (FoundMachine) -> Unit, onAd
                         MachineRow(
                             name = row.name.text(),
                             detail = row.detail,
-                            tileColor = machineColor(row.kind),
+                            icon = CgIcons.Machine,
                             status = stringResource(row.status.label),
                             statusDot = dotOf(row.status),
                             selected = row.selected,
@@ -411,7 +411,7 @@ private fun Scales(state: HomeUiState, onScale: (FoundBleDevice) -> Unit, onAllo
                 MachineRow(
                     name = scale.name.text(),
                     detail = stringResource(Res.string.home_bluetooth_scale),
-                    tileColor = CgColors.Status.Info,
+                    icon = CgIcons.Bluetooth,
                     status = stringResource(status.label),
                     statusDot = dotOf(status),
                     selected = true,

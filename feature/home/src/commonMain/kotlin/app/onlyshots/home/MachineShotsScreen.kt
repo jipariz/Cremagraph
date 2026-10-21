@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
@@ -259,7 +260,7 @@ private fun MachineList(
                         MachineRow(
                             name = found.machine.name,
                             detail = found.label,
-                            tileColor = machineColor(found.machine.kind),
+                            icon = CgIcons.Machine,
                             status = stringResource(Res.string.home_row_ready),
                             statusDot = CgColors.Status.Live,
                             selected = found.host == state.machine?.host,

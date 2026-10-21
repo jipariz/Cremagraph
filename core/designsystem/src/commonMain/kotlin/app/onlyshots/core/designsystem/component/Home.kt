@@ -203,16 +203,17 @@ fun StatusPill(text: String, dot: Color, modifier: Modifier = Modifier) {
 }
 
 /**
- * A machine or a connected scale: a cell with the machine's colour as a 4 dp bar, the name in Mono capitals, where it
- * is in Mono, an optional live line, its status and, with [chevron], a chevron to say it opens something. The chosen
- * one sits on the bar colour with the signal for its edge (bone, and half lit, while it is [offline]); the others on
- * ink with a hairline, or none when [framed] is off because a [HairlineStack] draws the lines between them.
+ * A machine or a connected scale: a cell with what it is as a signal [icon] in a framed square (the machine, or
+ * Bluetooth for a scale), the name in Mono capitals, where it is in Mono, an optional live line, its status and, with
+ * [chevron], a chevron to say it opens something. The chosen one sits on the bar colour with the signal for its edge
+ * (bone, and half lit, while it is [offline]); the others on ink with a hairline, or none when [framed] is off because
+ * a [HairlineStack] draws the lines between them.
  */
 @Composable
 fun MachineRow(
     name: String,
     detail: String,
-    tileColor: Color,
+    icon: ImageVector,
     status: String,
     statusDot: Color,
     selected: Boolean,
@@ -246,7 +247,12 @@ fun MachineRow(
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(width = 4.dp, height = 36.dp).background(tileColor))
+        Box(
+            Modifier.size(ROW_TILE).border(CgStroke.Hairline, CgColors.Line.Hairline),
+            contentAlignment = Alignment.Center,
+        ) {
+            CgIcon(icon, tint = CgColors.Brand.Signal, size = 20.dp)
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(name.caps(), style = CgTheme.type.cardTitle)
             Text(detail, style = CgTheme.type.data, color = CgColors.Text.Secondary)
@@ -265,6 +271,9 @@ fun MachineRow(
         if (chevron) CgIcon(CgIcons.ChevronRight, tint = CgColors.Text.Secondary, size = 18.dp)
     }
 }
+
+/** The framed square a [MachineRow]'s icon sits in. */
+private val ROW_TILE = 36.dp
 
 /**
  * Rows stacked as one grid, the canvas's way: they meet on single 1 dp hairlines, with one around them all. Each row

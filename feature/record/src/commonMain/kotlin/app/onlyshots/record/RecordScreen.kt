@@ -618,9 +618,6 @@ private fun CameraPane(
                             onStyle = { onGraphSheet(EditSheet.STYLE) },
                             onData = { onGraphSheet(EditSheet.DATA) },
                             onOpacity = { o -> actions.updateOverlay { it.withOpacity(o) } },
-                            onReset = {
-                                actions.updateOverlay { it.copy(rect = NormRect.default(capture).within(bounds)) }
-                            },
                         )
                     },
                     modifier = Modifier.fillMaxSize(),

@@ -292,14 +292,13 @@ internal fun EditUi(
 
 @ScreenShots @Preview @Composable internal fun EditStyleSheet() = Edit(sheet = EditSheet.STYLE)
 
-@ScreenShots @Preview @Composable internal fun EditDataSheet() = Edit(sheet = EditSheet.DATA)
-
+/** The data sheet: what the graph shows, then what it says. */
 @ScreenShots
 @Preview
 @Composable
-internal fun EditTextSheet() =
+internal fun EditDataSheet() =
     Edit(
-        sheet = EditSheet.TEXT,
+        sheet = EditSheet.DATA,
         video =
             sampleVideo.copy(overlay = OverlaySettings(title = "Sunday shot", recipe = "18 g in · 36 g out · 28 s")),
     )

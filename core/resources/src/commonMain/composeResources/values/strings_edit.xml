@@ -59,7 +59,6 @@
     <string name="edit_graph_style_action">graph style</string>
     <string name="edit_toolbar_style">style ▾</string>
     <string name="edit_toolbar_data">data ▾</string>
-    <string name="edit_toolbar_text">text ▾</string>
 
     <!-- Editor screen -->
     <string name="edit_leave_title">leave this video?</string>
@@ -85,7 +84,6 @@
     <string name="edit_frame">frame</string>
     <string name="edit_style">style</string>
     <string name="edit_data">data</string>
-    <string name="edit_text">text</string>
     <string name="edit_change">change</string>
     <string name="edit_match_by_clock">match by clock</string>
     <string name="edit_zoom_and_crop">zoom and crop</string>

@@ -365,7 +365,7 @@ internal fun shotStatus(video: VideoItem): StringResource =
  * Typing is one undo step per pause rather than one per letter.
  */
 @Composable
-fun TextSheetContent(item: VideoItem, onChange: (push: Boolean, (OverlaySettings) -> OverlaySettings) -> Unit) {
+fun GraphTextFields(item: VideoItem, onChange: (push: Boolean, (OverlaySettings) -> OverlaySettings) -> Unit) {
     var lastTyped by remember { mutableStateOf<TimeSource.Monotonic.ValueTimeMark?>(null) }
     fun push(): Boolean {
         val push = lastTyped.let { it == null || it.elapsedNow().inWholeMilliseconds > TYPING_STEP_MS }

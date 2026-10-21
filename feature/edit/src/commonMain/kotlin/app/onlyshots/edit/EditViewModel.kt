@@ -57,7 +57,6 @@ import org.jetbrains.compose.resources.decodeToImageBitmap
 enum class EditSheet {
     STYLE,
     DATA,
-    TEXT,
     SHOT,
     EXPORT,
 }

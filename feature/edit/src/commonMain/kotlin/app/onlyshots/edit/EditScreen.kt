@@ -6,10 +6,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -25,7 +23,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -113,7 +110,6 @@ import app.onlyshots.core.designsystem.component.StatusChip
 import app.onlyshots.core.designsystem.component.TopChip
 import app.onlyshots.core.designsystem.component.TwoPane
 import app.onlyshots.core.designsystem.component.signalRule
-import app.onlyshots.core.model.NormRect
 import app.onlyshots.core.model.Shot
 import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.VideoFormat
@@ -157,7 +153,6 @@ import app.onlyshots.core.resources.edit_start_here
 import app.onlyshots.core.resources.edit_style
 import app.onlyshots.core.resources.edit_style_named
 import app.onlyshots.core.resources.edit_tap_graph_hint
-import app.onlyshots.core.resources.edit_text
 import app.onlyshots.core.resources.edit_zoom_and_crop
 import app.onlyshots.core.resources.text
 import app.onlyshots.export.ExportManager
@@ -386,7 +381,8 @@ fun EditBody(
                             delete = actions::deleteStyle,
                         ),
                 )
-            EditSheet.DATA ->
+            // The graph's words go with its data: what it shows and what it says, in one place.
+            EditSheet.DATA -> {
                 DataSheetContent(
                     video.overlay,
                     seriesIn(video.shot),
@@ -394,7 +390,8 @@ fun EditBody(
                 ) { change ->
                     actions.overlay(change = change)
                 }
-            EditSheet.TEXT -> TextSheetContent(video) { push, change -> actions.overlay(push, change) }
+                GraphTextFields(video) { push, change -> actions.overlay(push, change) }
+            }
             EditSheet.SHOT ->
                 ShotSheetContent(
                     video,
@@ -541,7 +538,7 @@ fun EditBody(
                     animateOn = video.format,
                     main = {
                         Column(Modifier.fillMaxSize()) {
-                            WideTopBar(ui = ui, onBack = leave, actions = actions)
+                            WideTopBar(ui = ui, onBack = leave, player = player)
                             Box(Modifier.weight(1f).fillMaxWidth()) {
                                 // The picture as large as the column's width allows, the timeline right under it, and
                                 // what height is left over above and below the two rather than between them.
@@ -589,12 +586,6 @@ fun EditBody(
                                         Pill(
                                             "◐ ${(video.overlay.opacity * 100).roundToInt()} %",
                                             onClick = { actions.overlay { it.withOpacity(nextOpacity(it.opacity)) } },
-                                        )
-                                        Pill(
-                                            "↺",
-                                            onClick = {
-                                                actions.overlay { it.copy(rect = NormRect.default(video.format)) }
-                                            },
                                         )
                                     },
                                     footer = exportBar,
@@ -671,7 +662,7 @@ fun EditBody(
     BoxWithConstraints(Modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding().then(keys)) {
         val sheetMax = maxHeight * 0.72f
         Column(Modifier.fillMaxSize()) {
-            TopBar(ui, leave, actions)
+            TopBar(ui, leave, actions, player)
             if (video == null) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(stringResource(Res.string.edit_loading), style = CgTheme.type.body, color = CgColors.Text.Dim)
@@ -715,7 +706,7 @@ fun EditBody(
  * export. The reframe switch sits on the picture ([Picture]), so the bar keeps room for the shot's name.
  */
 @Composable
-private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions) {
+private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions, player: PlayerState) {
     val video = ui.item
     Row(
         Modifier.fillMaxWidth().bottomRule().padding(CgSpace.S8),
@@ -735,7 +726,7 @@ private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions) {
                 },
         )
         Spacer(Modifier.weight(1f))
-        UndoRedo(ui, actions)
+        SoundToggle(ui.item, player)
         TopChip(
             stringResource(Res.string.edit_export),
             onClick = { actions.openSheet(EditSheet.EXPORT) },
@@ -849,10 +840,6 @@ private fun Picture(
                                         onStyle = { actions.openSheet(EditSheet.STYLE) },
                                         onData = { actions.openSheet(EditSheet.DATA) },
                                         onOpacity = { o -> actions.overlay { it.withOpacity(o) } },
-                                        onReset = {
-                                            actions.overlay { it.copy(rect = NormRect.default(video.format)) }
-                                        },
-                                        onText = { actions.openSheet(EditSheet.TEXT) },
                                     )
                                 }
                             },
@@ -972,15 +959,6 @@ private fun TimeBand(
                     Pill(stringResource(Res.string.edit_find_start), onClick = actions::findStart, enabled = movable)
                 }
                 if (!narrow) Spacer(Modifier.weight(1f))
-                // Mutes playback and the export alike; a video recorded without the microphone has nothing to mute.
-                if (video.hasAudio) {
-                    Pill(
-                        if (player.muted) stringResource(Res.string.edit_muted)
-                        else stringResource(Res.string.edit_sound),
-                        onClick = { player.muted = !player.muted },
-                        color = if (player.muted) CgColors.Text.Secondary else CgColors.Text.Primary,
-                    )
-                }
                 Pill(
                     "‹",
                     onClick = {
@@ -1032,14 +1010,14 @@ private const val WIDE_CHROME_DP = 236f
 /** The least the panel under the picture gets on an upright window: its pages scroll, the export stays pinned. */
 private const val BELOW_PANEL_DP = 360f
 
-private val PanelPages = listOf(EditSheet.STYLE, EditSheet.DATA, EditSheet.TEXT)
+private val PanelPages = listOf(EditSheet.STYLE, EditSheet.DATA)
 
 /**
- * The wide editor's top bar: back, what is being edited (the shot, else the file), and undo and redo while there is
- * something to take back or bring back. The shot, the frame and the export are in the side panel.
+ * The wide editor's top bar: back, what is being edited (the shot, else the file), and the sound. The shot, the frame
+ * and the export are in the side panel; undo and redo are Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z.
  */
 @Composable
-private fun WideTopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions) {
+private fun WideTopBar(ui: EditUiState, onBack: () -> Unit, player: PlayerState) {
     val video = ui.item
     Row(
         Modifier.fillMaxWidth().bottomRule().padding(CgSpace.S8),
@@ -1055,30 +1033,23 @@ private fun WideTopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        UndoRedo(ui, actions)
+        SoundToggle(video, player)
     }
 }
 
 /**
- * Undo and redo, there only while there is something to take back or bring back: they open out of the bar and fold back
- * into it, so the chips beside them slide over rather than jump.
+ * Sound on or off, for playback and the export alike; a video recorded without the microphone has nothing to mute, so
+ * there is no key.
  */
 @Composable
-private fun RowScope.UndoRedo(ui: EditUiState, actions: EditActions) {
-    AnimatedVisibility(
-        ui.canUndo,
-        enter = fadeIn(CgMotion.short()) + expandHorizontally(CgMotion.sizeSpec),
-        exit = fadeOut(CgMotion.short()) + shrinkHorizontally(CgMotion.sizeSpec),
-    ) {
-        Pill("↺", onClick = actions::undo, modifier = Modifier.testTag(TestTags.EditUndo))
-    }
-    AnimatedVisibility(
-        ui.canRedo,
-        enter = fadeIn(CgMotion.short()) + expandHorizontally(CgMotion.sizeSpec),
-        exit = fadeOut(CgMotion.short()) + shrinkHorizontally(CgMotion.sizeSpec),
-    ) {
-        Pill("↻", onClick = actions::redo, modifier = Modifier.testTag(TestTags.EditRedo))
-    }
+private fun SoundToggle(video: VideoItem?, player: PlayerState) {
+    if (video?.hasAudio != true) return
+    Pill(
+        if (player.muted) stringResource(Res.string.edit_muted) else stringResource(Res.string.edit_sound),
+        onClick = { player.muted = !player.muted },
+        color = if (player.muted) CgColors.Text.Secondary else CgColors.Text.Primary,
+        modifier = Modifier.testTag(TestTags.EditSound),
+    )
 }
 
 /**
@@ -1241,7 +1212,7 @@ private fun PanelLabel(text: String) {
 }
 
 /**
- * The upper half on its side: back, what is edited, undo and redo on the left; the picture in its shape in the middle;
+ * The upper half on its side: back, what is edited, the sound on the left; the picture in its shape in the middle;
  * framing, the time and play on the right.
  */
 @Composable
@@ -1280,7 +1251,7 @@ private fun PlayerHalf(
                 }
             }
             Spacer(Modifier.weight(1f))
-            Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) { UndoRedo(ui, actions) }
+            SoundToggle(video, player)
         }
         picture(Modifier.fillMaxHeight().aspectRatio(video.format.ratio, matchHeightConstraintsFirst = true))
         Column(
@@ -1333,7 +1304,6 @@ private fun ToolChips(ui: EditUiState, video: VideoItem, actions: EditActions, o
                 onClick = { actions.openSheet(EditSheet.STYLE) },
             )
             Pill(stringResource(Res.string.edit_data), onClick = { actions.openSheet(EditSheet.DATA) })
-            Pill(stringResource(Res.string.edit_text), onClick = { actions.openSheet(EditSheet.TEXT) })
             Pill(
                 stringResource(Res.string.edit_opacity, "${(video.overlay.opacity * 100).roundToInt()}"),
                 onClick = { actions.overlay { it.withOpacity(nextOpacity(it.opacity)) } },
@@ -1401,7 +1371,6 @@ private val EditSheet.label: StringResource
         when (this) {
             EditSheet.STYLE -> Res.string.edit_style
             EditSheet.DATA -> Res.string.edit_data
-            EditSheet.TEXT -> Res.string.edit_text
             EditSheet.SHOT -> Res.string.edit_shot
             EditSheet.EXPORT -> Res.string.edit_export
         }
@@ -1446,7 +1415,7 @@ private fun EditPanel(
             onSelect = { onPage(PanelPages[it]) },
             fill = true,
             modifier = Modifier.fillMaxWidth(),
-            tags = listOf(TestTags.ToolbarStyle, TestTags.ToolbarData, TestTags.ToolbarText),
+            tags = listOf(TestTags.ToolbarStyle, TestTags.ToolbarData),
         )
         Column(
             Modifier.fillMaxWidth()

@@ -9,13 +9,12 @@ import app.onlyshots.core.designsystem.component.CardBarButton
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.edit_toolbar_data
 import app.onlyshots.core.resources.edit_toolbar_style
-import app.onlyshots.core.resources.edit_toolbar_text
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The toolbar over a selected graph, the same on the record and edit screens: its style, its data, its words (only
- * where [onText] is given), how much of its background shows, and a reset to the default place and size.
+ * The toolbar over a selected graph, the same on the record and edit screens: its style, its data (and words), and how
+ * much of its background shows.
  */
 @Composable
 fun GraphToolbar(
@@ -23,8 +22,6 @@ fun GraphToolbar(
     onStyle: () -> Unit,
     onData: () -> Unit,
     onOpacity: (Float) -> Unit,
-    onReset: () -> Unit,
-    onText: (() -> Unit)? = null,
 ) {
     CardBar {
         CardBarButton(
@@ -37,15 +34,7 @@ fun GraphToolbar(
             onClick = onData,
             modifier = Modifier.testTag(TestTags.ToolbarData),
         )
-        onText?.let {
-            CardBarButton(
-                stringResource(Res.string.edit_toolbar_text),
-                onClick = it,
-                modifier = Modifier.testTag(TestTags.ToolbarText),
-            )
-        }
         CardBarButton("◐ ${(opacity * 100).roundToInt()} %", onClick = { onOpacity(nextOpacity(opacity)) })
-        CardBarButton("↺", onClick = onReset)
     }
 }
 

@@ -48,8 +48,7 @@ object TestTags {
     const val OpenEditor = "open.editor"
 
     // Edit.
-    const val EditUndo = "edit.undo"
-    const val EditRedo = "edit.redo"
+    const val EditSound = "edit.sound"
     const val EditExport = "edit.export"
     const val EditShotChip = "edit.shotChip"
     /** The graph over the picture, in the editor and on the record screen: tap to select. */
@@ -58,7 +57,6 @@ object TestTags {
     const val EditFrame = "edit.frame"
     const val ToolbarStyle = "edit.toolbar.style"
     const val ToolbarData = "edit.toolbar.data"
-    const val ToolbarText = "edit.toolbar.text"
     const val ExportSave = "export.save"
     const val ExportShare = "export.share"
     const val ExportKeepEditing = "export.keepEditing"

@@ -277,7 +277,6 @@ internal fun EditorControls() = Sheet {
         CardBarButton("style ▾", onClick = {})
         CardBarButton("data ▾", onClick = {})
         CardBarButton("◐ 80 %", onClick = {})
-        CardBarButton("↺", onClick = {})
     }
     EditorSheet(title = "Making your video", onDone = null) {
         ProgressLine(0.42f)

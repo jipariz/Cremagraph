@@ -6,7 +6,10 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,8 +21,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,8 +53,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,14 +75,20 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
@@ -95,6 +111,7 @@ import app.onlyshots.core.resources.core_export_keep_editing
 import app.onlyshots.core.resources.core_export_left
 import app.onlyshots.core.resources.core_export_making
 import app.onlyshots.core.resources.core_export_more
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 /*
@@ -517,7 +534,8 @@ fun CardBarButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
 /**
  * The editor's bottom sheet: no scrim, so the picture stays in view; a title, a "done", and contents that scroll inside
  * at most [maxHeightFraction] of the screen. A plain layout rather than a dialog window, so it can be drawn by the
- * screenshot tests like anything else.
+ * screenshot tests like anything else. Drag it down to close it, as [CgSheet]: by its top, or from the contents once
+ * they are scrolled to the top. Without [onDone] it stays put.
  */
 @Composable
 fun EditorSheet(
@@ -526,8 +544,60 @@ fun EditorSheet(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // How far down the sheet is pulled, in px; 0 at rest, so it draws as it always did.
+    var drag by remember { mutableFloatStateOf(0f) }
+    var height by remember { mutableIntStateOf(0) }
+    val done by rememberUpdatedState(onDone)
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    fun pull(dy: Float) {
+        if (done != null) drag = (drag + dy).coerceAtLeast(0f)
+    }
+    fun settle(velocity: Float) {
+        val close = done ?: return
+        if (drag <= 0f) return
+        val flick = velocity > with(density) { DISMISS_VELOCITY.toPx() }
+        scope.launch {
+            if (flick || drag > height * DISMISS_FRACTION) {
+                // Off the screen first, so the sheet leaves rather than vanishing where the finger let go.
+                animate(drag, height.toFloat(), animationSpec = tween(DISMISS_MS)) { v, _ -> drag = v }
+                close()
+            } else {
+                animate(drag, 0f, animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow)) { v, _
+                    ->
+                    drag = v
+                }
+            }
+        }
+    }
+    // The contents scroll first; pulled down past their top, the sheet follows the finger, and pushed up again it goes
+    // back before they scroll.
+    val nested = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y >= 0f || drag <= 0f) return Offset.Zero
+                val taken = maxOf(available.y, -drag)
+                drag += taken
+                return Offset(0f, taken)
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput || available.y <= 0f || done == null) return Offset.Zero
+                pull(available.y)
+                return Offset(0f, available.y)
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (drag <= 0f) return Velocity.Zero
+                settle(available.y)
+                return available
+            }
+        }
+    }
     Column(
         modifier
+            .graphicsLayer { translationY = drag }
+            .onSizeChanged { height = it.height }
             // A sheet, not a wall: on a tablet or the desktop it keeps Material's sheet width and stays centred.
             .widthIn(max = SHEET_MAX_WIDTH)
             .fillMaxWidth()
@@ -537,6 +607,14 @@ fun EditorSheet(
             .background(CgColors.Surface.Bar)
             // Touches on the sheet stay on the sheet: without this they fall through to the timeline under it.
             .pointerInput(Unit) { awaitEachGesture { awaitFirstDown().consume() } }
+            // After it, so it sees the touch first: the top and the gaps between controls drag the sheet.
+            .draggable(
+                rememberDraggableState { pull(it) },
+                Orientation.Vertical,
+                enabled = onDone != null,
+                onDragStopped = { settle(it) },
+            )
+            .nestedScroll(nested)
             .navigationBarsPadding()
             .padding(start = CgSpace.S16, end = CgSpace.S16, top = 10.dp, bottom = 18.dp),
         verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
@@ -549,6 +627,11 @@ fun EditorSheet(
         )
     }
 }
+
+/** A sheet let go this far down its height, or flicked down this fast, closes; otherwise it springs back. */
+private const val DISMISS_FRACTION = 0.3f
+private val DISMISS_VELOCITY = 1000.dp
+private const val DISMISS_MS = 200
 
 /**
  * Where an [EditorSheet] shows: none while [sheet] is null; one slides up from the bottom when it is set and back down

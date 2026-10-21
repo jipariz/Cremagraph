@@ -7,11 +7,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -509,25 +507,26 @@ fun EditBody(
                     main = {
                         Column(Modifier.fillMaxSize()) {
                             WideTopBar(ui = ui, onBack = leave, actions = actions)
-                            MessageBanner(ui.message, actions::clearMessage)
-                            // The picture as large as the column's width allows, the timeline right under it, and what
-                            // height
-                            // is left over above and below the two rather than between them.
-                            Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Center) {
-                                Picture(
-                                    ui = ui,
-                                    video = video,
-                                    player = player,
-                                    actions = actions,
-                                    picture = picture,
-                                    selected = graphSelected,
-                                    onSelected = { graphSelected = it },
-                                    reframing = reframing,
-                                    formatStrip = false,
-                                    toolbar = false,
-                                    modifier = Modifier.weight(1f, fill = false),
-                                )
-                                TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions)
+                            Box(Modifier.weight(1f).fillMaxWidth()) {
+                                // The picture as large as the column's width allows, the timeline right under it, and
+                                // what height is left over above and below the two rather than between them.
+                                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+                                    Picture(
+                                        ui = ui,
+                                        video = video,
+                                        player = player,
+                                        actions = actions,
+                                        picture = picture,
+                                        selected = graphSelected,
+                                        onSelected = { graphSelected = it },
+                                        reframing = reframing,
+                                        formatStrip = false,
+                                        toolbar = false,
+                                        modifier = Modifier.weight(1f, fill = false),
+                                    )
+                                    TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions)
+                                }
+                                MessageBanner(ui.message, actions::clearMessage, Modifier.align(Alignment.TopCenter))
                             }
                         }
                     },
@@ -635,25 +634,27 @@ fun EditBody(
         val sheetMax = maxHeight * 0.72f
         Column(Modifier.fillMaxSize()) {
             TopBar(ui, leave, actions)
-            MessageBanner(ui.message, actions::clearMessage)
             if (video == null) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(stringResource(Res.string.edit_loading), style = CgTheme.type.body, color = CgColors.Text.Dim)
                 }
                 return@Column
             }
-            Picture(
-                ui = ui,
-                video = video,
-                player = player,
-                actions = actions,
-                picture = picture,
-                selected = graphSelected,
-                onSelected = { graphSelected = it },
-                reframing = reframing,
-                onReframing = setReframing,
-                modifier = Modifier.weight(1f),
-            )
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                Picture(
+                    ui = ui,
+                    video = video,
+                    player = player,
+                    actions = actions,
+                    picture = picture,
+                    selected = graphSelected,
+                    onSelected = { graphSelected = it },
+                    reframing = reframing,
+                    onReframing = setReframing,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                MessageBanner(ui.message, actions::clearMessage, Modifier.align(Alignment.TopCenter))
+            }
             TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions)
         }
 
@@ -882,6 +883,7 @@ private fun TimeBand(
             playheadUs = player.positionUs,
             zoomFactor = zoom,
             thumbnails = ui.thumbnails,
+            loading = ui.stripLoading,
             waveform = ui.waveform,
             // The pump in the sound only helps line a shot up by hand: a recording the machine or scale started is
             // already in step, and a line its flag does not sit on would only confuse.
@@ -1036,16 +1038,18 @@ private fun RowScope.UndoRedo(ui: EditUiState, actions: EditActions) {
 }
 
 /**
- * The editor's warning, opening under the top bar and closing up again, rather than pushing the picture down at once.
+ * The editor's warning, over the top of the picture rather than above it, so the picture never changes size. It slides
+ * down from under the bar and back up, still saying what it said while it goes.
  */
 @Composable
-private fun MessageBanner(message: UiText?, onOk: () -> Unit) {
+private fun MessageBanner(message: UiText?, onOk: () -> Unit, modifier: Modifier = Modifier) {
     var last by remember { mutableStateOf(message) }
     if (message != null) last = message
     AnimatedVisibility(
         message != null,
-        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
-        exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+        modifier.clipToBounds(),
+        enter = slideInVertically(CgMotion.offsetSpec) { -it } + fadeIn(CgMotion.medium()),
+        exit = slideOutVertically(CgMotion.offsetSpec) { -it } + fadeOut(CgMotion.short()),
     ) {
         last?.let {
             Banner(it.text(), BannerKind.Warning, action = stringResource(Res.string.edit_ok), onAction = onOk)

@@ -74,8 +74,10 @@ data class EditUiState(
     val sheet: EditSheet? = null,
     val busy: UiText? = null,
     val message: UiText? = null,
-    /** Frames across the clip for the filmstrip, in order; empty until they are made. */
+    /** Frames across the clip for the filmstrip, in order; empty until they are all made. */
     val thumbnails: List<ImageBitmap> = emptyList(),
+    /** The filmstrip's frames are being made: it shimmers meanwhile. */
+    val stripLoading: Boolean = false,
     /** Brightness behind the graph over time, when the style adapts to the video. */
     val luma: LumaTrack? = null,
     /** Loudness from 0 to 1 in even steps across the clip, for the waveform under the strip. */
@@ -385,6 +387,7 @@ class EditViewModel(
         viewModelScope.launch {
             val dir = cacheDir / "strip" / item.id
             val frames = mutableListOf<ImageBitmap>()
+            _ui.update { it.copy(stripLoading = true) }
             for (i in 0 until THUMBNAILS) {
                 val atUs = ((i + 0.5) / THUMBNAILS * item.durationUs).toLong()
                 val bitmap =
@@ -396,10 +399,16 @@ class EditViewModel(
                             fs.read(out) { readByteArray() }.decodeToImageBitmap()
                         }
                             .getOrNull()
-                    } ?: return@launch
+                    }
+                if (bitmap == null) {
+                    // A frame that cannot be made leaves a hole: no strip, as before.
+                    _ui.update { it.copy(stripLoading = false) }
+                    return@launch
+                }
                 frames += bitmap
             }
-            _ui.update { it.copy(thumbnails = frames.toList()) }
+            // All at once: frames trickling in one by one look unfinished.
+            _ui.update { it.copy(thumbnails = frames.toList(), stripLoading = false) }
         }
     }
 

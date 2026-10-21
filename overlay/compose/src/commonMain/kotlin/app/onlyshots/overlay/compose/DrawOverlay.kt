@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -250,7 +254,6 @@ fun DrawScope.drawScene(scene: OverlayScene, textMeasurer: TextMeasurer, fontFam
  * or glass panel, Metro's tiles, Aero) are drawn through Haze at the scene's own backdrop rects, so what blurs is
  * exactly what the export will blur. Without it they show only their tint.
  */
-@OptIn(ExperimentalHazeApi::class)
 @Composable
 fun ShotOverlay(
     shot: Shot,
@@ -265,17 +268,54 @@ fun ShotOverlay(
     hazeState: HazeState? = null,
     backdropLuma: Float? = null,
     labels: OverlayLabels = rememberOverlayLabels(),
+) =
+    ShotOverlay(
+        shot,
+        { videoTimeUs },
+        shotStartUs,
+        settings,
+        style,
+        title,
+        fontFamily,
+        modifier,
+        recipe,
+        hazeState,
+        { backdropLuma },
+        labels,
+    )
+
+/**
+ * The overlay at the moment [videoTimeUs] says, read only where it is drawn: a playing video or a running take changes
+ * it every frame, and only the drawing has to follow, not the composition. [backdropLuma] likewise.
+ */
+@OptIn(ExperimentalHazeApi::class)
+@Composable
+fun ShotOverlay(
+    shot: Shot,
+    videoTimeUs: () -> Long,
+    shotStartUs: Long,
+    settings: OverlaySettings,
+    style: GraphStyle,
+    title: String,
+    fontFamily: FontFamily,
+    modifier: Modifier = Modifier,
+    recipe: String? = null,
+    hazeState: HazeState? = null,
+    backdropLuma: () -> Float? = { null },
+    labels: OverlayLabels = rememberOverlayLabels(),
 ) {
     val measurer = rememberTextMeasurer(cacheSize = OVERLAY_TEXT_CACHE)
     val metrics = remember(measurer, fontFamily) { ComposeTextMetrics(measurer, fontFamily) }
+    val time by rememberUpdatedState(videoTimeUs)
+    val luma by rememberUpdatedState(backdropLuma)
     BoxWithConstraints(modifier) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
         if (w <= 0f || h <= 0f) return@BoxWithConstraints
-        val scene =
+        fun scene() =
             buildOverlayScene(
                 shot,
-                videoTimeUs,
+                time(),
                 shotStartUs,
                 settings,
                 style,
@@ -285,49 +325,61 @@ fun ShotOverlay(
                 metrics = metrics,
                 labels = labels,
                 recipe = recipe,
-                backdropLuma = backdropLuma,
+                backdropLuma = luma(),
             )
-        if (hazeState != null) {
-            val density = LocalDensity.current
-            for (b in scene.prims) {
-                if (b !is BackdropPrim) continue
-                with(density) {
-                    val shape = RoundedCornerShape(b.radius.toDp())
-                    val input = HazeInput.Sources(hazeState)
-                    Box(
-                        Modifier.offset { IntOffset(b.box.left.roundToInt(), b.box.top.roundToInt()) }
-                            .size(b.box.width.toDp(), b.box.height.toDp())
-                            .clip(shape)
-                            .then(
-                                if (b.glass != null) {
-                                    Modifier.hazeGlass(
-                                        input,
-                                        b.glass!!.toHazeStyle(
-                                            shape,
-                                            b.box.width,
-                                            b.box.height,
-                                            b.tint,
-                                            b.blur.toDp(),
-                                            density,
-                                        ),
-                                    )
-                                } else {
-                                    Modifier.hazeBlur(
-                                        input,
-                                        HazeBlurStyle {
-                                            blurRadius(b.blur.toDp())
-                                            noiseFactor(0f)
-                                            colorEffects(emptyList())
-                                            backgroundColor(Color.Transparent)
-                                        },
-                                    )
-                                }
-                            )
-                    )
+        if (hazeState != null && style.blursVideo) {
+            // The blurred patches are composables, so they live in composition; they hardly ever move as the video
+            // plays (a panel, its tiles), and this only recomposes when they do.
+            val backdrops by
+                remember(shot, shotStartUs, settings, style, title, w, h, metrics, labels, recipe) {
+                    derivedStateOf(structuralEqualityPolicy()) { scene().prims.filterIsInstance<BackdropPrim>() }
                 }
-            }
+            Backdrops(backdrops, hazeState)
         }
-        Canvas(Modifier.fillMaxSize()) { drawScene(scene, measurer, fontFamily) }
+        Canvas(Modifier.fillMaxSize()) { drawScene(scene(), measurer, fontFamily) }
+    }
+}
+
+/** The style's blurred patches over the video, through Haze, at the scene's own backdrop rects. */
+@OptIn(ExperimentalHazeApi::class)
+@Composable
+private fun Backdrops(backdrops: List<BackdropPrim>, hazeState: HazeState) {
+    val density = LocalDensity.current
+    for (b in backdrops) {
+        with(density) {
+            val shape = RoundedCornerShape(b.radius.toDp())
+            val input = HazeInput.Sources(hazeState)
+            Box(
+                Modifier.offset { IntOffset(b.box.left.roundToInt(), b.box.top.roundToInt()) }
+                    .size(b.box.width.toDp(), b.box.height.toDp())
+                    .clip(shape)
+                    .then(
+                        if (b.glass != null) {
+                            Modifier.hazeGlass(
+                                input,
+                                b.glass!!.toHazeStyle(
+                                    shape,
+                                    b.box.width,
+                                    b.box.height,
+                                    b.tint,
+                                    b.blur.toDp(),
+                                    density,
+                                ),
+                            )
+                        } else {
+                            Modifier.hazeBlur(
+                                input,
+                                HazeBlurStyle {
+                                    blurRadius(b.blur.toDp())
+                                    noiseFactor(0f)
+                                    colorEffects(emptyList())
+                                    backgroundColor(Color.Transparent)
+                                },
+                            )
+                        }
+                    )
+            )
+        }
     }
 }
 

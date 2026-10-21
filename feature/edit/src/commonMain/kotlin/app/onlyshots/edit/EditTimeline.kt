@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -60,6 +61,7 @@ import app.onlyshots.core.resources.edit_timeline_trim
 import app.onlyshots.core.resources.edit_timeline_zoom
 import kotlin.math.abs
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -83,7 +85,8 @@ class TimelineActions(
 @Composable
 fun EditTimeline(
     item: VideoItem,
-    playheadUs: Long,
+    /** Where playback is, read where it is used: it changes every frame as the video plays. */
+    playheadUs: () -> Long,
     zoomFactor: Float?,
     thumbnails: List<ImageBitmap>,
     waveform: FloatArray?,
@@ -104,7 +107,8 @@ fun EditTimeline(
                     label = "sweep",
                 )
         else null
-    val text = rememberTextMeasurer()
+    // Every label of a frame (header, ruler ticks, snap label) fits, so none is laid out again on the next.
+    val text = rememberTextMeasurer(cacheSize = TEXT_CACHE)
     val haptic = LocalHapticFeedback.current
     val font = CgTheme.type.caption.fontFamily
     var snapLabel by remember { mutableStateOf<StringResource?>(null) }
@@ -118,11 +122,17 @@ fun EditTimeline(
     // What is drawn eases to a jump (a tap on the overview, "start here", a zoom key) and follows playback and the
     // finger exactly: a drag or a pinch sets [moving] for as long as it lasts.
     var moving by remember { mutableStateOf(false) }
-    val shownPlayhead = remember { Animatable(playheadUs.toFloat()) }
-    LaunchedEffect(playheadUs) {
-        val target = playheadUs.toFloat()
-        if (moving || abs(target - shownPlayhead.value) < JUMP_US) shownPlayhead.snapTo(target)
-        else shownPlayhead.animateTo(target, tween(CgMotion.MEDIUM, easing = CgMotion.Emphasized))
+    val playheadNow by rememberUpdatedState(playheadUs)
+    val shownPlayhead = remember { Animatable(playheadUs().toFloat()) }
+    // One collector for the whole life of the timeline, rather than an effect restarted on every frame of playback; a
+    // new position cancels an ease in progress, as the restart did.
+    LaunchedEffect(Unit) {
+        snapshotFlow { playheadNow() }
+            .collectLatest {
+                val target = it.toFloat()
+                if (moving || abs(target - shownPlayhead.value) < JUMP_US) shownPlayhead.snapTo(target)
+                else shownPlayhead.animateTo(target, tween(CgMotion.MEDIUM, easing = CgMotion.Emphasized))
+            }
     }
     val shownZoom = remember { Animatable(zoomFactor ?: 1f) }
     LaunchedEffect(zoomFactor) {
@@ -134,7 +144,6 @@ fun EditTimeline(
     if (snapLabel != null) lastSnapLabel = snapLabel
     val labelAlpha by animateFloatAsState(if (snapLabel != null) 1f else 0f, CgMotion.medium(), label = "snap")
     val current by rememberUpdatedState(item)
-    val playhead by rememberUpdatedState(playheadUs)
     val zoom by rememberUpdatedState(zoomFactor)
     val act by rememberUpdatedState(actions)
     val description = stringResource(Res.string.edit_timeline_description)
@@ -156,7 +165,7 @@ fun EditTimeline(
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     val pad = PAD.dp.toPx()
-                    fun view() = timelineView(size.width.toFloat(), current.durationUs, playhead, pad, zoom)
+                    fun view() = timelineView(size.width.toFloat(), current.durationUs, playheadNow(), pad, zoom)
                     val y = down.position.y
                     val inOverview = y < RULER_TOP.dp.toPx()
                     if (inOverview && y < (OVERVIEW - 8).dp.toPx()) return@awaitEachGesture
@@ -189,7 +198,7 @@ fun EditTimeline(
                                     clampToTrim(
                                         when {
                                             inOverview -> overviewUs(x)
-                                            v.zoomed -> playhead - v.usFor(x - lastX)
+                                            v.zoomed -> playheadNow() - v.usFor(x - lastX)
                                             else -> v.us(x)
                                         }
                                     )
@@ -198,7 +207,7 @@ fun EditTimeline(
                             TimelineHandle.TRIM_OUT -> {
                                 val targets =
                                     listOf(
-                                        Res.string.edit_snap_playhead to playhead,
+                                        Res.string.edit_snap_playhead to playheadNow(),
                                         Res.string.edit_snap_shot_start to current.shotStartInVideoUs,
                                         Res.string.edit_snap_shot_end to current.shotEndInVideoUs,
                                     )
@@ -214,7 +223,7 @@ fun EditTimeline(
                                         v.us(x),
                                         listOf(
                                             Res.string.edit_snap_pump_start to pumpUs,
-                                            Res.string.edit_snap_playhead to playhead,
+                                            Res.string.edit_snap_playhead to playheadNow(),
                                         ),
                                         pull,
                                     )
@@ -525,6 +534,9 @@ private const val HANDLE_W = 10
 private const val GRAB = 22
 private const val SNAP = 8
 private const val SNAP_LABEL_MS = 1_400L
+
+/** Text layouts kept between frames: more than a wide timeline's labels in one frame. */
+private const val TEXT_CACHE = 32
 
 /** A playhead move at least this long (µs) is a jump, and eases there; anything shorter is playback, and follows. */
 private const val JUMP_US = 250_000f

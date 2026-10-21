@@ -81,7 +81,8 @@ internal class TakeInputs(
     val state: RecordUiState,
     val camera: CameraState,
     val settings: RecordingSettings,
-    val live: Sample?,
+    /** The source's newest reading, read only where readings are shown: it changes with every sample. */
+    val live: () -> Sample?,
     val actions: RecordActions,
     val canSimulateShot: Boolean,
     val saveError: UiText?,
@@ -94,7 +95,7 @@ internal class TakeInputs(
 
     /** The newest reading: the shot's while recording, the source's before. */
     val sample: Sample?
-        get() = if (state.recording) state.shot.samples.lastOrNull() ?: live else live
+        get() = if (state.recording) state.shot.samples.lastOrNull() ?: live() else live()
 }
 
 /** Back (where the panel has it), the source with its live dot, and the recording settings on the right. */

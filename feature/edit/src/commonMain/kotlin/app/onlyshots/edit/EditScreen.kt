@@ -783,7 +783,7 @@ private fun Picture(
                 video.shot?.let { shot ->
                     ShotOverlay(
                         shot = shot,
-                        videoTimeUs = player.positionUs,
+                        videoTimeUs = { player.positionUs },
                         shotStartUs = video.shotStartInVideoUs ?: 0L,
                         settings = video.overlay,
                         style = ui.style ?: return@let,
@@ -792,7 +792,7 @@ private fun Picture(
                         fontFamily = CgTheme.overlayFont,
                         modifier = Modifier.fillMaxSize(),
                         hazeState = haze,
-                        backdropLuma = ui.luma?.at(player.positionUs),
+                        backdropLuma = { ui.luma?.at(player.positionUs) },
                     )
                     OverlayEditLayer(
                         rect = video.overlay.rect,
@@ -880,7 +880,7 @@ private fun TimeBand(
     Column(Modifier.fillMaxWidth().background(CgColors.Surface.Bar).padding(bottom = CgSpace.S8)) {
         EditTimeline(
             item = video,
-            playheadUs = player.positionUs,
+            playheadUs = { player.positionUs },
             zoomFactor = zoom,
             thumbnails = ui.thumbnails,
             loading = ui.stripLoading,

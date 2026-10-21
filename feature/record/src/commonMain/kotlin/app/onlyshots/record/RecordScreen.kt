@@ -188,7 +188,8 @@ fun RecordScreen(
     val capture by viewModel.captureFormat.collectAsStateWithLifecycle()
     if (state.recording) LockOrientation(landscape = capture.landscape)
     val saveError by viewModel.saveError.collectAsStateWithLifecycle()
-    val live by viewModel.live.collectAsStateWithLifecycle()
+    // Kept as state and read only by the tiles that show it: a new sample redraws them, not the camera and its graph.
+    val live = viewModel.live.collectAsStateWithLifecycle()
     RecordBody(
         modifier = Modifier.onSizeChanged { size = it },
         state = state,
@@ -213,7 +214,7 @@ fun RecordScreen(
         onStyleEditor = onStyleEditor,
         sampleLuma = viewModel.camera::sampleLuma,
         capture = capture,
-        live = live,
+        live = { live.value },
         picture = { modifier, drawFrames -> CameraPreview(viewModel.camera, modifier, drawFrames = drawFrames) },
     )
 }
@@ -243,8 +244,8 @@ fun RecordBody(
     picture: @Composable (Modifier, drawFrames: Boolean) -> Unit,
     /** The camera's whole frame as it films it: 9:16 with the screen upright, 16:9 on its side. */
     capture: VideoFormat = VideoFormat.PORTRAIT_9_16,
-    /** The source's newest reading, for the tiles before a take starts. */
-    live: Sample? = null,
+    /** The source's newest reading, for the tiles before a take starts; read where the tiles are, not here. */
+    live: () -> Sample? = { null },
     modifier: Modifier = Modifier,
     /** The graph selected from the start, its toolbar showing: for a screenshot. */
     graphSelectedAtFirst: Boolean = false,
@@ -544,13 +545,17 @@ private fun CameraPane(
                     shotStartUs = state.shotStartInVideoUs,
                     // Before the first sample the graph shows every selected reading, waiting: only those this source
                     // can send (a scale has no pressure), as the data sheet offers them.
+                    // Remembered: a new copy on every pass would make the graph rebuild for nothing.
                     settings =
-                        settings.overlay.forSource(state.sourceKind).let { o ->
-                            val measured = Capabilities.of(state.sourceKind, hasScale = true).series
-                            o.copy(
-                                rect = rect,
-                                series = o.series.filterTo(mutableSetOf()) { it == Series.TARGETS || it in measured },
-                            )
+                        remember(settings.overlay, state.sourceKind, rect) {
+                            settings.overlay.forSource(state.sourceKind).let { o ->
+                                val measured = Capabilities.of(state.sourceKind, hasScale = true).series
+                                o.copy(
+                                    rect = rect,
+                                    series =
+                                        o.series.filterTo(mutableSetOf()) { it == Series.TARGETS || it in measured },
+                                )
+                            }
                         },
                     // From the state, not the view model: the machine can change underneath.
                     style = graphStyle,
@@ -735,8 +740,11 @@ private fun Modifier.belowFocusRing(ring: Offset): Modifier = layout { measurabl
     }
 }
 
-/** What the camera pane draws from, read afresh by the one pane every layout shares. */
-private class PaneInputs(
+/**
+ * What the camera pane draws from, read afresh by the one pane every layout shares. A data class: the same inputs again
+ * (a recomposition above for something else) do not redraw the camera pane and its graph.
+ */
+private data class PaneInputs(
     val state: RecordUiState,
     val camera: CameraState,
     val settings: RecordingSettings,

@@ -86,6 +86,7 @@ import app.onlyshots.core.designsystem.component.BackButton
 import app.onlyshots.core.designsystem.component.Banner
 import app.onlyshots.core.designsystem.component.BannerKind
 import app.onlyshots.core.designsystem.component.CgDialog
+import app.onlyshots.core.designsystem.component.DialogRisk
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.EditorSheetSlot
 import app.onlyshots.core.designsystem.component.ExportOverlay
@@ -244,6 +245,7 @@ fun EditScreen(
             text = stringResource(Res.string.edit_leave_text),
             onDismiss = { askLeave = false },
             confirm = stringResource(Res.string.edit_keep_editing) to { askLeave = false },
+            risk = DialogRisk.Dismiss,
             dismiss =
                 stringResource(Res.string.edit_leave) to
                     {

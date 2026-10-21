@@ -2,6 +2,7 @@ package app.onlyshots.core.designsystem.component
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -9,16 +10,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -29,30 +29,45 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
-import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 
-/** Figma "Status chip" over the camera view. Recording turns it red. */
+/**
+ * Figma "Status chip" over the camera view: a 44 dp ink cell with a hairline edge, a square dot and Mono capitals.
+ * Recording turns it the record red with white letters.
+ */
 @Composable
 fun StatusChip(text: String, recording: Boolean, modifier: Modifier = Modifier, dot: Color? = null) {
     val ground by
-        animateColorAsState(if (recording) CgColors.Status.RecordingChip else CgColors.Surface.Bar, CgMotion.medium())
+        animateColorAsState(
+            if (recording) CgColors.Status.Record else CgColors.Surface.Base.copy(alpha = 0.85f),
+            CgMotion.medium(),
+        )
+    val edge by
+        animateColorAsState(if (recording) CgColors.Status.Record else CgColors.Line.Hairline, CgMotion.medium())
     Row(
         modifier
             // Opaque, not a tint: over a dark frame a translucent chip is unreadable.
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
-            .clip(CgShape.Pill)
+            .heightIn(min = CgSize.Touch)
             .background(ground)
-            .padding(horizontal = CgSpace.S12, vertical = CgSpace.S6),
+            .border(CgStroke.Hairline, edge)
+            .padding(horizontal = CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
     ) {
-        if (dot != null) Box(Modifier.size(8.dp).background(dot, CircleShape))
-        Text(text, style = CgTheme.type.label)
+        if (dot != null) Box(Modifier.size(6.dp).background(dot))
+        Text(
+            text.caps(),
+            style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp),
+            color = if (recording) Color.White else CgColors.Text.Primary,
+        )
     }
 }
 
@@ -63,8 +78,8 @@ enum class BannerKind {
 }
 
 /**
- * Figma "Banner": one full-width line of copy on the raised surface, with a dot in the kind's colour, as a [StatusPill]
- * says its state. A field of saturated colour across the screen outweighed everything under it.
+ * Figma "Banner": one line of copy in a cell edged in the kind's colour, the words in that colour too, and an optional
+ * key outlined the same way. A field of saturated colour across the screen outweighed everything under it.
  */
 @Composable
 fun Banner(
@@ -74,37 +89,36 @@ fun Banner(
     action: String? = null,
     onAction: () -> Unit = {},
 ) {
-    val dot =
+    val tone =
         when (kind) {
-            BannerKind.Success -> CgColors.Status.Live
-            BannerKind.Warning -> CgColors.Status.Highlight
-            BannerKind.Info -> CgColors.Status.Info
+            BannerKind.Success -> CgColors.Status.Success
+            BannerKind.Warning -> CgColors.Status.Warning
+            BannerKind.Info -> CgColors.Text.Primary
         }
     Row(
         modifier
             .fillMaxWidth()
-            .background(CgColors.Surface.Raised)
-            .drawBehind {
-                val h = 1.dp.toPx()
-                drawRect(CgColors.Line.Hairline, Offset(0f, size.height - h), Size(size.width, h))
-            }
-            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
+            .background(CgColors.Surface.Base)
+            .border(CgStroke.Hairline, if (kind == BannerKind.Info) CgColors.Line.Hairline else tone)
+            .padding(horizontal = CgSpace.S12, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(8.dp).background(dot, CircleShape))
         Text(
             text,
-            style = CgTheme.type.bodySmall,
+            style = CgTheme.type.caption,
+            color = tone,
             modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
         )
         if (action != null) {
             Box(
                 Modifier.defaultMinSize(minWidth = CgSize.Touch, minHeight = CgSize.Touch)
-                    .clickable(role = Role.Button, onClick = onAction),
+                    .border(CgStroke.Hairline, if (kind == BannerKind.Info) CgColors.Line.Hairline else tone)
+                    .clickable(role = Role.Button, onClick = onAction)
+                    .padding(horizontal = CgSpace.S16),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(action, style = CgTheme.type.labelStrong, modifier = Modifier.padding(CgSpace.S12))
+                Text(action.caps(), style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp), color = tone)
             }
         }
     }
@@ -119,12 +133,18 @@ fun HeaderBack(
     action: (@Composable () -> Unit)? = null,
 ) {
     Row(
-        modifier.fillMaxWidth().padding(horizontal = CgSpace.S16),
+        modifier
+            .fillMaxWidth()
+            .drawBehind {
+                val h = CgStroke.Hairline.toPx()
+                drawRect(CgColors.Line.Hairline, Offset(0f, size.height - h), Size(size.width, h))
+            }
+            .padding(start = CgSpace.S16, end = CgSpace.S16, bottom = CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
     ) {
         BackButton(onClick = onBack)
-        Text(title, style = CgTheme.type.screenTitle, modifier = Modifier.weight(1f).semantics { heading() })
+        Text(title.caps(), style = CgTheme.type.sheetTitle, modifier = Modifier.weight(1f).semantics { heading() })
         action?.invoke()
     }
 }
@@ -148,7 +168,7 @@ fun HeaderPivot(items: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit
                     style = CgTheme.type.pivot,
                     color =
                         animateColorAsState(
-                                if (i == selectedIndex) CgColors.Text.Primary else CgColors.Text.Dim,
+                                if (i == selectedIndex) CgColors.Text.Primary else CgColors.Text.Disabled,
                                 CgMotion.short(),
                             )
                             .value,

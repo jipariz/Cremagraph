@@ -119,5 +119,6 @@ object CgShape {
 object CgSize {
     /** Minimum touch target. */
     val Touch = 44.dp
-    val Record = 70.dp
+    /** The record key's square frame. */
+    val Record = 80.dp
 }

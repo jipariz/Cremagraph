@@ -60,6 +60,7 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.component.CgDialog
 import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CoffeeScene
+import app.onlyshots.core.designsystem.component.DialogRisk
 import app.onlyshots.core.designsystem.component.SectionHeader
 import app.onlyshots.core.model.style.GraphStyle
 import app.onlyshots.core.model.style.Material
@@ -208,6 +209,7 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                         deleting = null
                     },
             dismiss = stringResource(Res.string.style_cancel) to { deleting = null },
+            risk = DialogRisk.Confirm,
         )
     }
 }

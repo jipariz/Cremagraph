@@ -6,7 +6,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -32,7 +31,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,9 +40,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.PathEffect
@@ -60,12 +58,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.core_library_count
 import app.onlyshots.core.resources.core_scale_connect
@@ -80,14 +81,10 @@ import kotlin.math.cos
 import org.jetbrains.compose.resources.stringResource
 
 /*
- * Figma "Home" (47:142 and its states): the rows, cards and the record action the start screen is built from. Card
- * corners are 12, tiles 44 with corners of 10, pills 10, the record action 28 — the Home frames are rounder than the
- * square controls elsewhere, and these sizes come straight from them.
+ * Figma "Home" (47:142 and its states), in the Instrument look: the rows, cells and the record action the start
+ * screen is built from. Square cells with hairline edges on ink; names and states in Mono capitals.
  */
 
-private val Card = RoundedCornerShape(12.dp)
-private val Tile = RoundedCornerShape(10.dp)
-private val Pill = RoundedCornerShape(10.dp)
 private val TileSize = 44.dp
 
 /**
@@ -120,11 +117,10 @@ fun LibraryChip(count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) 
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            stringResource(Res.string.core_library_count, count.toString()),
-            style = CgTheme.type.label,
+            stringResource(Res.string.core_library_count, count.toString()).caps(),
+            style = CgTheme.type.labelStrong,
             modifier =
-                Modifier.clip(RoundedCornerShape(18.dp))
-                    .background(CgColors.Surface.Raised)
+                Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline)
                     .padding(horizontal = CgSpace.S12, vertical = CgSpace.S8),
         )
     }
@@ -136,7 +132,7 @@ fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     trailing: String? = null,
-    trailingColor: Color = CgColors.Text.Dim,
+    trailingColor: Color = CgColors.Text.Primary,
     onTrailing: (() -> Unit)? = null,
     /** The note is a search still running: it breathes, with a dot sending out a ping before it. */
     searching: Boolean = false,
@@ -150,7 +146,7 @@ fun SectionHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            title.uppercase(),
+            title.caps(),
             style = CgTheme.type.labelStrong,
             color = CgColors.Text.Secondary,
             modifier = Modifier.semantics { heading() },
@@ -163,7 +159,8 @@ fun SectionHeader(
             Box(target ?: Modifier, contentAlignment = Alignment.CenterEnd) {
                 // "searching…" gives way to "2 found" with a fade, not a jump.
                 Crossfade(searching, animationSpec = CgMotion.medium(), label = "searching") { busy ->
-                    if (busy) SearchingNote(trailing, ink) else Text(trailing, style = CgTheme.type.label, color = ink)
+                    if (busy) SearchingNote(trailing.caps(), ink)
+                    else Text(trailing.caps(), style = CgTheme.type.labelStrong, color = ink)
                 }
             }
         }
@@ -192,43 +189,51 @@ private fun SearchingNote(text: String, color: Color) {
             Modifier.size(14.dp).drawBehind {
                 val dot = 2.5.dp.toPx()
                 val t = t()
-                drawCircle(color, radius = dot + (size.minDimension / 2 - dot) * t, alpha = 0.5f * (1f - t))
-                drawCircle(color, radius = dot)
+                val ping = dot + (size.minDimension / 2 - dot) * t
+                drawRect(
+                    color,
+                    topLeft = center - Offset(ping, ping),
+                    size = Size(ping * 2, ping * 2),
+                    alpha = 0.5f * (1f - t),
+                    style = Stroke(1.dp.toPx()),
+                )
+                drawRect(color, topLeft = center - Offset(dot, dot), size = Size(dot * 2, dot * 2))
             }
         )
         // Brightest as the ring leaves the dot, dimmest as it fades out.
         Text(
             text,
-            style = CgTheme.type.label,
+            style = CgTheme.type.labelStrong,
             color = color,
             modifier = Modifier.graphicsLayer { alpha = 0.55f + 0.45f * (0.5f + 0.5f * cos(2f * PI.toFloat() * t())) },
         )
     }
 }
 
-/** A dot and a word: "ready", "connected", "busy", "offline". */
+/** A square dot and a word in Mono capitals, both in the state's colour: "ready", "connected", "busy", "offline". */
 @Composable
 fun StatusPill(text: String, dot: Color, modifier: Modifier = Modifier) {
+    val dotColor by animateColorAsState(dot, CgMotion.medium())
     Row(
-        modifier.clip(Pill).background(CgColors.Surface.Base).padding(horizontal = CgSpace.S8, vertical = CgSpace.S4),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        modifier.padding(vertical = CgSpace.S4),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val dotColor by animateColorAsState(dot, CgMotion.medium())
-        Box(Modifier.size(7.dp).clip(CircleShape).background(dotColor))
+        Box(Modifier.size(6.dp).background(dotColor))
         AnimatedContent(
             text,
             transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) using SizeTransform() },
             label = "status",
         ) {
-            Text(it, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+            Text(it.caps(), style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp), color = dotColor)
         }
     }
 }
 
 /**
- * A machine or a connected scale: a coloured tile, the name, where it is, an optional live line, and its status. The
- * chosen one is raised with a white outline; the others keep a hairline, so they stand off the page.
+ * A machine or a connected scale: a cell on the bar colour with the machine's colour as a 4 dp bar, the name in Mono
+ * capitals, where it is in Mono, an optional live line, and its status. The chosen one has the signal for its edge; the
+ * others a hairline.
  */
 @Composable
 fun MachineRow(
@@ -244,30 +249,22 @@ fun MachineRow(
     enabled: Boolean = true,
 ) {
     val alpha by animateFloatAsState(if (enabled) 1f else 0.5f, CgMotion.short())
-    val ground by animateColorAsState(if (selected) CgColors.Surface.Raised else CgColors.Surface.Bar, CgMotion.short())
-    val edge by animateColorAsState(if (selected) CgColors.Text.Primary else CgColors.Line.Hairline, CgMotion.short())
-    val edgeWidth by animateDpAsState(if (selected) 2.dp else 1.dp, CgMotion.short())
+    val edge by animateColorAsState(if (selected) CgColors.Brand.Signal else CgColors.Line.Hairline, CgMotion.short())
     Row(
         modifier
             .fillMaxWidth()
             .graphicsLayer { this.alpha = alpha }
-            .clip(Card)
-            .background(ground)
-            .border(edgeWidth, edge, Card)
+            .background(CgColors.Surface.Bar)
+            .border(CgStroke.Hairline, edge)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(start = CgSpace.S12, end = CgSpace.S14, top = CgSpace.S12, bottom = CgSpace.S12),
+            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S14),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier.size(TileSize).clip(Tile).background(tileColor),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(IconKind.Machine)
-        }
+        Box(Modifier.size(width = 4.dp, height = 36.dp).background(tileColor))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(name, style = CgTheme.type.body)
-            Text(detail, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+            Text(name.caps(), style = CgTheme.type.cardTitle)
+            Text(detail, style = CgTheme.type.data, color = CgColors.Text.Secondary)
             // The live line opens under the name when readings start, rather than pushing the row taller at once.
             AnimatedVisibility(
                 live != null,
@@ -276,14 +273,18 @@ fun MachineRow(
             ) {
                 var last by remember { mutableStateOf(live.orEmpty()) }
                 if (live != null) last = live
-                Text(last, style = CgTheme.type.caption, color = CgColors.Status.Live)
+                Text(last, style = CgTheme.type.data, color = CgColors.Status.Live)
             }
         }
         StatusPill(status, statusDot)
     }
 }
 
-/** One of the start screen's ways in: a coloured icon tile, a title, what it does, and a chevron. */
+/**
+ * One of the start screen's ways in: a 44 dp framed icon, a title in Mono capitals, what it does, and a chevron. With
+ * [signal] it is the screen's main way in, filled with the signal and drawn in ink; otherwise a bar-coloured cell with
+ * a hairline edge. [tileColor] is kept for callers; the Instrument cells carry no coloured tile.
+ */
 @Composable
 fun ChoiceCard(
     icon: ImageVector,
@@ -292,31 +293,39 @@ fun ChoiceCard(
     detail: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    signal: Boolean = false,
 ) {
+    val ink = if (signal) CgColors.Text.OnLight else CgColors.Text.Primary
     Row(
         modifier
             .fillMaxWidth()
-            .clip(Card)
-            .background(CgColors.Surface.Bar)
-            .border(1.dp, CgColors.Line.Hairline, Card)
+            .background(if (signal) CgColors.Brand.Signal else CgColors.Surface.Bar)
+            .border(CgStroke.Hairline, if (signal) CgColors.Brand.Signal else CgColors.Line.Hairline)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(CgSpace.S16),
-        horizontalArrangement = Arrangement.spacedBy(CgSpace.S14),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S16),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(52.dp).clip(Tile).background(tileColor), contentAlignment = Alignment.Center) {
-            Image(
-                icon,
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(Color.White),
-                modifier = Modifier.size(28.dp),
-            )
+        Box(
+            Modifier.size(TileSize)
+                .border(if (signal) CgStroke.Rule else CgStroke.Hairline, if (signal) ink else CgColors.Line.Hairline),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(icon, contentDescription = null, colorFilter = ColorFilter.tint(ink), modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
-            Text(title, style = CgTheme.type.cardTitle)
-            Text(detail, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+            Text(title.caps(), style = CgTheme.type.screenTitle.copy(letterSpacing = 0.sp), color = ink)
+            Text(
+                detail,
+                style = CgTheme.type.bodySmall,
+                color = if (signal) CgColors.Text.OnLight else CgColors.Text.Secondary,
+            )
         }
-        Text("›", style = CgTheme.type.cardTitle, color = CgColors.Text.Secondary)
+        Text(
+            "›",
+            style = CgTheme.type.screenTitle,
+            color = if (signal) CgColors.Text.OnLight else CgColors.Text.Secondary,
+        )
     }
 }
 
@@ -331,12 +340,13 @@ fun SkeletonRow(modifier: Modifier = Modifier) {
         modifier
             .fillMaxWidth()
             .then(if (LocalInspectionMode.current) Modifier.alpha(0.6f) else Modifier.shimmer(shimmer))
-            .clip(Card)
             .background(CgColors.Surface.Bar)
-            .padding(start = CgSpace.S12, top = CgSpace.S12, bottom = CgSpace.S12),
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S14),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(TileSize).clip(Tile).background(CgColors.Surface.Raised))
+        Box(Modifier.size(width = 4.dp, height = 36.dp).background(CgColors.Line.Hairline))
         Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
             Bar(140.dp)
             Bar(200.dp)
@@ -352,68 +362,68 @@ private val SkeletonShimmer =
 
 @Composable
 private fun Bar(width: Dp) {
-    Box(Modifier.width(width).height(10.dp).clip(RoundedCornerShape(5.dp)).background(CgColors.Surface.Raised))
+    Box(Modifier.width(width).height(10.dp).background(CgColors.Surface.Raised))
 }
 
-/** "add by address": a dashed card for what the search cannot see. */
+/** "add by address": a dashed hairline cell with the signal's "+" for what the search cannot see. */
 @Composable
 fun AddRow(title: String, onClick: () -> Unit, modifier: Modifier = Modifier, subtitle: String? = null) {
     Row(
         modifier
             .fillMaxWidth()
-            .clip(Card)
+            .heightIn(min = CgSize.Touch)
             .drawBehind {
-                val stroke = 1.5.dp.toPx()
-                drawRoundRect(
-                    color = CgColors.Line.Divider,
-                    topLeft = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2),
-                    size = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke),
-                    cornerRadius = CornerRadius(12.dp.toPx()),
+                val stroke = CgStroke.Hairline.toPx()
+                drawRect(
+                    color = CgColors.Line.Hairline,
+                    topLeft = Offset(stroke / 2, stroke / 2),
+                    size = Size(size.width - stroke, size.height - stroke),
                     style = Stroke(width = stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))),
                 )
             }
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(start = CgSpace.S12, end = CgSpace.S14, top = CgSpace.S12, bottom = CgSpace.S12),
+            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier.size(TileSize).border(1.dp, CgColors.Text.Dim, Tile),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(IconKind.Plus)
-        }
+        Text(
+            "+",
+            style = CgTheme.type.screenTitle,
+            color = CgColors.Brand.Signal,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(24.dp),
+        )
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = CgTheme.type.bodySmall)
-            if (subtitle != null) Text(subtitle, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+            Text(title.caps(), style = CgTheme.type.label)
+            if (subtitle != null) Text(subtitle, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
         }
     }
 }
 
-/** The way into Bluetooth before anything is chosen: blue outline, a Bluetooth mark, and a chevron. */
+/** The way into Bluetooth before anything is chosen: a hairline cell with a framed Bluetooth mark and a chevron. */
 @Composable
 fun ConnectScaleCard(title: String, subtitle: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier
             .fillMaxWidth()
-            .clip(Card)
-            .border(1.5.dp, CgColors.Series.Pressure, Card)
+            .background(CgColors.Surface.Bar)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(CgSpace.S14),
+            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(TileSize).clip(CircleShape).background(CgColors.Status.Info),
+            Modifier.size(TileSize).border(CgStroke.Hairline, CgColors.Line.Hairline),
             contentAlignment = Alignment.Center,
         ) {
-            Text("ᛒ", style = CgTheme.type.cardTitle)
+            Text("ᛒ", style = CgTheme.type.cardTitle, color = CgColors.Brand.Signal)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = CgTheme.type.body)
-            Text(subtitle, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+            Text(title.caps(), style = CgTheme.type.label)
+            Text(subtitle, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
         }
-        Text("›", style = CgTheme.type.cardTitle, color = CgColors.Text.Secondary)
+        Text("›", style = CgTheme.type.screenTitle, color = CgColors.Text.Secondary)
     }
 }
 
@@ -424,7 +434,10 @@ enum class ScaleAction {
     Connected,
 }
 
-/** A scale found while scanning: signal strength in four bars, name, what it measures, and its connect pill. */
+/**
+ * A scale found while scanning, as a cell on ink with a hairline edge (stacked, the edges meet as one grid): signal
+ * strength in four square bars, name in Mono capitals, what it measures, and its connect key.
+ */
 @Composable
 fun ScaleDeviceRow(
     name: String,
@@ -437,31 +450,34 @@ fun ScaleDeviceRow(
     Row(
         modifier
             .fillMaxWidth()
-            .clip(Card)
-            .background(CgColors.Surface.Raised)
-            .border(1.dp, CgColors.Line.Hairline, Card)
+            .background(CgColors.Surface.Base)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .clickable(enabled = action == ScaleAction.Connect, role = Role.Button, onClick = onAction)
-            .padding(CgSpace.S12),
+            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.Bottom) {
+        Row(
+            Modifier.size(width = 24.dp, height = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
             for (i in 0 until 4) {
                 Box(
                     Modifier.width(4.dp)
-                        .height((6 + 4 * i).dp)
-                        .background(if (i < bars) CgColors.Text.Primary else CgColors.Line.Divider)
+                        .height((4 + 4 * i).dp)
+                        .background(if (i < bars) CgColors.Text.Primary else CgColors.Line.Hairline)
                 )
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(name, style = CgTheme.type.body)
-            Text(detail, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+            Text(name.caps(), style = CgTheme.type.label.copy(letterSpacing = 0.sp))
+            Text(detail, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
         }
         val (label, bg, fg) =
             when (action) {
                 ScaleAction.Connect ->
-                    Triple(stringResource(Res.string.core_scale_connect), CgColors.Text.Primary, CgColors.Text.OnLight)
+                    Triple(stringResource(Res.string.core_scale_connect), CgColors.Brand.Bone, CgColors.Text.OnLight)
                 ScaleAction.Connecting ->
                     Triple(
                         stringResource(Res.string.core_scale_connecting),
@@ -471,21 +487,21 @@ fun ScaleDeviceRow(
                 ScaleAction.Connected ->
                     Triple(stringResource(Res.string.core_scale_connected), CgColors.Surface.Base, CgColors.Status.Live)
             }
-        Text(
-            label,
-            style = CgTheme.type.labelStrong,
-            color = fg,
-            modifier =
-                Modifier.clip(RoundedCornerShape(16.dp))
-                    .background(bg)
-                    .padding(horizontal = CgSpace.S14, vertical = CgSpace.S8),
-        )
+        Box(
+            Modifier.height(36.dp)
+                .background(bg)
+                .border(CgStroke.Hairline, if (bg == CgColors.Surface.Base) CgColors.Line.Hairline else bg)
+                .padding(horizontal = CgSpace.S14),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(label.caps(), style = CgTheme.type.labelStrong.copy(letterSpacing = 0.sp), color = fg)
+        }
     }
 }
 
 /**
- * The main action at the bottom of Home, a white pill like every screen's main action, naming what will be used, with
- * how recording starts under it. Its dot is the one touch of record red: red is for recording itself.
+ * The main action at the bottom of Home: a 56 dp signal bar naming what will be used, an ink dot before it and an arrow
+ * after, with how recording starts under it. Disabled, a hairline bar with grey letters.
  */
 @Composable
 fun RecordAction(
@@ -495,44 +511,29 @@ fun RecordAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val ground by
-        animateColorAsState(if (enabled) CgColors.Text.Primary else CgColors.Surface.Raised, CgMotion.medium())
-    val dot by animateColorAsState(if (enabled) CgColors.Status.Record else CgColors.Text.Dim, CgMotion.medium())
-    val ink by animateColorAsState(if (enabled) CgColors.Text.OnLight else CgColors.Text.Dim, CgMotion.medium())
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
+    val ground by animateColorAsState(if (enabled) CgColors.Brand.Signal else Color.Transparent, CgMotion.medium())
+    val ink by animateColorAsState(if (enabled) CgColors.Text.OnLight else CgColors.Text.Disabled, CgMotion.medium())
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
         Row(
             Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(28.dp))
+                .height(56.dp)
                 .background(ground)
+                .border(CgStroke.Hairline, if (enabled) Color.Transparent else CgColors.Line.Hairline)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-                .padding(vertical = CgSpace.S16),
-            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(14.dp).clip(CircleShape).background(dot))
-            Text(text, style = CgTheme.type.body, color = ink)
+            // The one round thing: the record dot.
+            Box(Modifier.size(10.dp).background(ink, CircleShape))
+            Text(text.caps(), style = CgTheme.type.label, color = ink, modifier = Modifier.weight(1f))
+            Text("→", style = CgTheme.type.label, color = ink)
         }
         Text(
             caption,
-            style = CgTheme.type.caption,
-            color = CgColors.Text.Dim,
-            textAlign = TextAlign.Center,
+            style = CgTheme.type.bodySmall,
+            color = CgColors.Text.Secondary,
             modifier = Modifier.fillMaxWidth(),
         )
     }
-}
-
-private enum class IconKind {
-    Machine,
-    Plus,
-}
-
-@Composable
-private fun Icon(kind: IconKind) {
-    Image(
-        if (kind == IconKind.Machine) CgIcons.Machine else CgIcons.Plus,
-        contentDescription = null,
-        colorFilter = ColorFilter.tint(CgColors.Text.Primary),
-        modifier = Modifier.size(24.dp),
-    )
 }

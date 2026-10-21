@@ -9,7 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.core_timeline_description
 import app.onlyshots.core.resources.core_timeline_earlier
@@ -90,17 +91,21 @@ fun Timeline(
                 topLeft = Offset(outX, 0f),
                 size = Size(size.width - outX, size.height),
             )
+            // The hairline frame around the clip.
+            val line = CgStroke.Hairline.toPx()
+            drawRect(CgColors.Line.Hairline, style = Stroke(line))
             val handle = 6.dp.toPx()
-            drawRect(CgColors.Text.Primary, topLeft = Offset(inX - handle / 2, 0f), size = Size(handle, size.height))
-            drawRect(CgColors.Text.Primary, topLeft = Offset(outX - handle / 2, 0f), size = Size(handle, size.height))
+            drawRect(CgColors.Brand.Bone, topLeft = Offset(inX - handle / 2, 0f), size = Size(handle, size.height))
+            drawRect(CgColors.Brand.Bone, topLeft = Offset(outX - handle / 2, 0f), size = Size(handle, size.height))
             shotStartUs?.let { us ->
                 val fx = x(us)
-                val color = if (shotStartLocked) CgColors.Text.Dim else CgColors.Status.Highlight
-                drawRect(color, topLeft = Offset(fx - 1.dp.toPx(), 0f), size = Size(2.dp.toPx(), size.height))
+                val color = if (shotStartLocked) CgColors.Text.Disabled else CgColors.Status.Success
+                drawRect(color, topLeft = Offset(fx - line / 2, 0f), size = Size(line, size.height))
                 drawRect(color, topLeft = Offset(fx, 0f), size = Size(10.dp.toPx(), 10.dp.toPx()))
             }
             val px = x(playheadUs)
-            drawRect(Color.White, topLeft = Offset(px - 1.dp.toPx(), 0f), size = Size(2.dp.toPx(), size.height))
+            val rule = CgStroke.Rule.toPx()
+            drawRect(CgColors.Brand.Signal, topLeft = Offset(px - rule / 2, 0f), size = Size(rule, size.height))
         }
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.aspectRatio
@@ -44,8 +46,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -63,9 +63,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -91,15 +90,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
-import app.onlyshots.core.designsystem.CgRadius
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.core_cancel
 import app.onlyshots.core.resources.core_choose_file
@@ -118,12 +120,14 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 /*
- * The web editor's phone controls (web/.../styles.css): rounded chips and pills on the raised surface, list rows, a
- * floating toolbar over the graph and a bottom sheet without a scrim, so the picture stays in view while it is open.
- * Pills are 34 dp to look at and 44 dp to touch.
+ * The editor's controls in the Instrument look: square keys with hairline edges, Mono capitals, hairline grids between
+ * cells, a bottom sheet without a scrim (so the picture stays in view while it is open) topped by the signal rule. Keys
+ * are 40 dp to look at and 44 dp to touch.
  */
 
-private val Chip = CgShape.Pill
+/** The small keys' letters: Mono SemiBold 12, set in capitals. */
+private val KeyStyle
+    @Composable get() = CgTheme.type.labelStrong.copy(letterSpacing = 0.02.em)
 
 /** A chip in the editor's top bar: a name, an optional status dot, and a caret for the sheet it opens. */
 @Composable
@@ -135,37 +139,38 @@ fun TopChip(
     primary: Boolean = false,
     caret: Boolean = true,
 ) {
-    Box(modifier.heightIn(min = CgSize.Touch).clickable(role = Role.Button, onClick = onClick), Alignment.Center) {
-        Row(
-            Modifier.clip(Chip)
-                .background(if (primary) CgColors.Brand.Signal else CgColors.Surface.Raised)
-                .padding(start = CgSpace.S12, end = 10.dp, top = CgSpace.S8, bottom = CgSpace.S8),
-            horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (dot != null) Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
+    Row(
+        modifier
+            .heightIn(min = CgSize.Touch)
+            .background(if (primary) CgColors.Brand.Signal else Color.Transparent)
+            .border(CgStroke.Hairline, if (primary) CgColors.Brand.Signal else CgColors.Line.Hairline)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = CgSpace.S12),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (dot != null) Box(Modifier.size(6.dp).background(dot))
+        Text(
+            text.caps(),
+            style = KeyStyle,
+            color = if (primary) CgColors.Text.OnLight else CgColors.Text.Primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 180.dp),
+        )
+        if (caret) {
             Text(
-                text,
-                style = if (primary) CgTheme.type.labelStrong else CgTheme.type.label,
-                color = if (primary) CgColors.Text.OnLight else CgColors.Text.Primary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 180.dp),
+                "▾",
+                style = CgTheme.type.caption,
+                color = if (primary) CgColors.Text.OnLight else CgColors.Text.Secondary,
             )
-            if (caret) {
-                Text(
-                    "▾",
-                    style = CgTheme.type.caption,
-                    color = if (primary) CgColors.Text.OnLight else CgColors.Text.Secondary,
-                )
-            }
         }
     }
 }
 
 /**
  * The wide editor's main action: [text] runs it at once ([onClick]); when there is a second way to do it, the ▾ half
- * opens [menu] (its items close it with the function they are handed). Orange, like the phone's export chip.
+ * opens [menu] (its items close it with the function they are handed). The signal, like the phone's export chip.
  */
 @Composable
 fun SplitButton(
@@ -177,56 +182,64 @@ fun SplitButton(
     var open by remember { mutableStateOf(false) }
     val moreWays = stringResource(Res.string.core_export_more)
     Row(
-        modifier.heightIn(min = CgSize.Touch),
+        modifier.height(IntrinsicSize.Min).heightIn(min = CgSize.Touch).background(CgColors.Brand.Signal),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.clip(Chip).background(CgColors.Brand.Signal), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text,
-                style = CgTheme.type.labelStrong,
-                color = CgColors.Text.OnLight,
-                maxLines = 1,
-                modifier =
-                    Modifier.clickable(role = Role.Button, onClick = onClick)
-                        .padding(start = CgSpace.S16, end = if (menu == null) CgSpace.S16 else CgSpace.S12)
-                        .padding(vertical = CgSpace.S8),
-            )
-            if (menu != null) {
-                Box(Modifier.width(1.dp).height(18.dp).background(CgColors.Text.OnLight.copy(alpha = 0.35f)))
-                Box {
-                    Text(
-                        "▾",
-                        style = CgTheme.type.labelStrong,
-                        color = CgColors.Text.OnLight,
-                        modifier =
-                            Modifier.clickable(role = Role.DropdownList) { open = true }
-                                .semantics { contentDescription = moreWays }
-                                .padding(horizontal = CgSpace.S12, vertical = CgSpace.S8),
-                    )
-                    DropdownMenu(
-                        expanded = open,
-                        onDismissRequest = { open = false },
-                        modifier = Modifier.testTagsAsResourceIds(),
-                    ) {
-                        menu { open = false }
-                    }
+        Box(
+            Modifier.fillMaxHeight()
+                .clickable(role = Role.Button, onClick = onClick)
+                .padding(start = CgSpace.S16, end = if (menu == null) CgSpace.S16 else CgSpace.S12),
+            Alignment.Center,
+        ) {
+            Text(text.caps(), style = KeyStyle, color = CgColors.Text.OnLight, maxLines = 1)
+        }
+        if (menu != null) {
+            Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Text.OnLight.copy(alpha = 0.35f)))
+            Box(Modifier.fillMaxHeight()) {
+                Box(
+                    Modifier.fillMaxHeight()
+                        .clickable(role = Role.DropdownList) { open = true }
+                        .semantics { contentDescription = moreWays }
+                        .padding(horizontal = CgSpace.S12),
+                    Alignment.Center,
+                ) {
+                    Text("▾", style = KeyStyle, color = CgColors.Text.OnLight)
+                }
+                DropdownMenu(
+                    expanded = open,
+                    onDismissRequest = { open = false },
+                    modifier = Modifier.testTagsAsResourceIds(),
+                    shape = CgShape.Chip,
+                    containerColor = CgColors.Surface.Bar,
+                    border = BorderStroke(CgStroke.Hairline, CgColors.Line.Hairline),
+                ) {
+                    menu { open = false }
                 }
             }
         }
     }
 }
 
-/** A menu row in the design's type, for [SplitButton] and the editor's other menus. */
+/**
+ * A menu row in the design's type, for [SplitButton] and the editor's other menus: Mono 13 capitals over a divider,
+ * with a sentence under it when there is a [detail].
+ */
 @Composable
 fun CgMenuItem(text: String, detail: String? = null, onClick: () -> Unit) {
+    val divider = CgColors.Line.Divider
     DropdownMenuItem(
         text = {
-            Column {
-                Text(text, style = CgTheme.type.body)
-                if (detail != null) Text(detail, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(text.caps(), style = CgTheme.type.label.copy(fontSize = 13.sp, letterSpacing = 0.02.em))
+                if (detail != null) Text(detail, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
             }
         },
         onClick = onClick,
+        modifier =
+            Modifier.drawBehind {
+                val h = CgStroke.Hairline.toPx()
+                drawRect(divider, Offset(0f, size.height - h), Size(size.width, h))
+            },
     )
 }
 
@@ -263,10 +276,11 @@ fun ExportOverlay(
             Modifier.widthIn(max = 440.dp)
                 .fillMaxWidth()
                 .padding(CgSpace.S24)
-                .clip(CgShape.Dialog)
                 .background(CgColors.Surface.Bar)
+                .border(CgStroke.Hairline, CgColors.Line.Hairline)
+                .signalRule()
                 .padding(CgSpace.S24),
-            verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
+            verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
         ) {
             still?.let {
                 Image(
@@ -277,7 +291,10 @@ fun ExportOverlay(
                         Modifier.align(Alignment.CenterHorizontally)
                             .height(if (stillRatio > 1f) 120.dp else 180.dp)
                             .aspectRatio(stillRatio)
-                            .clip(RoundedCornerShape(CgRadius.Chip)),
+                            .border(
+                                CgStroke.Hairline,
+                                if (done != null) CgColors.Status.Success else CgColors.Line.Hairline,
+                            ),
                 )
             }
             // Making → made: the progress gives way to where the video went, and the card eases to its new height.
@@ -292,53 +309,68 @@ fun ExportOverlay(
             ) { finished ->
                 Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
                     if (finished) {
-                        Text("✓ ${done.orEmpty()}", style = CgTheme.type.sheetTitle, color = CgColors.Status.Live)
-                        Text(detail, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
                         Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(Modifier.size(28.dp).background(CgColors.Status.Success), Alignment.Center) {
+                                Text("✓", style = CgTheme.type.label, color = CgColors.Text.OnLight)
+                            }
+                            Text(done.orEmpty().caps(), style = CgTheme.type.screenTitle)
+                        }
+                        Text(detail, style = CgTheme.type.data, color = CgColors.Text.Secondary)
+                        Column(
                             Modifier.fillMaxWidth().padding(top = CgSpace.S8),
-                            horizontalArrangement = Arrangement.spacedBy(CgSpace.S8, Alignment.End),
+                            verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
                         ) {
                             CgButton(
                                 stringResource(Res.string.core_export_keep_editing),
                                 onClick = onKeepEditing,
                                 kind = CgButtonKind.Secondary,
-                                modifier = Modifier.testTag(TestTags.ExportKeepEditing),
+                                modifier = Modifier.fillMaxWidth().testTag(TestTags.ExportKeepEditing),
                             )
-                            CgButton(next, onClick = onNext, modifier = Modifier.testTag(TestTags.ExportNext))
+                            CgButton(
+                                next,
+                                onClick = onNext,
+                                kind = CgButtonKind.Signal,
+                                modifier = Modifier.fillMaxWidth().testTag(TestTags.ExportNext),
+                            )
                         }
                     } else {
-                        Text(stringResource(Res.string.core_export_making), style = CgTheme.type.sheetTitle)
+                        Text(stringResource(Res.string.core_export_making).caps(), style = CgTheme.type.pivot)
                         ProgressLine(progress ?: 0f)
                         Row(Modifier.fillMaxWidth()) {
                             Text(
                                 "${((progress ?: 0f) * 100).toInt()} %",
-                                style = CgTheme.type.label,
+                                style = CgTheme.type.label.copy(fontSize = 13.sp),
                                 modifier = Modifier.weight(1f),
                             )
                             Text(
                                 left?.let { stringResource(Res.string.core_export_left, it) }
                                     ?: stringResource(Res.string.core_export_estimating),
-                                style = CgTheme.type.caption,
-                                color = CgColors.Text.Dim,
+                                style = CgTheme.type.data.copy(fontSize = 13.sp),
+                                color = CgColors.Text.Secondary,
                             )
                         }
-                        Text(detail, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
-                        Text(footer, style = CgTheme.type.caption, color = CgColors.Text.Dim)
-                        Row(
-                            Modifier.fillMaxWidth().padding(top = CgSpace.S8),
-                            horizontalArrangement = Arrangement.End,
-                        ) {
-                            CgButton(
-                                stringResource(Res.string.core_cancel),
-                                onClick = onCancel,
-                                kind = CgButtonKind.Secondary,
-                            )
-                        }
+                        Text(detail, style = CgTheme.type.data, color = CgColors.Text.Secondary)
+                        Text(footer, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+                        CgButton(
+                            stringResource(Res.string.core_cancel),
+                            onClick = onCancel,
+                            kind = CgButtonKind.Secondary,
+                            modifier = Modifier.fillMaxWidth().padding(top = CgSpace.S8),
+                        )
                     }
                 }
             }
         }
     }
+}
+
+/** The 2 dp signal rule across the top of a sheet or a card that stands over the screen. */
+fun Modifier.signalRule(): Modifier = drawWithContent {
+    drawContent()
+    drawRect(CgColors.Brand.Signal, Offset.Zero, Size(size.width, CgStroke.Rule.toPx()))
 }
 
 /**
@@ -363,9 +395,9 @@ fun RulesStrip(start: String, startDetail: String?, stop: String, modifier: Modi
 fun RulesStripHint(text: String, modifier: Modifier = Modifier) {
     StripFrame(modifier) {
         Text(
-            text,
-            style = CgTheme.type.label,
-            color = CgColors.Text.Dim,
+            text.caps(),
+            style = KeyStyle,
+            color = CgColors.Text.Secondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -384,11 +416,11 @@ private fun StripFrame(modifier: Modifier, content: @Composable RowScope.() -> U
             verticalAlignment = Alignment.CenterVertically,
             content = content,
         )
-        Box(Modifier.fillMaxWidth().height(1.dp).background(CgColors.Line.Divider))
+        Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
     }
 }
 
-/** A 44 dp round button with an icon, on the raised surface: for a bar, where [CgRoundButton] would be see-through. */
+/** A 44 dp square key with an icon and a hairline edge: for a bar, where [CgRoundButton] would be see-through. */
 @Composable
 fun IconCircleButton(
     icon: ImageVector,
@@ -401,8 +433,8 @@ fun IconCircleButton(
         modifier
             .size(CgSize.Touch)
             .alpha(if (enabled) 1f else 0.4f)
-            .clip(CircleShape)
-            .background(CgColors.Surface.Raised)
+            .background(CgColors.Surface.Base)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics { this.contentDescription = contentDescription },
         Alignment.Center,
@@ -411,7 +443,7 @@ fun IconCircleButton(
             icon,
             contentDescription = null,
             colorFilter = ColorFilter.tint(CgColors.Text.Primary),
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(20.dp),
         )
     }
 }
@@ -421,8 +453,8 @@ private fun RuleLine(icon: ImageVector, color: Color, text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S6), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(RULE_GLYPH))
         Text(
-            text,
-            style = CgTheme.type.label,
+            text.caps(),
+            style = KeyStyle,
             color = CgColors.Text.Secondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -432,7 +464,10 @@ private fun RuleLine(icon: ImageVector, color: Color, text: String) {
 
 private val RULE_GLYPH = 12.dp
 
-/** A small rounded action: the timeline's tools, the sheets' buttons. [light] is the white one that confirms. */
+/**
+ * A small square key: the timeline's tools, the sheets' buttons. A hairline outline with Mono capitals; [light] is the
+ * bone one that confirms.
+ */
 @Composable
 fun Pill(
     text: String,
@@ -442,18 +477,15 @@ fun Pill(
     enabled: Boolean = true,
     light: Boolean = false,
     minWidth: Dp = 0.dp,
-    /** Stretch the pill itself across [modifier]'s width, for the wide cancel and confirm buttons of a sheet. */
+    /** Stretch the key itself across [modifier]'s width, for the wide cancel and confirm buttons of a sheet. */
     fill: Boolean = false,
     /** Drawn before the text, in the text's colour. */
     icon: ImageVector? = null,
 ) {
     val alpha by animateFloatAsState(if (enabled) 1f else 0.4f, CgMotion.short(), label = "alpha")
     val ground by
-        animateColorAsState(
-            if (light) CgColors.Text.Primary else CgColors.Surface.Raised,
-            CgMotion.short(),
-            label = "bg",
-        )
+        animateColorAsState(if (light) CgColors.Brand.Bone else Color.Transparent, CgMotion.short(), label = "bg")
+    val edge = if (light) CgColors.Brand.Bone else CgColors.Line.Hairline
     val fg by animateColorAsState(if (light) CgColors.Text.OnLight else color, CgMotion.short(), label = "fg")
     Box(
         modifier
@@ -463,16 +495,16 @@ fun Pill(
         Alignment.Center,
     ) {
         Box(
-            Modifier.clip(Chip)
-                .background(ground)
-                .heightIn(min = 34.dp)
+            Modifier.background(ground)
+                .border(CgStroke.Hairline, edge)
+                .heightIn(min = 40.dp)
                 .widthIn(min = minWidth)
                 .then(if (fill) Modifier.fillMaxWidth() else Modifier)
                 .padding(horizontal = CgSpace.S12, vertical = CgSpace.S8),
             Alignment.Center,
         ) {
             if (icon == null) {
-                Text(text, style = CgTheme.type.label, color = fg)
+                Text(text.caps(), style = KeyStyle, color = fg)
             } else {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
@@ -484,7 +516,7 @@ fun Pill(
                         colorFilter = ColorFilter.tint(fg),
                         modifier = Modifier.size(14.dp),
                     )
-                    Text(text, style = CgTheme.type.label, color = fg)
+                    Text(text.caps(), style = KeyStyle, color = fg)
                 }
             }
         }
@@ -492,8 +524,8 @@ fun Pill(
 }
 
 /**
- * A row in a sheet that leads somewhere: what it is, a line about it, and a chevron, or [trailing] in its place (a
- * choice that goes with the row, tapped on its own).
+ * A row in a sheet that leads somewhere: what it is in Mono capitals, a sentence about it, and a chevron, or [trailing]
+ * in its place (a choice that goes with the row, tapped on its own). A cell with a hairline edge.
  */
 @Composable
 fun ListRow(
@@ -506,31 +538,37 @@ fun ListRow(
     Row(
         modifier
             .fillMaxWidth()
-            .clip(CgShape.Field)
-            .background(CgColors.Surface.Raised)
-            .border(1.dp, CgColors.Line.Hairline, CgShape.Field)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S14),
+            .padding(CgSpace.S16),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = CgTheme.type.body)
-            Text(detail, style = CgTheme.type.caption, color = CgColors.Text.Dim)
+            Text(title.caps(), style = CgTheme.type.label)
+            Text(detail, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
         }
-        if (trailing != null) trailing() else Text("›", style = CgTheme.type.cardTitle, color = CgColors.Text.Dim)
+        if (trailing != null) {
+            trailing()
+        } else {
+            Text("›", style = CgTheme.type.cardTitle, color = CgColors.Text.Secondary)
+        }
     }
 }
 
-/** The toolbar that floats over a selected graph. */
+/**
+ * The toolbar that floats over a selected graph: its keys side by side in a frame of the signal, with hairlines between
+ * them.
+ */
 @Composable
 fun CardBar(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
     Row(
         modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(CgColors.Surface.Raised.copy(alpha = 0.95f))
-            .padding(CgSpace.S4),
-        horizontalArrangement = Arrangement.spacedBy(CgSpace.S4),
+            .height(IntrinsicSize.Min)
+            .background(CgColors.Line.Hairline)
+            .border(CgStroke.Hairline, CgColors.Brand.Signal)
+            .padding(CgStroke.Hairline),
+        horizontalArrangement = Arrangement.spacedBy(CgStroke.Hairline),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
     )
@@ -540,13 +578,14 @@ fun CardBar(modifier: Modifier = Modifier, content: @Composable RowScope.() -> U
 fun CardBarButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier
-            .heightIn(min = 36.dp)
-            .clip(CgShape.Chip)
+            .fillMaxHeight()
+            .heightIn(min = 40.dp)
+            .background(CgColors.Surface.Base)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 7.dp),
+            .padding(horizontal = CgSpace.S12),
         Alignment.Center,
     ) {
-        Text(text, style = CgTheme.type.label)
+        Text(text.caps(), style = KeyStyle)
     }
 }
 
@@ -622,8 +661,8 @@ fun EditorSheet(
             .fillMaxWidth()
             // Rows that come and go inside (a switch that shows its settings) grow the sheet rather than jump it.
             .animateContentSize(CgMotion.sizeSpec)
-            .clip(CgShape.Sheet)
             .background(CgColors.Surface.Bar)
+            .signalRule()
             // Touches on the sheet stay on the sheet: without this they fall through to the timeline under it.
             .pointerInput(Unit) { awaitEachGesture { awaitFirstDown().consume() } }
             // After it, so it sees the touch first: the top and the gaps between controls drag the sheet.
@@ -635,12 +674,12 @@ fun EditorSheet(
             )
             .nestedScroll(nested)
             .navigationBarsPadding()
-            .padding(start = CgSpace.S16, end = CgSpace.S16, top = 10.dp, bottom = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
+            .padding(bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
     ) {
         SheetHeader(title, onDone)
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = CgSpace.S16),
             verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
             content = content,
         )
@@ -686,76 +725,66 @@ fun <T : Any> EditorSheetSlot(
 }
 
 /**
- * The top of every bottom sheet: a 40 × 4 handle, the title, and a "done" when [onDone] is set. [EditorSheet] and
- * [CgSheet] both start with it, so the two kinds of sheet look the same.
+ * The top of every bottom sheet: the title in Mono capitals and a "done" key when [onDone] is set, over a hairline.
+ * [EditorSheet] and [CgSheet] both start with it, so the two kinds of sheet look the same.
  */
 @Composable
 fun SheetHeader(title: String, onDone: (() -> Unit)?, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
-        Box(
-            Modifier.align(Alignment.CenterHorizontally)
-                .size(40.dp, 4.dp)
-                .clip(CircleShape)
-                .background(CgColors.Text.Dim)
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, style = CgTheme.type.sheetTitle, modifier = Modifier.weight(1f).semantics { heading() })
+    Column(modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth()
+                .heightIn(min = CgSize.Touch + CgSpace.S16)
+                .padding(start = CgSpace.S16, end = CgSpace.S8, top = CgSpace.S8, bottom = CgSpace.S8),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                title.caps(),
+                style = CgTheme.type.sheetTitle,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
             if (onDone != null) {
                 Box(
                     Modifier.testTag(TestTags.SheetDone)
                         .heightIn(min = CgSize.Touch)
+                        .border(CgStroke.Hairline, CgColors.Line.Hairline)
                         .clickable(role = Role.Button, onClick = onDone)
-                        .padding(4.dp),
+                        .padding(horizontal = CgSpace.S16),
                     Alignment.Center,
                 ) {
-                    Text(
-                        stringResource(Res.string.core_done),
-                        style = CgTheme.type.bodySmall,
-                        color = CgColors.Text.Primary,
-                    )
+                    Text(stringResource(Res.string.core_done).caps(), style = KeyStyle, color = CgColors.Text.Primary)
                 }
             }
         }
+        Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
     }
 }
 
-/** A 6 dp progress line, orange on the divider colour. */
+/** A 12 dp progress bar: a hairline frame with the done part filled with the signal, 2 dp inside it. */
 @Composable
 fun ProgressLine(fraction: Float, modifier: Modifier = Modifier) {
-    // The export reports in steps; the line glides between them instead of jumping.
+    // The export reports in steps; the bar glides between them instead of jumping.
     val shown by animateFloatAsState(fraction.coerceIn(0f, 1f), CgMotion.settle(), label = "progress")
-    Box(modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(CgColors.Line.Divider)) {
+    Box(modifier.fillMaxWidth().height(12.dp).border(CgStroke.Hairline, CgColors.Line.Hairline).padding(3.dp)) {
         Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(CgColors.Brand.Signal))
     }
 }
 
-/** A colour and its name in a rounded chip; tap to change it. */
+/** A colour and its name in a square chip with a hairline edge; tap to change it. */
 @Composable
 fun ColorChip(color: Color, name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val description = stringResource(Res.string.core_colour_chip, name)
     Row(
         modifier
             .heightIn(min = CgSize.Touch)
-            .clip(CgShape.Chip)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .clickable(role = Role.Button, onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = description },
+            .semantics(mergeDescendants = true) { contentDescription = description }
+            .padding(start = CgSpace.S8, end = CgSpace.S12),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier.clip(CgShape.Chip)
-                .background(CgColors.Surface.Raised)
-                .padding(start = 6.dp, end = 10.dp, top = 5.dp, bottom = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier.size(22.dp)
-                    .clip(CircleShape)
-                    .background(color)
-                    .border(1.dp, CgColors.Line.Divider, CircleShape)
-            )
-            Text(name, style = CgTheme.type.label)
-        }
+        Box(Modifier.size(24.dp).background(color).border(CgStroke.Hairline, CgColors.Line.Hairline))
+        Text(name.caps(), style = KeyStyle)
     }
 }
 
@@ -763,30 +792,28 @@ fun ColorChip(color: Color, name: String, onClick: () -> Unit, modifier: Modifie
 val SHEET_MAX_WIDTH = 640.dp
 
 /**
- * Where a computer opens a video: a dashed card to drop a file on, with [onPick] as a button inside it (and on the card
- * itself) for those who would rather choose. [active] while a file is dragged over the window: the outline turns solid
- * white and the card says so. [busy] replaces the invitation while a video is being read.
+ * Where a computer opens a video: a dashed square to drop a file on, with [onPick] as a button inside it (and on the
+ * square itself) for those who would rather choose. [active] while a file is dragged over the window: the outline turns
+ * the signal, solid, and the square says so. [busy] replaces the invitation while a video is being read.
  */
 @Composable
 fun DropZone(onPick: () -> Unit, modifier: Modifier = Modifier, active: Boolean = false, busy: String? = null) {
-    val outline = if (active) CgColors.Text.Primary else CgColors.Line.Divider
+    val outline = if (active) CgColors.Brand.Signal else CgColors.Line.Hairline
     Column(
         modifier
             .fillMaxWidth()
             .heightIn(min = 240.dp)
-            .clip(DropShape)
             .background(if (active) CgColors.Surface.Raised else CgColors.Surface.Bar)
             .drawBehind {
-                val stroke = (if (active) 2.dp else 1.5.dp).toPx()
-                drawRoundRect(
+                val stroke = (if (active) CgStroke.Rule else CgStroke.Hairline).toPx()
+                drawRect(
                     color = outline,
                     topLeft = Offset(stroke / 2, stroke / 2),
                     size = Size(size.width - stroke, size.height - stroke),
-                    cornerRadius = CornerRadius(DropRadius.toPx()),
                     style =
                         Stroke(
                             width = stroke,
-                            pathEffect = if (active) null else PathEffect.dashPathEffect(floatArrayOf(10f, 8f)),
+                            pathEffect = if (active) null else PathEffect.dashPathEffect(floatArrayOf(6f, 6f)),
                         ),
                 )
             }
@@ -799,15 +826,19 @@ fun DropZone(onPick: () -> Unit, modifier: Modifier = Modifier, active: Boolean 
             CgIcons.Film,
             contentDescription = null,
             modifier = Modifier.size(40.dp),
-            colorFilter = ColorFilter.tint(if (active) CgColors.Text.Primary else CgColors.Text.Secondary),
+            colorFilter = ColorFilter.tint(if (active) CgColors.Brand.Signal else CgColors.Text.Secondary),
         )
         Text(
-            busy ?: stringResource(if (active) Res.string.core_drop_to_open else Res.string.core_drop_video),
+            (busy ?: stringResource(if (active) Res.string.core_drop_to_open else Res.string.core_drop_video)).caps(),
             style = CgTheme.type.sheetTitle,
             color = CgColors.Text.Primary,
         )
         if (busy == null) {
-            Text(stringResource(Res.string.core_drop_formats), style = CgTheme.type.caption, color = CgColors.Text.Dim)
+            Text(
+                stringResource(Res.string.core_drop_formats),
+                style = CgTheme.type.caption,
+                color = CgColors.Text.Secondary,
+            )
             CgButton(
                 stringResource(Res.string.core_choose_file),
                 onClick = onPick,
@@ -816,6 +847,3 @@ fun DropZone(onPick: () -> Unit, modifier: Modifier = Modifier, active: Boolean 
         }
     }
 }
-
-private val DropRadius = 16.dp
-private val DropShape = RoundedCornerShape(DropRadius)

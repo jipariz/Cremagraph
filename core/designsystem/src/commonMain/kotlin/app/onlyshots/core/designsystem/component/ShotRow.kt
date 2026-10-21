@@ -1,6 +1,7 @@
 package app.onlyshots.core.designsystem.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,9 +19,14 @@ import androidx.compose.ui.unit.dp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 
-/** Figma "Shot row": one shot from the machine's history, pickable in the editor. */
+/**
+ * Figma "Shot row": one shot from the machine's history, pickable in the editor. A cell on the ink with the machine's
+ * bar, the shot's name in Mono capitals and its time in Mono; chosen, the cell is raised and framed in the signal.
+ */
 @Composable
 fun ShotRow(
     title: String,
@@ -34,16 +40,17 @@ fun ShotRow(
         modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = CgSize.Touch)
-            .background(if (selected) CgColors.Surface.Raised else Color.Transparent)
+            .background(if (selected) CgColors.Surface.Raised else CgColors.Surface.Base)
+            .border(CgStroke.Hairline, if (selected) CgColors.Brand.Signal else CgColors.Line.Hairline)
             .selectable(selected, onClick = onClick)
-            .padding(horizontal = CgSpace.S12, vertical = CgSpace.S8),
+            .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
     ) {
-        androidx.compose.foundation.layout.Box(Modifier.size(width = 4.dp, height = 28.dp).background(machineColor))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = CgTheme.type.body)
-            Text(subtitle, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+        androidx.compose.foundation.layout.Box(Modifier.size(width = 4.dp, height = 32.dp).background(machineColor))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title.caps(), style = CgTheme.type.label.copy(letterSpacing = CgTheme.type.data.letterSpacing))
+            Text(subtitle, style = CgTheme.type.data, color = CgColors.Text.Secondary)
         }
     }
 }

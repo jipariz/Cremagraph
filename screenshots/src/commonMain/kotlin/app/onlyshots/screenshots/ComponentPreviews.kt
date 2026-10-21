@@ -32,6 +32,7 @@ import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CgToggle
 import app.onlyshots.core.designsystem.component.ColorChip
 import app.onlyshots.core.designsystem.component.ConnectScaleCard
+import app.onlyshots.core.designsystem.component.DialogRisk
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.designsystem.component.HeaderPivot
@@ -323,5 +324,6 @@ internal fun FormsAndDialogs() = Sheet {
         text = "It is not in your gallery yet. Once you leave, you cannot come back to it here.",
         confirm = "keep editing" to {},
         dismiss = "leave" to {},
+        risk = DialogRisk.Dismiss,
     )
 }

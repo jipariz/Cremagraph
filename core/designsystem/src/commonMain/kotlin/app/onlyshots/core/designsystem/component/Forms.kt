@@ -1,40 +1,60 @@
 package app.onlyshots.core.designsystem.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
-import app.onlyshots.core.designsystem.CgShape
-import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.testTagsAsResourceIds
 
 /**
- * The one text field: a rounded box on the raised surface, no outline, an orange cursor, [placeholder] in dim text
- * while it is empty. 44 dp tall at least.
+ * The one text field: a square box on ink with a hairline edge that turns signal while it has focus, Mono letters, a
+ * signal cursor, [placeholder] in dim text while it is empty. 52 dp tall at least.
  */
 @Composable
 fun CgTextField(
@@ -46,37 +66,48 @@ fun CgTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
+    var focused by remember { mutableStateOf(false) }
+    val text = CgTheme.type.label.copy(fontWeight = FontWeight.Normal, letterSpacing = 0.em)
     BasicTextField(
         value,
         onValueChange = onValueChange,
         singleLine = true,
-        textStyle = CgTheme.type.body.copy(color = CgColors.Text.Primary),
+        textStyle = text.copy(color = CgColors.Text.Primary),
         cursorBrush = SolidColor(CgColors.Brand.Signal),
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        modifier = modifier.semantics { if (label != null) contentDescription = label },
+        modifier =
+            modifier
+                .onFocusChanged { focused = it.isFocused }
+                .semantics { if (label != null) contentDescription = label },
         decorationBox = { field ->
             Box(
                 Modifier.fillMaxWidth()
-                    .heightIn(min = CgSize.Touch)
-                    .clip(CgShape.Field)
-                    .background(CgColors.Surface.Raised)
-                    .padding(horizontal = CgSpace.S12, vertical = 10.dp),
+                    .heightIn(min = 52.dp)
+                    .background(CgColors.Surface.Base)
+                    .border(CgStroke.Hairline, if (focused) CgColors.Brand.Signal else CgColors.Line.Hairline)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                if (value.isEmpty() && placeholder != null) {
-                    Text(placeholder, style = CgTheme.type.body, color = CgColors.Text.Dim)
-                }
+                if (value.isEmpty() && placeholder != null) Text(placeholder, style = text, color = CgColors.Text.Dim)
                 field()
             }
         },
     )
 }
 
+/** Which of a dialog's two choices is the one that loses something: it is drawn in signal letters, never filled. */
+enum class DialogRisk {
+    Confirm,
+    Dismiss,
+}
+
 /**
- * The one dialog: a rounded card in the sheets' colour, a title, the [text] or [content] under it, and its two choices
- * at the bottom right: [dismiss] plain, [confirm] orange. Tapping outside is [onDismiss].
+ * The one dialog: a square card in the sheets' colour under a signal rule, a title in Mono capitals, the [text] or
+ * [content] under it, and its two choices as cells across the bottom: [dismiss] plain on the left, [confirm] bone on
+ * the right. The [risk]y one, if any, is drawn in signal letters instead. Tapping outside is [onDismiss].
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CgDialog(
     title: String,
@@ -86,16 +117,12 @@ fun CgDialog(
     dismiss: Pair<String, () -> Unit>? = null,
     text: String? = null,
     confirmEnabled: Boolean = true,
+    risk: DialogRisk? = null,
     content: (@Composable () -> Unit)? = null,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {},
-        modifier = modifier.testTagsAsResourceIds(),
-        containerColor = CgColors.Surface.Bar,
-        shape = CgShape.Dialog,
-        text = { CgDialogCard(title, confirm, dismiss, text, confirmEnabled, content) },
-    )
+    BasicAlertDialog(onDismissRequest = onDismiss, modifier = modifier.testTagsAsResourceIds()) {
+        CgDialogCard(title, confirm, dismiss, text, confirmEnabled, risk, content)
+    }
 }
 
 /** [CgDialog]'s contents without the dialog window, so the screenshot tests can draw it. */
@@ -106,27 +133,79 @@ fun CgDialogCard(
     dismiss: Pair<String, () -> Unit>? = null,
     text: String? = null,
     confirmEnabled: Boolean = true,
+    risk: DialogRisk? = null,
     content: (@Composable () -> Unit)? = null,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S16)) {
-        Text(title, style = CgTheme.type.sheetTitle, modifier = Modifier.semantics { heading() })
-        if (text != null) Text(text, style = CgTheme.type.body, color = CgColors.Text.Secondary)
-        content?.invoke()
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(CgSpace.S8, Alignment.End),
-            verticalAlignment = Alignment.CenterVertically,
+    Column(
+        Modifier.widthIn(max = 480.dp)
+            .background(CgColors.Surface.Bar)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .drawBehind { drawRect(CgColors.Brand.Signal, Offset.Zero, Size(size.width, CgStroke.Rule.toPx())) }
+    ) {
+        Column(
+            Modifier.padding(CgSpace.S16).padding(top = CgStroke.Rule),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            dismiss?.let { (label, onClick) ->
-                Pill(label, onClick, minWidth = 72.dp, modifier = Modifier.testTag(TestTags.DialogDismiss))
+            Text(title.caps(), style = CgTheme.type.cardTitle, modifier = Modifier.semantics { heading() })
+            if (text != null) {
+                Text(
+                    text,
+                    style = CgTheme.type.body.copy(fontSize = 14.sp, lineHeight = 21.sp),
+                    color = CgColors.Text.Secondary,
+                )
             }
-            Pill(
+            content?.invoke()
+        }
+        Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            dismiss?.let { (label, onClick) ->
+                DialogChoice(
+                    label,
+                    onClick,
+                    filled = false,
+                    risky = risk == DialogRisk.Dismiss,
+                    modifier = Modifier.weight(1f).testTag(TestTags.DialogDismiss),
+                )
+                Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Line.Hairline))
+            }
+            DialogChoice(
                 confirm.first,
                 confirm.second,
-                light = true,
+                filled = risk != DialogRisk.Confirm,
+                risky = risk == DialogRisk.Confirm,
                 enabled = confirmEnabled,
-                modifier = Modifier.widthIn(min = 72.dp).testTag(TestTags.DialogConfirm),
+                modifier = Modifier.weight(1f).testTag(TestTags.DialogConfirm),
             )
         }
+    }
+}
+
+/** One of a dialog's choices: a 52 dp cell across half the card. */
+@Composable
+private fun DialogChoice(
+    label: String,
+    onClick: () -> Unit,
+    filled: Boolean,
+    risky: Boolean,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val bg = if (filled && enabled) CgColors.Brand.Bone else Color.Transparent
+    val ink =
+        when {
+            !enabled -> CgColors.Text.Disabled
+            risky -> CgColors.Brand.Signal
+            filled -> CgColors.Text.OnLight
+            else -> CgColors.Text.Primary
+        }
+    Box(
+        modifier
+            .heightIn(min = 52.dp)
+            .background(bg)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = CgSpace.S8),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label.caps(), style = CgTheme.type.labelStrong, color = ink, textAlign = TextAlign.Center)
     }
 }

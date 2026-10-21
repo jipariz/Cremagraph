@@ -95,6 +95,7 @@ import app.onlyshots.core.designsystem.component.CgSlider
 import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CgToggle
 import app.onlyshots.core.designsystem.component.CoffeeScene
+import app.onlyshots.core.designsystem.component.DialogRisk
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.EditorSheetSlot
 import app.onlyshots.core.designsystem.component.Pill
@@ -262,6 +263,7 @@ fun StyleEditorScreen(
                         saving = true
                     },
             dismiss = stringResource(Res.string.style_discard) to { onClose(null) },
+            risk = DialogRisk.Dismiss,
         )
     }
 }

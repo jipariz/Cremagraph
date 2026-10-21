@@ -162,7 +162,9 @@ fun EditTimeline(
                                 GRAB.dp.toPx(),
                                 onFlagTab = y in RULER_TOP.dp.toPx()..STRIP.dp.toPx() + 8.dp.toPx(),
                             )
-                    val grabbedShotStart = current.shotStartInVideoUs ?: 0L
+                    // A handle's drag keeps the strip as it was at the press: zoomed, the strip follows the playhead,
+                    // and the playhead it pushes must not slide the strip under the finger.
+                    val pressView = view()
                     var push = true
                     var lastX = down.position.x
                     // A snap is felt, not shown: a tick as the handle catches a target.
@@ -189,22 +191,32 @@ fun EditTimeline(
                                 )
                             TimelineHandle.TRIM_IN,
                             TimelineHandle.TRIM_OUT -> {
+                                // Not the playhead: the handle pushes it, and catching on it made the handle stick.
                                 val targets =
                                     listOf(
-                                        SnapTarget.PLAYHEAD to playheadNow(),
                                         SnapTarget.SHOT_START to current.shotStartInVideoUs,
                                         SnapTarget.SHOT_END to current.shotEndInVideoUs,
                                     )
-                                val (us, label) = TimelineMath.snap(v.us(x), targets, pull)
-                                snapped(label)
-                                if (grip == TimelineHandle.TRIM_IN) act.trim(us, current.trimOutUs, push)
-                                else act.trim(current.trimInUs, us, push)
+                                val (us, label) = TimelineMath.snap(pressView.us(x), targets, pull)
+                                val inUs = if (grip == TimelineHandle.TRIM_IN) us else current.trimInUs
+                                val outUs = if (grip == TimelineHandle.TRIM_OUT) us else current.trimOutUs
+                                val next = current.trimmed(inUs, outUs)
+                                // A locked start stops the handle: felt as it is reached.
+                                val stopped =
+                                    current.syncLocked &&
+                                        (next.trimInUs != inUs.coerceAtLeast(0) && grip == TimelineHandle.TRIM_IN ||
+                                            next.trimOutUs != outUs.coerceAtMost(current.durationUs) &&
+                                                grip == TimelineHandle.TRIM_OUT)
+                                snapped(if (stopped) SnapTarget.SHOT_START else label)
+                                act.trim(inUs, outUs, push)
+                                // The playhead rides the handle in the same frame, not after the trim comes back.
+                                TimelineMath.pushedPlayhead(next, playheadNow())?.let(act.seek)
                                 push = false
                             }
                             TimelineHandle.SHOT_FLAG -> {
                                 val (us, label) =
                                     TimelineMath.snap(
-                                        TimelineMath.flagDrag(v, grabbedShotStart, x - down.position.x),
+                                        pressView.us(x),
                                         listOf(
                                             SnapTarget.PUMP_START to pumpUs,
                                             SnapTarget.PLAYHEAD to playheadNow(),
@@ -446,22 +458,8 @@ private fun DrawScope.wave(v: TimelineView, pad: Float, waveform: FloatArray?, p
 private fun DrawScope.flag(item: VideoItem, v: TimelineView) {
     val start = item.shotStartInVideoUs ?: return
     if (item.shot == null) return
-    val at = v.x(start)
-    val x = TimelineMath.flagX(v, start)
+    val x = v.x(start)
     val color = if (item.syncLocked) CgColors.Text.Dim else CgColors.Brand.Signal
-    if (at < x - 0.5f) {
-        // The shot starts before the video: its tab waits at the strip's left edge, pointing to where it is.
-        drawRect(color, Offset(x, 44.dp.toPx()), Size(16.dp.toPx(), 12.dp.toPx()))
-        val tri =
-            Path().apply {
-                moveTo(x - 7.dp.toPx(), 50.dp.toPx())
-                lineTo(x - 1.dp.toPx(), 44.dp.toPx())
-                lineTo(x - 1.dp.toPx(), 56.dp.toPx())
-                close()
-            }
-        drawPath(tri, color)
-        return
-    }
     drawRect(color, Offset(x - 1.dp.toPx(), 46.dp.toPx()), Size(2.dp.toPx(), 82.dp.toPx()))
     drawRect(color, Offset(x, 44.dp.toPx()), Size(16.dp.toPx(), 12.dp.toPx()))
 }

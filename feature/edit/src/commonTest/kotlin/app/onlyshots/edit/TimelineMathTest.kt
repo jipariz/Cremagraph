@@ -65,16 +65,12 @@ class TimelineMathTest {
     }
 
     @Test
-    fun aShotStartingBeforeTheClipKeepsItsFlagAtTheEdgeAndDragsBack() {
-        val before = item.copy(shot = app.onlyshots.core.model.sample.SampleShots.zer0, shotStartInVideoUs = -8_000_000)
-        assertEquals(fitted.padPx, TimelineMath.flagX(fitted, -8_000_000))
-        assertEquals(
-            TimelineHandle.SHOT_FLAG,
-            TimelineMath.hitHandle(fitted.padPx, before, fitted, 22f, onFlagTab = true),
-        )
-        // The drag is relative: 10 px to the left from 0:00 is a second before the clip on a 10 px/s strip.
-        assertEquals(-1_000_000L, TimelineMath.flagDrag(fitted, 0L, -10f))
-        assertEquals(-7_000_000L, TimelineMath.flagDrag(fitted, -8_000_000L, 10f))
+    fun aTrimHandlePastThePlayheadPushesItToThatEdge() {
+        val trimmedIn = item.trimmed(12_000_000, 30_000_000)
+        assertEquals(12_000_000L, TimelineMath.pushedPlayhead(trimmedIn, 10_000_000))
+        val trimmedOut = item.trimmed(0, 8_000_000)
+        assertEquals(8_000_000L, TimelineMath.pushedPlayhead(trimmedOut, 10_000_000))
+        assertEquals(null, TimelineMath.pushedPlayhead(trimmedIn, 20_000_000))
     }
 
     @Test

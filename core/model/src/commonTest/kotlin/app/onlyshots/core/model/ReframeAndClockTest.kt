@@ -61,13 +61,8 @@ class ReframeAndClockTest {
 
     @Test
     fun clocksThatPutTheShotOutsideTheClipDoNotCount() {
-        assertNull(video(recordedAt = shot.startedAt + 2_000.seconds).shotStartByClock())
+        assertNull(video(recordedAt = shot.startedAt + 1.seconds).shotStartByClock())
         assertNull(video(recordedAt = shot.startedAt - 2_000.seconds).shotStartByClock())
-    }
-
-    @Test
-    fun aCameraStartedMidShotPutsTheShotsStartBeforeTheClip() {
-        assertEquals(-1_000_000L, video(recordedAt = shot.startedAt + 1.seconds).shotStartByClock())
     }
 
     @Test

@@ -247,7 +247,8 @@ fun EditScreen(
     // The playhead starts where the export does, and stays inside the trim when the trim moves past it.
     LaunchedEffect(video?.trimInUs, video?.trimOutUs) {
         val v = video ?: return@LaunchedEffect
-        if (player.positionUs !in v.trimInUs..v.trimOutUs) player.seek(v.trimInUs)
+        if (player.positionUs !in v.trimInUs..v.trimOutUs)
+            player.seek(player.positionUs.coerceIn(v.trimInUs, v.trimOutUs))
     }
 
     // There is no library to come back to: leaving a video that was never saved or shared asks first, from the back

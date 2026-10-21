@@ -89,14 +89,31 @@ class OverlayAndVideoTest {
     }
 
     @Test
-    fun aShotLongerThanTheClipMayStartBeforeIt() {
-        val shot = app.onlyshots.core.model.sample.SampleShots.zer0
-        val short = video.copy(shot = shot, durationUs = shot.durationUs / 2)
-        assertEquals(-10_000_000, short.withShotStart(-10_000_000).shotStartInVideoUs)
-        // They still overlap: at most all but the shot's last microsecond comes before 0:00.
-        assertEquals(1 - shot.durationUs, short.withShotStart(-shot.durationUs * 2).shotStartInVideoUs)
-        // Without a shot there is nothing before the clip to show.
-        assertEquals(0, video.copy(shot = null).withShotStart(-5).shotStartInVideoUs)
+    fun theShotStartStaysInsideTheTrim() {
+        val v = video.copy(shotStartInVideoUs = 10_000_000).trimmed(5_000_000, 30_000_000)
+        assertEquals(5_000_000, v.withShotStart(1_000_000).shotStartInVideoUs)
+        assertEquals(30_000_000, v.withShotStart(35_000_000).shotStartInVideoUs)
+    }
+
+    @Test
+    fun aTrimHandlePastTheStartCarriesIt() {
+        val v = video.copy(shotStartInVideoUs = 10_000_000)
+        assertEquals(12_000_000, v.trimmed(12_000_000, 40_000_000).shotStartInVideoUs)
+        assertEquals(8_000_000, v.trimmed(0, 8_000_000).shotStartInVideoUs)
+        // Not reached, it stays.
+        assertEquals(10_000_000, v.trimmed(4_000_000, 35_000_000).shotStartInVideoUs)
+    }
+
+    @Test
+    fun aLockedStartStopsTheTrimUntilUnlocked() {
+        val locked = video.copy(shotStartInVideoUs = 10_000_000, syncLocked = true)
+        val inPast = locked.trimmed(12_000_000, 40_000_000)
+        assertEquals(10_000_000, inPast.trimInUs)
+        assertEquals(10_000_000, inPast.shotStartInVideoUs)
+        val outPast = locked.trimmed(0, 8_000_000)
+        assertEquals(10_000_000, outPast.trimOutUs)
+        assertEquals(0, outPast.trimInUs)
+        assertEquals(12_000_000, locked.unlocked().trimmed(12_000_000, 40_000_000).shotStartInVideoUs)
     }
 
     @Test

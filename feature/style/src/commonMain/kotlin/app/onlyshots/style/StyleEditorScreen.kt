@@ -46,6 +46,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -298,16 +299,22 @@ private fun liveVideo(
                 playing = true
             }
         }
-    val frame = frames.getOrNull(viewModel.frameAt(video, player.positionUs))
+    // Which of the few frames is shown changes a dozen times a loop; the position, every frame: only the first
+    // recomposes.
+    val index by remember(video, player, viewModel) { derivedStateOf { viewModel.frameAt(video, player.positionUs) } }
+    val frame = frames.getOrNull(index)
     val luma = remember(frame) { frame?.let { averageLuma(it) } }
-    return LivePicture(stringResource(Res.string.style_your_video), luma) { modifier ->
-        VideoSurface(
-            file = viewModel.videoPath(video),
-            state = player,
-            clipUs = video.trimInUs..video.trimOutUs,
-            modifier = modifier,
-            drawFrames = style.blursVideo,
-        )
+    val caption = stringResource(Res.string.style_your_video)
+    return remember(caption, luma, video, player, style.blursVideo) {
+        LivePicture(caption, luma) { modifier ->
+            VideoSurface(
+                file = viewModel.videoPath(video),
+                state = player,
+                clipUs = video.trimInUs..video.trimOutUs,
+                modifier = modifier,
+                drawFrames = style.blursVideo,
+            )
+        }
     }
 }
 

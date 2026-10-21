@@ -40,7 +40,7 @@ tasks.test {
 compose.desktop {
     application {
         mainClass = "app.onlyshots.MainKt"
-        // The Viewfinder icon from design/logo/kit/desktop, for packaged builds. The running window sets its own
+        // The Signal tile icon from design/logo/kit/desktop, for packaged builds. The running window sets its own
         // (src/main/resources/onlyshots-icon.png, see Main.kt).
         nativeDistributions {
             // onlyshots.version. macOS refuses a 0.x app version, which is why the app started at 1.0.0.

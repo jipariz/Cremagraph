@@ -21,9 +21,8 @@ import org.jetbrains.compose.resources.vectorResource
  */
 object CgIcons {
     /**
-     * The Viewfinder mark in its small cut (design/logo/kit/onlyshots-symbol-small-on-dark.svg), the weight the logo
-     * guidelines set for 16 to 47 px, as the app draws it: four cream corners and a cream playhead framing the orange
-     * shot curve, with the orange dot on the playhead where the curve meets it.
+     * The Signal tile in its small cut (design/logo/kit/onlyshots-symbol-small.svg), the weight the logo guidelines set
+     * for 16 to 47 px: a signal square with the shot's trace cut in from its left edge to a square pen head on a stem.
      */
     val OnlyShots: ImageVector
         @Composable get() = vectorResource(Res.drawable.ic_onlyshots)

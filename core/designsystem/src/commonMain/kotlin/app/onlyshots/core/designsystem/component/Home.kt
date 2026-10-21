@@ -177,7 +177,8 @@ fun SectionHeader(
 @Composable
 private fun SearchingNote(text: String, color: Color) {
     val still = LocalInspectionMode.current
-    val beat by
+    // Read only where it is drawn: the beat changes every frame, the composition need not.
+    val beat =
         rememberInfiniteTransition(label = "searching")
             .animateFloat(
                 initialValue = 0f,
@@ -185,11 +186,12 @@ private fun SearchingNote(text: String, color: Color) {
                 animationSpec = infiniteRepeatable(tween(1_400, easing = LinearEasing)),
                 label = "beat",
             )
-    val t = if (still) 0f else beat
+    fun t() = if (still) 0f else beat.value
     Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S6), verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier.size(14.dp).drawBehind {
                 val dot = 2.5.dp.toPx()
+                val t = t()
                 drawCircle(color, radius = dot + (size.minDimension / 2 - dot) * t, alpha = 0.5f * (1f - t))
                 drawCircle(color, radius = dot)
             }
@@ -199,7 +201,7 @@ private fun SearchingNote(text: String, color: Color) {
             text,
             style = CgTheme.type.label,
             color = color,
-            modifier = Modifier.alpha(0.55f + 0.45f * (0.5f + 0.5f * cos(2f * PI.toFloat() * t))),
+            modifier = Modifier.graphicsLayer { alpha = 0.55f + 0.45f * (0.5f + 0.5f * cos(2f * PI.toFloat() * t())) },
         )
     }
 }

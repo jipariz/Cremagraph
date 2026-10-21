@@ -481,9 +481,18 @@ fun Pill(
     }
 }
 
-/** A row in a sheet that leads somewhere: what it is, a line about it, and a chevron. */
+/**
+ * A row in a sheet that leads somewhere: what it is, a line about it, and a chevron, or [trailing] in its place (a
+ * choice that goes with the row, tapped on its own).
+ */
 @Composable
-fun ListRow(title: String, detail: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ListRow(
+    title: String,
+    detail: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    trailing: (@Composable () -> Unit)? = null,
+) {
     Row(
         modifier
             .fillMaxWidth()
@@ -499,7 +508,7 @@ fun ListRow(title: String, detail: String, onClick: () -> Unit, modifier: Modifi
             Text(title, style = CgTheme.type.body)
             Text(detail, style = CgTheme.type.caption, color = CgColors.Text.Dim)
         }
-        Text("›", style = CgTheme.type.cardTitle, color = CgColors.Text.Dim)
+        if (trailing != null) trailing() else Text("›", style = CgTheme.type.cardTitle, color = CgColors.Text.Dim)
     }
 }
 

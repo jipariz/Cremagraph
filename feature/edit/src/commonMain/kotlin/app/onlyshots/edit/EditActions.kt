@@ -64,6 +64,9 @@ interface EditActions {
 
     fun cancelExport()
 
+    /** The quality exports [to] that destination make from now on, remembered for the next videos. */
+    fun pickQuality(to: ExportManager.Destination, quality: Quality)
+
     /** Does nothing: for previews. */
     object None : EditActions {
         override fun openSheet(sheet: EditSheet) = Unit
@@ -107,5 +110,7 @@ interface EditActions {
         override fun saveAndExport(quality: Quality, withSound: Boolean, to: ExportManager.Destination) = Unit
 
         override fun cancelExport() = Unit
+
+        override fun pickQuality(to: ExportManager.Destination, quality: Quality) = Unit
     }
 }

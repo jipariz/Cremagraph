@@ -1,5 +1,6 @@
 package app.onlyshots.storage
 
+import app.onlyshots.core.model.Quality
 import app.onlyshots.core.model.RecordingSettings
 import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.SourceKind
@@ -24,6 +25,10 @@ data class AppSettings(
     val customStyles: List<GraphStyle> = emptyList(),
     /** A user style chosen as a source's default: overrides the built-in default for that source. */
     val defaultStyles: Map<SourceKind, String> = emptyMap(),
+    /** The export quality last picked for saving to the gallery; null: the best the video allows. */
+    val galleryQuality: Quality? = null,
+    /** The export quality last picked for sharing; null: 1080p. */
+    val shareQuality: Quality? = null,
 )
 
 /** App settings in one JSON file; unreadable files fall back to defaults. */

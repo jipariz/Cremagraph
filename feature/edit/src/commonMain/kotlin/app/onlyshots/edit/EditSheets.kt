@@ -48,6 +48,7 @@ import app.onlyshots.core.designsystem.component.CgToggle
 import app.onlyshots.core.designsystem.component.ListRow
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.ProgressLine
+import app.onlyshots.core.designsystem.component.SegmentedControl
 import app.onlyshots.core.designsystem.component.SeriesChip
 import app.onlyshots.core.designsystem.component.SettingRow
 import app.onlyshots.core.designsystem.component.ShotRow
@@ -92,6 +93,7 @@ import app.onlyshots.core.resources.edit_use_another_shot
 import app.onlyshots.core.resources.edit_with_sound
 import app.onlyshots.core.resources.edit_working_out
 import app.onlyshots.core.resources.unit_grams
+import app.onlyshots.export.ExportManager
 import app.onlyshots.label
 import app.onlyshots.machineLabel
 import app.onlyshots.overlayTitleText
@@ -358,7 +360,10 @@ private const val TYPING_STEP_MS = 1_000
 @Composable
 fun ExportSheetContent(
     item: VideoItem,
-    quality: Quality,
+    /** What each way out makes, out of [qualities]; a choice between them shows when there are two. */
+    galleryQuality: Quality,
+    shareQuality: Quality,
+    qualities: List<Quality>,
     /** Whether the export has sound: the video has it and the editor did not mute it. */
     sound: Boolean,
     exporting: Float?,
@@ -368,8 +373,10 @@ fun ExportSheetContent(
     onSaveToGallery: () -> Unit,
     onNextShot: () -> Unit,
     onCancel: () -> Unit,
+    onQuality: (ExportManager.Destination, Quality) -> Unit = { _, _ -> },
 ) {
     val wording = LocalExportWording.current
+    val choose = qualities.size > 1
     // Options → progress → saved: each step fades into the next, and the sheet eases to its height.
     val step =
         when {
@@ -390,7 +397,7 @@ fun ExportSheetContent(
             when (shown) {
                 ExportStep.SAVED -> {
                     Text(
-                        "${stringResource(wording.saved)} · ${quality.label} · ${clock(item.trimmedDurationUs)}",
+                        "${stringResource(wording.saved)} · ${galleryQuality.label} · ${clock(item.trimmedDurationUs)}",
                         style = CgTheme.type.bodySmall,
                         color = CgColors.Text.Secondary,
                     )
@@ -427,15 +434,36 @@ fun ExportSheetContent(
                     )
                 }
                 ExportStep.OPTIONS -> {
-                    val what = exportSummary(item, quality, sound, wording)
+                    // With a choice beside each row, the quality is said there, not again in the line.
                     ListRow(
                         stringResource(wording.save),
-                        "$what · ${stringResource(wording.saveWhere)}",
+                        "${exportSummary(item, galleryQuality.takeUnless { choose }, sound, wording)} · " +
+                            stringResource(wording.saveWhere),
                         onClick = onSaveToGallery,
+                        trailing =
+                            if (choose) {
+                                {
+                                    QualityChoice(qualities, galleryQuality) {
+                                        onQuality(ExportManager.Destination.GALLERY, it)
+                                    }
+                                }
+                            } else null,
                     )
                     wording.share?.let { share ->
                         val where = wording.shareWhere?.let { " · ${stringResource(it)}" }.orEmpty()
-                        ListRow(stringResource(share), "$what$where", onClick = onShare)
+                        ListRow(
+                            stringResource(share),
+                            exportSummary(item, shareQuality.takeUnless { choose }, sound, wording) + where,
+                            onClick = onShare,
+                            trailing =
+                                if (choose) {
+                                    {
+                                        QualityChoice(qualities, shareQuality) {
+                                            onQuality(ExportManager.Destination.SHARE, it)
+                                        }
+                                    }
+                                } else null,
+                        )
                     }
                     Text(stringResource(wording.footer), style = CgTheme.type.caption, color = CgColors.Text.Dim)
                 }
@@ -450,10 +478,13 @@ private enum class ExportStep {
     SAVED,
 }
 
-/** What an export will make, in one line: "1080p · 9:16 · 0:47 · with sound". */
+/**
+ * What an export will make, in one line: "1080p · 9:16 · 0:47 · with sound". Without [quality] when a choice beside it
+ * says that.
+ */
 @Composable
-fun exportSummary(item: VideoItem, quality: Quality, sound: Boolean, wording: ExportWording): String =
-    "${quality.label} · ${item.format.label} · ${clock(item.trimmedDurationUs)} · " +
+fun exportSummary(item: VideoItem, quality: Quality?, sound: Boolean, wording: ExportWording): String =
+    "${quality?.let { "${it.label} · " }.orEmpty()}${item.format.label} · ${clock(item.trimmedDurationUs)} · " +
         stringResource(
             when {
                 !wording.sound || !item.hasAudio -> Res.string.edit_no_sound
@@ -469,13 +500,17 @@ fun exportSummary(item: VideoItem, quality: Quality, sound: Boolean, wording: Ex
 @Composable
 fun ExportBar(
     item: VideoItem,
-    quality: Quality,
+    galleryQuality: Quality,
+    shareQuality: Quality,
+    qualities: List<Quality>,
     sound: Boolean,
     onSave: () -> Unit,
     onShare: () -> Unit,
     modifier: Modifier = Modifier,
+    onQuality: (ExportManager.Destination, Quality) -> Unit = { _, _ -> },
 ) {
     val wording = LocalExportWording.current
+    val choose = qualities.size > 1
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
         Row(
             Modifier.height(IntrinsicSize.Min),
@@ -498,10 +533,42 @@ fun ExportBar(
                 )
             }
         }
+        // Each way out's quality under its button, when there is a choice.
+        if (choose) {
+            Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                QualityChoice(qualities, galleryQuality, Modifier.weight(1f), fill = true) {
+                    onQuality(ExportManager.Destination.GALLERY, it)
+                }
+                if (wording.share != null) {
+                    QualityChoice(qualities, shareQuality, Modifier.weight(1f), fill = true) {
+                        onQuality(ExportManager.Destination.SHARE, it)
+                    }
+                }
+            }
+        }
         Text(
-            "${exportSummary(item, quality, sound, wording)} · ${stringResource(wording.saveWhere)}",
+            "${exportSummary(item, galleryQuality.takeUnless { choose }, sound, wording)} · " +
+                stringResource(wording.saveWhere),
             style = CgTheme.type.caption,
             color = CgColors.Text.Dim,
         )
     }
+}
+
+/** 1080p or 4K for one way out of the export. */
+@Composable
+private fun QualityChoice(
+    qualities: List<Quality>,
+    selected: Quality,
+    modifier: Modifier = Modifier,
+    fill: Boolean = false,
+    onSelect: (Quality) -> Unit,
+) {
+    SegmentedControl(
+        options = qualities.map { it.label },
+        selectedIndex = qualities.indexOf(selected).coerceAtLeast(0),
+        onSelect = { onSelect(qualities[it]) },
+        modifier = modifier,
+        fill = fill,
+    )
 }

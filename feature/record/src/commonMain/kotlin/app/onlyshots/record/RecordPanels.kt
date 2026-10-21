@@ -31,8 +31,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,14 +44,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import app.onlyshots.TestTags
 import app.onlyshots.camera.CameraState
@@ -467,31 +470,24 @@ internal fun FloatingControls(
     val fold = layout.fold && layout.kind == LayoutKind.Wide
     val tablet = layout.kind == LayoutKind.Wide
     val state = take.state
-    var top by remember { mutableStateOf(Rect.Zero) }
-    var bottom by remember { mutableStateOf(Rect.Zero) }
-    var side by remember { mutableStateOf(Rect.Zero) }
-    var window by remember { mutableStateOf(Rect.Zero) }
-    // The right page's left edge on a fold, in root px: the graph is kept on that page.
-    var page by remember { mutableStateOf(Rect.Zero) }
-    // The upright bottom bar's height, so the status chip can stand just over it.
-    var bottomPx by remember { mutableIntStateOf(0) }
-    val bottomHeight = with(LocalDensity.current) { bottomPx.toDp() }
-    LaunchedEffect(top, bottom, side, window, page, landscape, fold) {
-        if (window.isEmpty) return@LaunchedEffect
-        onClear(
-            when {
-                fold && !page.isEmpty ->
-                    Rect(page.left, page.top, page.right, if (bottom.isEmpty) page.bottom else bottom.top)
-                else ->
-                    Rect(
-                        window.left,
-                        top.bottom.coerceAtLeast(window.top),
-                        if (landscape && !side.isEmpty) side.left else window.right,
-                        if (bottom.isEmpty) window.bottom else bottom.top,
-                    )
+    // Where the controls are, in root px, kept out of snapshot state: they move on every layout pass (a rules block
+    // resizing), and only what they leave free is passed on, when it changes.
+    val rects = remember { ControlRects() }
+    val clearChanged by rememberUpdatedState(onClear)
+    val landscapeNow by rememberUpdatedState(landscape)
+    val foldNow by rememberUpdatedState(fold)
+    val report = remember {
+        {
+            val free = rects.free(landscapeNow, foldNow)
+            if (free != null && free != rects.reported) {
+                rects.reported = free
+                clearChanged(free)
             }
-        )
+        }
     }
+    LaunchedEffect(landscape, fold) { report() }
+    // The upright bottom bar's height, so the status chip can stand just over it: read in layout, not composition.
+    var bottomPx by remember { mutableIntStateOf(0) }
     val status = @Composable { m: Modifier -> if (state.statusWorthShowing) TakeStatus(state, m) }
     // The take's time is the status chip's, one clock: here only "simulate shot", where there is one.
     val simulate =
@@ -522,7 +518,12 @@ internal fun FloatingControls(
             }
         }
     val rulesCard = @Composable { m: Modifier -> RulesBlock(take, m.border(CgStroke.Hairline, CgColors.Line.Hairline)) }
-    Box(modifier.fillMaxSize().onGloballyPositioned { window = it.boundsInRoot() }) {
+    Box(
+        modifier.fillMaxSize().onGloballyPositioned {
+            rects.window = it.boundsInRoot()
+            report()
+        }
+    ) {
         if (fold) {
             // Two pages meeting at the fold, measured from the window's edge as the layout is.
             Box(Modifier.fillMaxHeight().width(layout.splitDp.dp)) {
@@ -530,7 +531,14 @@ internal fun FloatingControls(
                     Modifier.fillMaxSize().safeDrawingPadding().padding(CgSpace.S16),
                     verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
                 ) {
-                    Box(Modifier.onGloballyPositioned { top = it.boundsInRoot() }) { TakeTopRow(take, back = true) }
+                    Box(
+                        Modifier.onGloballyPositioned {
+                            rects.top = it.boundsInRoot()
+                            report()
+                        }
+                    ) {
+                        TakeTopRow(take, back = true)
+                    }
                     Banners(take.camera, take.saveError)
                     status(Modifier)
                     Spacer(Modifier.weight(1f))
@@ -539,7 +547,8 @@ internal fun FloatingControls(
             }
             Box(
                 Modifier.fillMaxSize().padding(start = (layout.splitDp + layout.hingeDp).dp).onGloballyPositioned {
-                    page = it.boundsInRoot()
+                    rects.page = it.boundsInRoot()
+                    report()
                 }
             ) {
                 Column(
@@ -547,7 +556,10 @@ internal fun FloatingControls(
                         .fillMaxWidth()
                         .safeDrawingPadding()
                         .padding(CgSpace.S16)
-                        .onGloballyPositioned { bottom = it.boundsInRoot() },
+                        .onGloballyPositioned {
+                            rects.bottom = it.boundsInRoot()
+                            report()
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
                 ) {
@@ -571,14 +583,24 @@ internal fun FloatingControls(
                 // On its side the status stands at the trailing edge, over the key.
                 horizontalAlignment = if (landscape) Alignment.End else Alignment.Start,
             ) {
-                Box(Modifier.onGloballyPositioned { top = it.boundsInRoot() }) { TakeTopRow(take, back = true) }
+                Box(
+                    Modifier.onGloballyPositioned {
+                        rects.top = it.boundsInRoot()
+                        report()
+                    }
+                ) {
+                    TakeTopRow(take, back = true)
+                }
                 Banners(take.camera, take.saveError)
                 if (!graphOnTop || landscape) status(Modifier)
             }
             if (landscape) {
                 // Down the trailing edge: the lenses standing over the key, "simulate shot" under it.
                 Column(
-                    Modifier.align(Alignment.CenterEnd).onGloballyPositioned { side = it.boundsInRoot() },
+                    Modifier.align(Alignment.CenterEnd).onGloballyPositioned {
+                        rects.side = it.boundsInRoot()
+                        report()
+                    },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
                 ) {
@@ -588,7 +610,8 @@ internal fun FloatingControls(
                 }
                 Column(
                     Modifier.align(Alignment.BottomStart).widthIn(max = RULES_WIDTH).onGloballyPositioned {
-                        bottom = it.boundsInRoot()
+                        rects.bottom = it.boundsInRoot()
+                        report()
                     },
                     verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
                 ) {
@@ -598,7 +621,8 @@ internal fun FloatingControls(
                 // A tablet held upright: the lenses, the key and the rules float at the foot of the picture.
                 Column(
                     Modifier.align(Alignment.BottomCenter).fillMaxWidth().onGloballyPositioned {
-                        bottom = it.boundsInRoot()
+                        rects.bottom = it.boundsInRoot()
+                        report()
                     },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
@@ -609,7 +633,13 @@ internal fun FloatingControls(
                     rulesCard(Modifier.widthIn(max = RULES_WIDTH))
                 }
             } else if (graphOnTop) {
-                status(Modifier.align(Alignment.BottomStart).padding(bottom = bottomHeight))
+                status(
+                    Modifier.align(Alignment.BottomStart).layout { m, c ->
+                        val gap = bottomPx
+                        val p = m.measure(c.offset(vertical = -gap))
+                        layout(c.constrainWidth(p.width), c.constrainHeight(p.height + gap)) { p.place(0, 0) }
+                    }
+                )
             }
         }
         if (!landscape && !tablet) {
@@ -618,7 +648,8 @@ internal fun FloatingControls(
             // shot" to its right.
             Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().onGloballyPositioned {
-                    bottom = it.boundsInRoot()
+                    rects.bottom = it.boundsInRoot()
+                    report()
                     bottomPx = it.size.height
                 },
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -665,3 +696,28 @@ private val TABLETOP_SIDE = 400.dp
 
 /** The rules strip at most: on a tablet it does not run across the whole picture. */
 private val RULES_WIDTH = 480.dp
+
+/** Where the floating controls are, in root px, and what of the window they last left free. */
+private class ControlRects {
+    var top = Rect.Zero
+    var bottom = Rect.Zero
+    var side = Rect.Zero
+    var window = Rect.Zero
+    /** The right page on a fold: the graph is kept on that page. */
+    var page = Rect.Zero
+    var reported: Rect? = null
+
+    fun free(landscape: Boolean, fold: Boolean): Rect? =
+        when {
+            window.isEmpty -> null
+            fold && !page.isEmpty ->
+                Rect(page.left, page.top, page.right, if (bottom.isEmpty) page.bottom else bottom.top)
+            else ->
+                Rect(
+                    window.left,
+                    top.bottom.coerceAtLeast(window.top),
+                    if (landscape && !side.isEmpty) side.left else window.right,
+                    if (bottom.isEmpty) window.bottom else bottom.top,
+                )
+        }
+}

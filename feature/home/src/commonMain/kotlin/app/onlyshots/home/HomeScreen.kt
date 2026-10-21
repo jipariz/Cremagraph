@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -152,7 +153,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val take by viewModel.take.collectAsStateWithLifecycle()
+    // The next take changes with every live sample: handed down as a provider, read only where it is shown.
+    val take = viewModel.take.collectAsStateWithLifecycle()
     val askBluetooth = rememberBluetoothPermission(viewModel::onBluetoothAnswer)
     // Scales are searched for all the time, so Bluetooth is asked for as Home first opens; already allowed, this
     // answers at once without a prompt. Refused, the "connect a scale" card asks again.
@@ -179,7 +181,7 @@ fun HomeScreen(
             onTrySample()
         },
         onBack = onBack,
-        take = take,
+        takeOf = { take.value },
         onRecording = viewModel::updateRecording,
         foldPage =
             if (state.addressSheet && LocalWindowLayout.current.fold) {
@@ -226,7 +228,10 @@ fun HomeBody(
      */
     foldPage: (@Composable () -> Unit)? = null,
     onFoldPageDismiss: () -> Unit = {},
+    /** The next take as a provider, in place of [take]: the live screen's, read only where the readings are drawn. */
+    takeOf: (() -> NextTake)? = null,
 ) {
+    val nextTake = takeOf ?: { take }
     val layout = LocalWindowLayout.current
     if (layout.kind == LayoutKind.Wide) {
         // Two pages: where the shot comes from, and the take the record button starts.
@@ -296,7 +301,8 @@ fun HomeBody(
                     }
                 },
                 panel = {
-                    if (foldPage != null) foldPage() else NextTakePane(state, take, onRecording, onOpenCamera, onSample)
+                    if (foldPage != null) foldPage()
+                    else NextTakePane(state, nextTake, onRecording, onOpenCamera, onSample)
                 },
             )
         }
@@ -524,12 +530,13 @@ private fun AddressForm(address: String, onAddress: (String) -> Unit, onConnect:
 @Composable
 private fun NextTakePane(
     state: HomeUiState,
-    take: NextTake,
+    take: () -> NextTake,
     onRecording: ((RecordingSettings) -> RecordingSettings) -> Unit,
     onOpenCamera: () -> Unit,
     onSample: () -> Unit,
 ) {
-    val settings = take.settings
+    // Only a change of the rules recomposes the pane; the live reading is read by LiveTake alone.
+    val settings by remember(take) { derivedStateOf { take().settings } }
     // A short panel (a tablet on its side) tightens up, so the rules still show above the record button.
     BoxWithConstraints(
         Modifier.fillMaxSize().drawBehind {
@@ -565,49 +572,7 @@ private fun NextTakePane(
                         style = if (compact) CgTheme.type.cardTitle else CgTheme.type.pivot,
                     )
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        val live = state.connection == ConnectionState.Connected && take.live != null
-                        // Read while drawing: the dot's change of colour redraws it, it does not recompose the pane.
-                        val dot =
-                            animateColorAsState(
-                                if (live) CgColors.Status.Live else CgColors.Text.Dim,
-                                CgMotion.medium(),
-                            )
-                        Box(Modifier.size(CgSpace.S6).drawBehind { drawRect(dot.value) })
-                        Text(
-                            takeStatus(state, take.live).text(),
-                            style = CgTheme.type.caption,
-                            color = CgColors.Text.Secondary,
-                        )
-                    }
-                    val readings = takeReadings(state, take.live)
-                    // The tiles open under the status once the machine sends its first reading.
-                    var shown by remember { mutableStateOf(readings) }
-                    if (readings.isNotEmpty()) shown = readings
-                    AnimatedVisibility(
-                        readings.isNotEmpty(),
-                        enter = CgMotion.reveal,
-                        exit = CgMotion.conceal,
-                    ) {
-                        // One grid: the tiles meet on single hairlines.
-                        HairlineGrid(shown.size, columns = shown.size) { i, cell ->
-                            val r = shown[i]
-                            ReadingTile(
-                                stringResource(r.label),
-                                r.value,
-                                stringResource(r.unit),
-                                cell,
-                                color = r.kind.color(),
-                                large = !compact,
-                                framed = false,
-                            )
-                        }
-                    }
-                }
+                LiveTake(state, take, compact)
                 TakeRules(settings, state.saved?.kind, onRecording)
             }
             val action = recordAction(state)
@@ -624,6 +589,55 @@ private fun NextTakePane(
                 withData = !withoutData,
             )
             SampleLink(onSample, Modifier.align(Alignment.CenterHorizontally))
+        }
+    }
+}
+
+/** The next take's source as it is now: its status line and reading tiles, the only part that follows live samples. */
+@Composable
+private fun LiveTake(state: HomeUiState, take: () -> NextTake, compact: Boolean) {
+    val live = take().live
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val on = state.connection == ConnectionState.Connected && live != null
+            // Read while drawing: the dot's change of colour redraws it, it does not recompose the pane.
+            val dot =
+                animateColorAsState(
+                    if (on) CgColors.Status.Live else CgColors.Text.Dim,
+                    CgMotion.medium(),
+                )
+            Box(Modifier.size(CgSpace.S6).drawBehind { drawRect(dot.value) })
+            Text(
+                takeStatus(state, live).text(),
+                style = CgTheme.type.caption,
+                color = CgColors.Text.Secondary,
+            )
+        }
+        val readings = takeReadings(state, live)
+        // The tiles open under the status once the machine sends its first reading.
+        var shown by remember { mutableStateOf(readings) }
+        if (readings.isNotEmpty()) shown = readings
+        AnimatedVisibility(
+            readings.isNotEmpty(),
+            enter = CgMotion.reveal,
+            exit = CgMotion.conceal,
+        ) {
+            // One grid: the tiles meet on single hairlines.
+            HairlineGrid(shown.size, columns = shown.size) { i, cell ->
+                val r = shown[i]
+                ReadingTile(
+                    stringResource(r.label),
+                    r.value,
+                    stringResource(r.unit),
+                    cell,
+                    color = r.kind.color(),
+                    large = !compact,
+                    framed = false,
+                )
+            }
         }
     }
 }

@@ -24,6 +24,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -107,18 +108,24 @@ private val STOP_HEIGHT = 40.dp
  */
 @Composable
 fun FocusRing(at: Offset, key: Int, modifier: Modifier = Modifier) {
-    var alpha by remember(key) { mutableFloatStateOf(1f) }
+    var level by remember(key) { mutableFloatStateOf(1f) }
     LaunchedEffect(key) {
         repeat(FOCUS_BLINKS) {
             delay(FOCUS_BLINK_MS)
-            alpha = 0f
+            level = 0f
             delay(FOCUS_BLINK_MS)
-            alpha = 1f
+            level = 1f
         }
         delay(FOCUS_BLINK_MS)
-        alpha = 0.5f
+        level = 0.5f
     }
-    Canvas(modifier.fillMaxSize().alpha(alpha)) {
+    // Read while drawing (what Modifier.alpha is, a clipped layer): a blink redraws the ring, it does not recompose it.
+    Canvas(
+        modifier.fillMaxSize().graphicsLayer {
+            alpha = level
+            clip = true
+        }
+    ) {
         val half = FOCUS_RING_RADIUS.dp.toPx()
         drawRect(
             CgColors.Status.Warning,

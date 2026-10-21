@@ -273,27 +273,37 @@ fun RecordBody(
             settingsOpen = false
         }
     }
-    val openRecordingSettings = {
-        graphSheet = null
-        graphSelected = false
-        settingsOpen = true
+    val openRecordingSettings = remember {
+        {
+            graphSheet = null
+            graphSelected = false
+            settingsOpen = true
+        }
     }
     // What of the window the floating controls leave free, in root px: the graph is kept there.
     var clear by remember { mutableStateOf<Rect?>(null) }
     // While the graph is moved the floating controls step aside, and it may go under them.
     var graphMoving by remember { mutableStateOf(false) }
+    // The panels read only the take's rules, never the graph: a dragged graph changes the settings every frame, and
+    // must not rebuild the floating controls with it.
+    val rules =
+        remember(settings.autoStart, settings.preRollSeconds, settings.stopRule) {
+            RecordingSettings(settings.autoStart, settings.preRollSeconds, settings.stopRule)
+        }
     val take =
-        TakeInputs(
-            state = state,
-            camera = camera,
-            settings = settings,
-            live = live,
-            actions = actions,
-            canSimulateShot = canSimulateShot,
-            saveError = saveError,
-            onBack = onBack,
-            onSettings = openRecordingSettings,
-        )
+        remember(state, camera, rules, live, actions, canSimulateShot, saveError, onBack) {
+            TakeInputs(
+                state = state,
+                camera = camera,
+                settings = rules,
+                live = live,
+                actions = actions,
+                canSimulateShot = canSimulateShot,
+                saveError = saveError,
+                onBack = onBack,
+                onSettings = openRecordingSettings,
+            )
+        }
     // A pane of its own (a tabletop's upper half, a cover screen) keeps its rail and status on the picture; full
     // screen,
     // the floating controls have them.
@@ -331,7 +341,7 @@ fun RecordBody(
                 sampleLuma = now.sampleLuma,
                 picture = now.picture,
                 capture = now.capture,
-                clear = clear.takeUnless { ownControls },
+                clear = { clear.takeUnless { ownControls } },
                 graphSelected = graphSelected,
                 onGraphSelected = { graphSelected = it },
                 onGraphSheet = { graphSheet = it },
@@ -476,7 +486,10 @@ private fun CameraPane(
     sampleLuma: (x: Float, y: Float, w: Float, h: Float) -> Float?,
     picture: @Composable (Modifier, drawFrames: Boolean) -> Unit,
     capture: VideoFormat,
-    clear: Rect?,
+    /**
+     * Read only where the viewfinder's marks are drawn: it moves with the controls, and must not recompose the pane.
+     */
+    clear: () -> Rect?,
     graphSelected: Boolean,
     onGraphSelected: (Boolean) -> Unit,
     onGraphSheet: (EditSheet) -> Unit,
@@ -569,7 +582,7 @@ private fun CameraPane(
                 focusAt?.let { FocusRing(it, focusTaps) }
             } else {
                 // No picture: the viewfinder's marks on the part of the window the controls leave, and why.
-                Viewfinder(clear ?: shownIn(frame, shown), frame)
+                Viewfinder({ clear() ?: shownIn(frame, shown) }, frame)
                 Box(Modifier.matchParentSize().padding(shownPadding(frameW, frameH, shown))) {
                     Column(
                         Modifier.align(Alignment.CenterStart).padding(horizontal = CgSpace.S16 * 2),
@@ -736,14 +749,15 @@ private fun shownPadding(frameW: Dp, frameH: Dp, shown: NormRect): PaddingValues
     )
 
 /**
- * A viewfinder with no picture in it: four corner marks round [area] (root px) and a cross in its middle, in hairline
- * grey, drawn in the [frame]'s own coordinates.
+ * A viewfinder with no picture in it: four corner marks round what [area] gives (root px) and a cross in its middle, in
+ * hairline grey, drawn in the [frame]'s own coordinates.
  */
 @Composable
-private fun BoxScope.Viewfinder(area: Rect, frame: Rect) {
+private fun BoxScope.Viewfinder(area: () -> Rect, frame: Rect) {
     Box(
         Modifier.matchParentSize().drawWithCache {
-            // Built when the size or the area changes, not on every draw.
+            // Built when the size or the area changes, not on every draw; the area is read here, not in composition.
+            val area = area()
             val inset = CgSpace.S16.toPx()
             val arm = CgSpace.S16.toPx()
             val l = area.left - frame.left + inset

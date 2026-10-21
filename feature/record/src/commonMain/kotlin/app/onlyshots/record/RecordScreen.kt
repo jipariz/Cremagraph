@@ -10,7 +10,6 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -383,14 +382,6 @@ fun RecordBody(
                     onClear = { clear = it },
                 )
             }
-        }
-        // While a take runs, the whole screen is edged in the record red, as a tally light: no doubt it is filming.
-        if (state.recording) {
-            Box(
-                Modifier.matchParentSize()
-                    .border(RECORDING_EDGE, CgColors.Status.Record)
-                    .testTag(TestTags.RecordingEdge)
-            )
         }
     }
 
@@ -882,6 +873,3 @@ internal fun KeyIn(visible: Boolean, content: @Composable () -> Unit) {
         content()
     }
 }
-
-/** The record-red edge round the screen while a take runs. */
-private val RECORDING_EDGE = 4.dp

@@ -8,14 +8,12 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -149,16 +147,6 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                     Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = ItemPlacement),
                 )
             }
-        }
-        val selected = custom.firstOrNull { it.id == currentId } ?: GraphStyles.all.firstOrNull { it.id == currentId }
-        if (selected != null) {
-            SelectedStyleKeys(
-                selected,
-                own = custom.any { it.id == selected.id },
-                onCopy = { actions.create(selected.id) },
-                onEdit = { actions.edit(selected.id) },
-                onRemove = { deleting = selected },
-            )
         }
         SectionHeader(stringResource(Res.string.style_built_in))
         // As many columns as fit (a sheet on a phone takes three, the wide panel and a wide sheet more); a grid that
@@ -309,62 +297,6 @@ private fun StyleTile(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = CgSpace.S8, vertical = CgSpace.S6),
         )
-    }
-}
-
-/**
- * The selected style's keys, under the user's styles: its name, then COPY, EDIT and REMOVE (in signal) for one of the
- * user's; a built-in can only be copied, so it shows EDIT A COPY alone.
- */
-@Composable
-private fun SelectedStyleKeys(
-    style: GraphStyle,
-    own: Boolean,
-    onCopy: () -> Unit,
-    onEdit: () -> Unit,
-    onRemove: () -> Unit,
-) {
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            style.name.caps(),
-            style = CgTheme.type.labelStrong,
-            color = CgColors.Text.Secondary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(TILE_SMALL),
-        )
-        if (own) {
-            StyleKey(stringResource(Res.string.style_copy), TestTags.StyleActionCopy, onClick = onCopy)
-            StyleKey(stringResource(Res.string.style_edit), TestTags.StyleActionEdit, onClick = onEdit)
-            StyleKey(
-                stringResource(Res.string.style_remove),
-                TestTags.StyleActionRemove,
-                risky = true,
-                onClick = onRemove,
-            )
-        } else {
-            StyleKey(stringResource(Res.string.style_edit_a_copy), TestTags.StyleActionCopy, onClick = onCopy)
-        }
-    }
-}
-
-/** One of [SelectedStyleKeys]: a hairline key sharing the row, [risky] framed and lettered in signal. */
-@Composable
-private fun RowScope.StyleKey(text: String, tag: String, risky: Boolean = false, onClick: () -> Unit) {
-    val colour = if (risky) CgColors.Brand.Signal else CgColors.Text.Primary
-    Box(
-        Modifier.weight(1f)
-            .height(CgSize.Touch)
-            .border(CgStroke.Hairline, if (risky) CgColors.Brand.Signal else CgColors.Line.Hairline)
-            .clickable(role = Role.Button, onClick = onClick)
-            .testTag(tag),
-        Alignment.Center,
-    ) {
-        Text(text.caps(), style = CgTheme.type.labelStrong, color = colour, maxLines = 1)
     }
 }
 

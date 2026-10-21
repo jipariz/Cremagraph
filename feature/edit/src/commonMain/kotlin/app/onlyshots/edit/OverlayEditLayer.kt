@@ -252,7 +252,7 @@ fun OverlayEditLayer(
         }
 
         // The toolbar rises into its slot over the graph when it is picked, and drops out while it is dragged. As wide
-        // as the graph and over it, or under it where the graph is too near the top.
+        // as its keys, centred on the graph, over it, or under it where the graph is too near the top.
         if (toolbar != null) {
             val above = maxHeight * rect.y - TOOLBAR_GAP - CgSize.Touch
             AnimatedVisibility(
@@ -262,6 +262,7 @@ fun OverlayEditLayer(
                         y = if (above >= 0.dp) above else maxHeight * rect.bottom + TOOLBAR_GAP,
                     )
                     .width(maxWidth * rect.w)
+                    .wrapContentWidth(unbounded = true)
                     .clipToBounds(),
                 enter = slideInVertically(CgMotion.offsetSpec) { it },
                 exit = slideOutVertically(CgMotion.offsetSpec) { it },

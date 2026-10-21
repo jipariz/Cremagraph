@@ -118,15 +118,16 @@ private fun Graph(nav: NavBackStack<NavKey>) {
                 entry<EditRoute> { route ->
                     TaggedScreen(TestTags.ScreenEdit) {
                         val id = route.id
-                        // A recording goes on to the next take; a video opened by hand goes back to where it was
-                        // picked.
+                        // Back from a recording goes on to the next take, and once it is exported the next shot
+                        // starts from Home, where its source is picked; a video opened by hand goes back to where it
+                        // was picked.
                         val next = {
                             if (route.manual) nav.backTo(OpenRoute) else nav.replaceAbove(HomeRoute, RecordRoute())
                         }
                         EditScreen(
                             id = id,
                             onBack = { next() },
-                            onExported = { next() },
+                            onExported = { if (route.manual) nav.backTo(OpenRoute) else nav.backTo(HomeRoute) },
                             askBeforeLeaving = !route.manual,
                             onFromMachine = { nav.go(MachineShotsRoute) },
                             pickedShot = results.pickedShot,

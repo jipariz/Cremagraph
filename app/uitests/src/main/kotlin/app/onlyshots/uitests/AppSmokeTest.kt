@@ -64,7 +64,7 @@ class AppSmokeTest {
         tap("export.save")
         await("export.next", EXPORT_TIMEOUT_MS)
         tap("export.next")
-        await("screen.record")
+        await("screen.home")
     }
 
     /** Start → compose a video → Open → back to Start. */

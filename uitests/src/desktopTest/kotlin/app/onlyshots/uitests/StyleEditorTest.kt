@@ -64,12 +64,12 @@ class StyleEditorTest {
             tap(TestTags.ToolbarStyle)
             waitUntil("the copy is in your styles", TIMEOUT) { customTiles().size == 2 }
 
-            // The copy is the selected style: its REMOVE key, under your styles.
-            tap(TestTags.StyleActionRemove)
+            // Both go from their long-press menus: the copy, then the style itself.
+            openMenu()
+            tap(TestTags.StyleMenuDelete)
             await(TestTags.DialogConfirm).performSemanticsAction(SemanticsActions.OnClick)
             awaitGone(TestTags.DialogConfirm)
-
-            // The style itself, from its long-press menu.
+            waitUntil("one style left", TIMEOUT) { customTiles().size == 1 }
             openMenu()
             tap(TestTags.StyleMenuDelete)
             await(TestTags.DialogConfirm).performSemanticsAction(SemanticsActions.OnClick)
@@ -106,7 +106,7 @@ class StyleEditorTest {
     private fun ComposeUiTest.customTiles() = onAllNodes(isCustomTile, useUnmergedTree = true).fetchSemanticsNodes()
 
     private fun ComposeUiTest.customTile(): androidx.compose.ui.test.SemanticsNodeInteraction {
-        waitUntil("one custom style", TIMEOUT) { customTiles().size == 1 }
+        waitUntil("a custom style", TIMEOUT) { customTiles().isNotEmpty() }
         return onAllNodes(isCustomTile, useUnmergedTree = true)[0]
     }
 }

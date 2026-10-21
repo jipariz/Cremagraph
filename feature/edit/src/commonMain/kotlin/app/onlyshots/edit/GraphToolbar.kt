@@ -1,6 +1,5 @@
 package app.onlyshots.edit
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -16,8 +15,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * The toolbar over a selected graph, the same on the record and edit screens: its style, its data (and words), and how
- * much of its background shows, as wide as the graph ([OverlayEditLayer] gives it the width), the three keys sharing
- * it.
+ * much of its background shows. As wide as its keys, centred over the graph ([OverlayEditLayer] places it).
  */
 @Composable
 fun GraphToolbar(
@@ -27,23 +25,22 @@ fun GraphToolbar(
     onOpacity: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    CardBar(modifier.fillMaxWidth()) {
+    CardBar(modifier) {
         CardBarButton(
             stringResource(Res.string.edit_toolbar_style),
             onClick = onStyle,
-            modifier = Modifier.weight(1f).testTag(TestTags.ToolbarStyle),
+            modifier = Modifier.testTag(TestTags.ToolbarStyle),
             caret = true,
         )
         CardBarButton(
             stringResource(Res.string.edit_toolbar_data),
             onClick = onData,
-            modifier = Modifier.weight(1f).testTag(TestTags.ToolbarData),
+            modifier = Modifier.testTag(TestTags.ToolbarData),
             caret = true,
         )
         CardBarButton(
             "${(opacity * 100).roundToInt()} %",
             onClick = { onOpacity(nextOpacity(opacity)) },
-            modifier = Modifier.weight(1f),
             icon = CgIcons.Contrast,
         )
     }

@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
 import app.onlyshots.OnlyShotsApp
 import app.onlyshots.TestTags
 import kotlin.test.AfterTest
@@ -84,8 +85,9 @@ class PhoneAppTest {
         tap(TestTags.ExportSave)
         await(TestTags.ExportNext, EXPORT_TIMEOUT)
         assertEquals(1, app.gallery.saved.size, "the take went to the gallery")
+        // The next shot starts from Home, where its machine or scale is picked.
         tap(TestTags.ExportNext)
-        await(TestTags.ScreenRecord)
+        await(TestTags.ScreenHome)
     }
 
     /** Start → compose a video → pick both → open the editor → back to Open. */
@@ -127,10 +129,7 @@ fun ComposeUiTest.tapIfPresent(tag: String) {
     if (there) tap(tag)
 }
 
-/**
- * How the record screen looks while a take runs, on a phone: the screen edged in the record red, and back inert until
- * the take is stopped and saved.
- */
+/** How the record screen behaves while a take runs, on a phone: back inert until the take is stopped and saved. */
 @OptIn(ExperimentalTestApi::class)
 class RecordingLookTest {
     private val app = Harness(phone = true)
@@ -140,18 +139,18 @@ class RecordingLookTest {
     @AfterTest fun stop() = app.stop()
 
     @Test
-    fun aTakeEdgesTheScreenAndHoldsBack() =
+    fun aTakeHoldsBack() =
         onDevice(Device.Phone, app.pickers, { OnlyShotsApp() }) {
             await(TestTags.ScreenStart)
             tap(TestTags.StartRecord)
             await(TestTags.ScreenHome)
             tap(TestTags.HomeSample)
             await(TestTags.ScreenRecord)
-            awaitGone(TestTags.RecordingEdge)
             await(TestTags.Back).assertIsEnabled()
             tap(TestTags.RecordButton)
-            await(TestTags.RecordingEdge)
-            await(TestTags.Back).assertIsNotEnabled()
+            waitUntil("back held while recording", TIMEOUT) {
+                runCatching { onNodeWithTag(TestTags.Back, useUnmergedTree = true).assertIsNotEnabled() }.isSuccess
+            }
             Thread.sleep(1_500)
             tap(TestTags.RecordButton)
             await(TestTags.ScreenEdit)

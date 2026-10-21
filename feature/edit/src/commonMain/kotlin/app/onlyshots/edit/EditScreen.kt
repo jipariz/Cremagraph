@@ -674,7 +674,7 @@ fun EditBody(
                 }
             } else {
                 // With the graph picked, only the filmstrip stays under the picture, so the picture gets the room.
-                TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions, tools = !graphSelected)
+                TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions, tools = true)
             }
         }
 
@@ -1122,10 +1122,10 @@ private fun WideTopBar(ui: EditUiState, onBack: () -> Unit, player: PlayerState)
 @Composable
 private fun SoundToggle(video: VideoItem?, player: PlayerState) {
     if (video?.hasAudio != true) return
-    Pill(
+    // A top-bar key like the shot and export ones beside it, the same height.
+    TopChip(
         if (player.muted) stringResource(Res.string.edit_muted) else stringResource(Res.string.edit_sound),
         onClick = { player.muted = !player.muted },
-        color = if (player.muted) CgColors.Text.Secondary else CgColors.Text.Primary,
         modifier = Modifier.testTag(TestTags.EditSound),
     )
 }
@@ -1523,17 +1523,15 @@ private fun EditPanel(
 }
 
 /**
- * The play key in the middle of the picture: there while the video stands paused (tap the picture to play it); a tap
- * that starts it holds the key a moment and then cuts it out, so the tap is seen to. Off while something else is being
- * worked on ([idle] false: the graph picked, the picture framed).
+ * The play or pause key in the middle of the picture, shown only when a tap on the picture plays or pauses it: it holds
+ * a moment and then cuts out, so the tap is seen to. Never while something else is being worked on ([idle] false: the
+ * graph picked, the picture framed).
  */
 @Composable
 private fun PlayMark(taps: Int, playing: Boolean, idle: Boolean, modifier: Modifier = Modifier) {
-    val rest = !playing && idle
-    val shown = remember { Animatable(if (rest) 1f else 0f) }
-    LaunchedEffect(taps, rest) {
-        if (rest) shown.snapTo(1f)
-        else if (taps > 0 && idle) {
+    val shown = remember { Animatable(0f) }
+    LaunchedEffect(taps) {
+        if (taps > 0 && idle) {
             shown.snapTo(1f)
             shown.animateTo(0f, tween(CgMotion.SHORT, delayMillis = PLAY_MARK_HOLD_MS, easing = CgMotion.Linear))
         } else shown.snapTo(0f)
@@ -1546,7 +1544,7 @@ private fun PlayMark(taps: Int, playing: Boolean, idle: Boolean, modifier: Modif
             .border(CgStroke.Hairline, CgColors.Brand.Bone),
         contentAlignment = Alignment.Center,
     ) {
-        CgIcon(CgIcons.Play, size = 24.dp)
+        CgIcon(if (playing) CgIcons.Play else CgIcons.Pause, size = 24.dp)
     }
 }
 

@@ -49,10 +49,14 @@ class LibraryStore(private val fs: FileSystem, root: Path) {
 
     @OptIn(ExperimentalUuidApi::class) fun newId(): String = Uuid.random().toHexString()
 
-    /** Writes the sidecar atomically (temp file, then move), so a crash never leaves half a file. */
+    /**
+     * Writes the sidecar atomically (temp file, then move), so a crash never leaves half a file. Each write has its own
+     * temp file: a save the editor has already started runs on when the next one begins, and the two must not share.
+     */
+    @OptIn(ExperimentalUuidApi::class)
     fun write(item: VideoItem) {
         val target = sidecarPath(item.id)
-        val tmp = videosDir / "${item.id}.onlyshots.json.tmp"
+        val tmp = videosDir / "${item.id}.${Uuid.random().toHexString()}.onlyshots.json.tmp"
         fs.sink(tmp).buffer().use { it.writeUtf8(SidecarCodec.encode(item)) }
         fs.atomicMove(tmp, target)
     }

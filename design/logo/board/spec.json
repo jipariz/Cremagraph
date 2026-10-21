@@ -1,14 +1,14 @@
 {
   "brand": "onlyshots",
   "tagline": "Your shot, with its graph",
-  "brief": "An app that films an espresso shot with its shot graph (pressure, flow, weight) drawn over it, for home baristas who tune their machines and share their shots. It should feel precise, crafted and warm, and it has to work as an app icon on Android, iOS, the desktop and the web.",
+  "brief": "An app that films an espresso shot with its shot graph (pressure, flow, weight) drawn over it, for home baristas who tune their machines and share their shots. The redesign ('Instrument') makes the app feel like a precision device: black, one signal orange, monospace numbers, square corners. The mark must match it and work as an app icon on Android, iOS, the desktop and the web.",
   "adjectives": [
     "precise",
-    "crafted",
-    "warm",
+    "technical",
+    "confident",
     "shareable"
   ],
-  "criteria": "Success: says filming plus graph without a coffee-cup cliché, reads at 16 px, works in one colour, keeps the app's orange on espresso.",
+  "criteria": "Success: keeps the recorded-trace idea, reads at 16 px, works in one colour, owns the signal orange on black, sits naturally in the Instrument screens.",
   "mockups": [
     "app-icon",
     "favicon-tab",
@@ -22,30 +22,30 @@
     "Machines",
     "Download"
   ],
-  "brand_color": "#EF4E2B",
-  "tile_color": "#1C1412",
+  "brand_color": "#FF5A1F",
+  "tile_color": "#0B0B0B",
   "greyscale": false,
   "designer": "OnlyShots",
-  "round": 3,
+  "round": 4,
   "concepts": [
     {
-      "name": "Viewfinder · Playhead",
+      "name": "Signal tile",
       "symbol": "../kit/onlyshots-symbol.svg",
-      "symbol_on_tile": "../kit/onlyshots-symbol-on-dark.svg",
+      "symbol_on_tile": "../kit/onlyshots-symbol.svg",
       "lockup": "../kit/onlyshots-horizontal.svg",
       "lockup_on_dark": "../kit/onlyshots-horizontal-on-dark.svg",
-      "idea": "A camera's four corners frame the shot as it is recorded: the curve is drawn up to a playhead, and the dot rides the playhead where the curve meets it.",
+      "idea": "The live trace enters a solid signal tile from its edge and is cut out of it, up to the pen head that is writing it.",
       "rationale": [
-        "Says what the app does, recording the shot with its graph, without drawing a cup",
-        "Two colours with a meaning: the frame and playhead are the camera, the orange curve and dot are the shot",
-        "The dot sits on the line, so nothing floats above the curve to read as a head"
+        "Keeps the old mark's idea, the shot recorded as its graph, and drops only the viewfinder corners",
+        "One colour and one outline: the ground shows through the cut, so it works on black, on white and in any single ink",
+        "Square, flat and monospaced like the Instrument screens; strongest of the three at 16 px"
       ]
     }
   ],
-  "recommendation": "Viewfinder with the Playhead: real outlines, three weights (regular, small, reversed), orange on espresso as in the app.",
+  "recommendation": "Signal tile in #FF5A1F with the ONLYSHOTS wordmark in IBM Plex Mono SemiBold, outlined; regular weight from 48 px, small cut below.",
   "next_steps": [
     "Put the new icons into the Android, iOS, desktop and web builds",
-    "Replace OnlyShotsMark in the design system",
+    "Redraw OnlyShotsMark / SplashMark in the design system and regenerate the splash assets (avd.py, launch.py)",
     "Run a professional trademark search"
   ]
 }

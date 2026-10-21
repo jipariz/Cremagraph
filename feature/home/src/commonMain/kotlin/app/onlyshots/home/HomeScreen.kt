@@ -71,6 +71,7 @@ import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.CgStepper
 import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.ConnectScaleCard
+import app.onlyshots.core.designsystem.component.HairlineGrid
 import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.designsystem.component.MachineRow
 import app.onlyshots.core.designsystem.component.ReadingTile
@@ -555,18 +556,18 @@ private fun NextTakePane(
                         enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
                         exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
                     ) {
-                        // One grid: the tiles meet on their hairlines.
-                        Row {
-                            for (r in shown) {
-                                ReadingTile(
-                                    stringResource(r.label),
-                                    r.value,
-                                    stringResource(r.unit),
-                                    Modifier.weight(1f),
-                                    color = r.kind.color(),
-                                    large = !compact,
-                                )
-                            }
+                        // One grid: the tiles meet on single hairlines.
+                        HairlineGrid(shown.size, columns = shown.size) { i, cell ->
+                            val r = shown[i]
+                            ReadingTile(
+                                stringResource(r.label),
+                                r.value,
+                                stringResource(r.unit),
+                                cell,
+                                color = r.kind.color(),
+                                large = !compact,
+                                framed = false,
+                            )
                         }
                     }
                 }

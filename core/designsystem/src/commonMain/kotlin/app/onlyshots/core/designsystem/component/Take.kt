@@ -12,7 +12,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -126,11 +129,13 @@ fun ReadingTile(
     modifier: Modifier = Modifier,
     color: Color = CgColors.Text.Primary,
     large: Boolean = false,
+    /** Its own hairline edge; off inside a [HairlineGrid], which draws one line between cells. */
+    framed: Boolean = true,
 ) {
     Column(
         modifier
             .background(CgColors.Surface.Base)
-            .border(CgStroke.Hairline, CgColors.Line.Divider)
+            .then(if (framed) Modifier.border(CgStroke.Hairline, CgColors.Line.Divider) else Modifier)
             .padding(horizontal = 10.dp, vertical = CgSpace.S6)
     ) {
         Text(label.caps(), style = CgTheme.type.data, color = CgColors.Text.Secondary, maxLines = 1)
@@ -249,5 +254,34 @@ fun SourceChip(text: String, live: Boolean, modifier: Modifier = Modifier) {
             style = CgTheme.type.labelStrong.copy(letterSpacing = CgTheme.type.data.letterSpacing),
             maxLines = 1,
         )
+    }
+}
+
+/**
+ * [count] cells in rows of [columns] inside one hairline frame, meeting on single hairlines, as the canvas's grids do
+ * (cells with their own edge would double them). [cell] gets the cell's index and the modifier that sizes it.
+ */
+@Composable
+fun HairlineGrid(
+    count: Int,
+    columns: Int,
+    modifier: Modifier = Modifier,
+    color: Color = CgColors.Line.Divider,
+    cell: @Composable (index: Int, modifier: Modifier) -> Unit,
+) {
+    Column(modifier.border(CgStroke.Hairline, color)) {
+        (0 until count).chunked(columns).forEachIndexed { r, row ->
+            if (r > 0) Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(color))
+            Row(Modifier.height(IntrinsicSize.Min)) {
+                row.forEachIndexed { c, i ->
+                    if (c > 0) Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(color))
+                    cell(i, Modifier.weight(1f))
+                }
+                repeat(columns - row.size) {
+                    Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(color))
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+        }
     }
 }

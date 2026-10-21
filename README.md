@@ -41,7 +41,7 @@ client-server style. Apps live in `app/`. Shared libraries live at root.
 | `:feature:open` | Editor start: pick video + shot (file, or from machine) |
 | `:feature:style` | Style picker, style library, style editor |
 | `:core:ui` | Shared screen stuff: adaptive layout, routes, Navigation 3 helpers, platform `expect` composables |
-| `:core:designsystem` | Figma tokens, Open Sans, buttons, chips, controls |
+| `:core:designsystem` | Instrument tokens (ink, bone, signal, hairlines, square), Plex type, components, splash mark |
 | `:core:resources` | All fonts, icons, illustrations, strings. `UiText` |
 | `:core:model` | Shot, sample, overlay settings, video, sidecar schema, stop rules, Zer0 sample |
 | `:overlay` | Graph styles + pure scene builder. No Compose |
@@ -64,8 +64,9 @@ draws it everywhere: record, editor, screenshots, export. New visual thing? Put 
   HDCharts (MIT). No code copied.
 - **Words in video:** come as `OverlayLabels`. Screens and exporters resolve same strings. Preview = export.
 
-**Styles are data.** Token set in `core/model/.../style/GraphStyle.kt`. Built-ins: Gaggiuino, Metro, Aero, Minimal,
-Liquid Glass. Old ids (`gweb`, `tiles`, …) map to closest. User makes own in style editor. User styles live in
+**Styles are data.** Token set in `core/model/.../style/GraphStyle.kt`. Built-ins: Instrument (the app's own look, in
+Plex Mono), Gaggiuino, Metro, Aero, Minimal, Liquid Glass. Each sets its text in Open Sans or Plex Mono
+(`TextColors.font`); `OverlayFonts` carries both to every painter. Old ids (`gweb`, `tiles`, …) map to closest. User makes own in style editor. User styles live in
 `settings.json`. Video keeps copy in its sidecar.
 
 - **Blur and glass:** scene marks blur area with `BackdropPrim`. Preview: Haze draws it. Export: each exporter blurs
@@ -91,6 +92,12 @@ Late shot gets old tail joined in front (`Mp4Join` on Android; on iOS old writer
 **Layout.** `windowLayout(...)` picks `Phone`, `Wide`, `Stacked`, `Tiny`. Every adaptive branch goes through it.
 Foldables follow "OnlyShots Foldables" canvas: nothing on fold; picture one pane, controls other.
 
+**Look.** "Instrument" (canvas "OnlyShots · Instrument"): ink `#0B0B0B`, bone `#E8E6E1` text, one signal `#FF5A1F`
+accent, `#3A3A38` hairlines, square corners. IBM Plex Mono SemiBold names and counts (labels drawn in capitals with
+`String.caps()`, strings stay sentence case), Plex Sans says sentences. Every value is a token in
+`core/designsystem` (`Tokens.kt`, `Type.kt`). Logo: the Signal tile (`design/logo/`), splash: the tile plotting the shot
+(`design/splash/SPEC.md`).
+
 ## Tests
 
 ```
@@ -101,7 +108,18 @@ Foldables follow "OnlyShots Foldables" canvas: nothing on fold; picture one pane
 ./gradlew :video:connectedAndroidDeviceTest      # Media3 export alignment, needs device
 ./gradlew :video:desktopTest                     # FFmpeg export alignment, JVM
 ./gradlew ktfmtCheck                             # format gate. Fix with ktfmtFormat
+./gradlew :uitests:desktopTest                   # UI flows: phone app and editor, every layout, real FFmpeg
+./gradlew :app:desktopApp:test                   # desktop app starts on Open, its own Koin
+./gradlew :app:uitests:connectedAndroidTest      # Android smoke: record, export, rotate (device or emulator)
+(cd app/iosApp && xcodegen generate && xcodebuild test -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 17')
+(cd tools/web-smoke && npm ci && npx playwright install chromium && node smoke.mjs)  # after the web build
 ```
+
+- **UI tests:** find controls by `app.onlyshots.TestTags` (`Modifier.testTag`), never by words or looks, so a
+  restyle can't break them. Android sees them as resource ids (`testTagsAsResourceIds()` on the activity root and on
+  each dialog, sheet and menu window), iOS as accessibility identifiers. `:uitests` runs `OnlyShotsApp` and `EditorApp`
+  in desktop windows at phone, tablet, book-fold, tabletop, flex and cover sizes (`Devices.kt`), pickers answered by
+  `LocalPickerOverride`, postures forced by `LocalWindowLayoutOverride`.
 
 - **Screenshots:** `@Preview` + `@Mugshot` in `screenshots/`. Layoutlib renders on JVM. Goldens are WebP in
   `screenshots/src/androidHostTest/snapshots/images/`. Fail = HTML diff report in

@@ -70,6 +70,7 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
+import app.onlyshots.core.designsystem.component.HairlineGrid
 import app.onlyshots.core.designsystem.component.IconCircleButton
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.ReadingTile
@@ -149,21 +150,10 @@ internal fun TakeTopRow(take: TakeInputs, back: Boolean) {
 @Composable
 internal fun ReadingsGrid(take: TakeInputs, columns: Int, large: Boolean, only: Set<Quantity>? = null) {
     val readings = takeReadings(take.sample, take.state.sourceKind).filter { only == null || it.quantity in only }
-    // Cells side by side with no gap, so their edges read as one grid.
-    Column {
-        for (row in readings.chunked(columns)) {
-            Row {
-                for (r in row) ReadingTile(
-                    r.label.text(),
-                    r.value,
-                    stringResource(r.unit),
-                    Modifier.weight(1f),
-                    r.quantity.color(),
-                    large,
-                )
-                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-            }
-        }
+    // One grid: the cells meet on single hairlines.
+    HairlineGrid(readings.size, columns) { i, cell ->
+        val r = readings[i]
+        ReadingTile(r.label.text(), r.value, stringResource(r.unit), cell, r.quantity.color(), large, framed = false)
     }
 }
 

@@ -17,3 +17,6 @@ video/src/androidDeviceTest/assets/spike_alignment.mp4
 
 # Linked by tools/deploy-web.sh; it holds this machine's project ids, not the project.
 .vercel/
+
+# Python bytecode from the design scripts (design/logo, design/splash).
+__pycache__/

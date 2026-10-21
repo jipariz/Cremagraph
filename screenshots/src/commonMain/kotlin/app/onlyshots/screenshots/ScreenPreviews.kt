@@ -34,6 +34,7 @@ import app.onlyshots.home.HomeBody
 import app.onlyshots.home.HomeUiState
 import app.onlyshots.home.MachineShotsBody
 import app.onlyshots.home.MachineShotsUiState
+import app.onlyshots.home.StartBody
 import app.onlyshots.layout.ProvideWindowLayout
 import app.onlyshots.open.ChosenShot
 import app.onlyshots.open.OpenBody
@@ -86,6 +87,10 @@ internal val sampleVideo =
     )
 
 internal val picture: @Composable (Modifier) -> Unit = { CoffeeScene(it, progress = 0.6f) }
+
+// Start -----------------------------------------------------------------------------------
+
+@ScreenShots @Preview @Composable internal fun Start() = Screen { StartBody(onRecord = {}, onEdit = {}) }
 
 // Home ------------------------------------------------------------------------------------
 
@@ -406,10 +411,10 @@ private val desktopHost =
         videosNote = "Exports at the video's full quality, with sound, into Movies/OnlyShots.",
     )
 
-private val pickedVideo =
+internal val pickedVideo =
     sampleVideo.copy(shot = null, recordedAt = Instant.parse("2026-10-20T08:14:00Z"), durationUs = 42_000_000)
 
-private val pickedFile = PickedFile("morning-shot-zer0.mov", 1080, 1920)
+internal val pickedFile = PickedFile("morning-shot-zer0.mov", 1080, 1920)
 
 /** A computer's browser: both stores. */
 private val computerStores = StoreLinks(onPlay = {}, onAppStore = {}, phone = false)

@@ -155,25 +155,6 @@ fun Modifier.shareBounds(
     }
 }
 
-/** Like [shareBounds], for the very same content on both sides (a picture, a tile): it moves, it does not fade. */
-@Composable
-fun Modifier.shareElement(
-    key: Any,
-    visibility: AnimatedVisibilityScope? = LocalScreenVisibility.current,
-    clip: Shape = RectangleShape,
-): Modifier {
-    val shared = LocalSharedTransitionScope.current ?: return this
-    val scope = visibility ?: return this
-    return with(shared) {
-        this@shareElement.sharedElement(
-            rememberSharedContentState(key),
-            scope,
-            boundsTransform = SharedBoundsMotion,
-            clipInOverlayDuringTransition = OverlayClip(clip),
-        )
-    }
-}
-
 /** Keys of the elements screens share, so both sides name them the same way. */
 object SharedKeys {
     /** A graph style's tile in the picker and the style editor's preview of it. */

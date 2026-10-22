@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <!-- A · Crema line: a cup cut through by the shot's pressure curve. -->
-  <g transform="translate(-6 0)" fill="#000">
-    <path d="M56 64 H200 V124 C170 118 138 100 108 100 C88 100 78 142 56 142 Z"/>
-    <path d="M56 158 C78 158 88 116 108 116 C138 116 170 134 200 140 V176 Q200 212 164 212 H92 Q56 212 56 176 Z"/>
-    <path d="M200 92 A44 44 0 0 1 200 180 L200 158 A22 22 0 0 0 200 114 Z"/>
-  </g>
-</svg>

@@ -45,8 +45,6 @@
     <string name="home_turn_on_bluetooth">Turn on Bluetooth to find scales nearby.</string>
 
     <!-- How each source is reached -->
-    <string name="home_hint_scale">over Bluetooth: Acaia, Bookoo, DiFluid, Felicita, Timemore, Varia and more</string>
-    <string name="home_hint_machine">over Wi-Fi, found on your network</string>
 
     <!-- The record action -->
     <string name="home_action_open_camera">open camera · %1$s</string>

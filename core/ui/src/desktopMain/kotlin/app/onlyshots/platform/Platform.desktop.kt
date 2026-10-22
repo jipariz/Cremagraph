@@ -39,13 +39,13 @@ actual fun rememberMediaPermission(onResult: (camera: Boolean, mic: Boolean) -> 
 @Composable actual fun rememberNotificationPermission(): () -> Unit = {}
 
 @Composable
-actual fun rememberShotFilePicker(onPicked: (Path) -> Unit): () -> Unit {
+internal actual fun rememberPlatformShotFilePicker(onPicked: (Path) -> Unit): () -> Unit {
     val title = stringResource(Res.string.core_pick_shot_dialog)
     return { pickFile(title, "*.shot;*.json")?.let(onPicked) }
 }
 
 @Composable
-actual fun rememberVideoPicker(onPicked: (Path) -> Unit): () -> Unit {
+internal actual fun rememberPlatformVideoPicker(onPicked: (Path) -> Unit): () -> Unit {
     val title = stringResource(Res.string.core_pick_video_dialog)
     return { pickFile(title, "*.mp4;*.mov")?.let(onPicked) }
 }

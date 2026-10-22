@@ -47,6 +47,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -56,6 +57,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.SharedKeys
 import app.onlyshots.StyleEditorRoute
+import app.onlyshots.TestTags
 import app.onlyshots.camera.CameraError
 import app.onlyshots.camera.CameraPreview
 import app.onlyshots.camera.CameraState
@@ -721,7 +723,7 @@ private fun BoxScope.TinyControls(state: RecordUiState, actions: RecordActions) 
                 else -> RecordButtonState.Armed
             },
         onClick = actions::recordPressed,
-        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = CgSpace.S24),
+        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = CgSpace.S24).testTag(TestTags.RecordButton),
     )
 }
 

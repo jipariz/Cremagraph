@@ -19,10 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
@@ -114,13 +116,15 @@ fun CgDialogCard(
             horizontalArrangement = Arrangement.spacedBy(CgSpace.S8, Alignment.End),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            dismiss?.let { (label, onClick) -> Pill(label, onClick, minWidth = 72.dp) }
+            dismiss?.let { (label, onClick) ->
+                Pill(label, onClick, minWidth = 72.dp, modifier = Modifier.testTag(TestTags.DialogDismiss))
+            }
             Pill(
                 confirm.first,
                 confirm.second,
                 light = true,
                 enabled = confirmEnabled,
-                modifier = Modifier.widthIn(min = 72.dp),
+                modifier = Modifier.widthIn(min = 72.dp).testTag(TestTags.DialogConfirm),
             )
         }
     }

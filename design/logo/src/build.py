@@ -1,8 +1,9 @@
-"""Builds the OnlyShots · Viewfinder logo kit's SVG masters from one description of the geometry.
+"""Builds the OnlyShots · Signal tile logo kit's SVG masters from one description of the geometry.
 
     python3 design/logo/src/build.py
 
-Every shape is a filled outline (no strokes, no live text), so the files scale, cut and recolour predictably.
+Every shape is a filled outline (no strokes, no live text, no holes made by fill rules), so the files scale, cut and
+recolour predictably.
 """
 import math
 import os
@@ -13,147 +14,97 @@ from ttf_outline import Font, word_path  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, '..', 'kit'))
-FONT = os.path.normpath(
-    os.path.join(HERE, '..', '..', '..', 'core', 'resources', 'src', 'commonMain', 'composeResources', 'font',
-                 'open_sans_semibold.ttf'))
+FONT = os.path.join(HERE, 'fonts', 'IBMPlexMono-SemiBold.ttf')
 
-# Brand colours: the app's own (core/designsystem Tokens.kt).
-ORANGE = '#EF4E2B'      # CgColors.Brand.Orange
-ESPRESSO = '#120D0B'    # CgColors.Surface.Base
-TILE = '#1C1412'        # CgColors.Brand.IconBackground
-CREAM = '#F4EEEA'       # a warm white for the frame on dark grounds
+# Brand colours: the Instrument palette (the app's new tokens).
+SIGNAL = '#FF5A1F'      # the tile, the only accent
+INK = '#0B0B0B'         # the ground on dark, the cut on light icons
+BONE = '#E8E6E1'        # text on dark
 
 # ── geometry ───────────────────────────────────────────────────────────────────────────────────────────────
-# A 256 grid. The frame is four L brackets on a 196-wide box (30..226 at the outer edge); each arm is 48 long on
-# the centreline, the corner a true arc. Inside it the shot is being recorded: the curve (a short preinfusion flat, the
-# rise, the plateau) is drawn only up to a playhead, and the dot rides the playhead where the curve meets it. The
-# playhead belongs to the frame (the camera and editor), the curve and the dot to the shot.
-def bracket(w, arm=48, inset=40, r=20):
-    """Top-left bracket as a filled outline: centreline (inset, inset+arm) → corner arc → (inset+arm, inset)."""
-    h = w / 2
-    a, c = inset, inset + r          # line x, corner centre
-    end = inset + arm
-    ro, ri = r + h, r - h
-    return (f'M{a - h} {end} V{c} A{ro} {ro} 0 0 1 {c} {a - h} H{end} A{h} {h} 0 0 1 {end} {a + h} '
-            f'H{c} A{ri} {ri} 0 0 0 {a + h} {c} V{end} A{h} {h} 0 0 1 {a - h} {end} Z')
+# A 256 grid. The tile is a 192 square (32..224), square cornered. A channel is cut out of it: the shot's trace
+# (a short preinfusion flat, the rise, the plateau) enters at the tile's left edge and runs to the pen head, a square,
+# which stands on a stem. The stem stops short of the bottom edge so the tile stays one piece. Ground shows through
+# the channel, so the mark is one colour on any background.
+T0, T1 = 32, 224
+WEIGHTS = {
+    #           trace  head  stem
+    'regular': (20,    32,   12),
+    'small':   (24,    36,   16),   # 16–47 px and every favicon
+}
+PEN_X, PEN_Y = 172, 100            # the head's centre: where the trace meets the pen
+FLAT_Y = 166                       # the preinfusion flat
+RISE = (80, 140)                   # the S-curve runs from x 80 to x 140
+STEM_END = T1 - 28
 
 
-def rotate_path(d, quarter):
-    """Rotate a path of M/V/H/A commands by quarter turns about (128,128), as absolute M/L/A commands."""
-    import re
-    toks = re.findall(r'[MVHAZ]|-?\d+(?:\.\d+)?', d)
-    out, i, x, y = [], 0, 0.0, 0.0
-    def rot(px, py):
-        for _ in range(quarter):
-            px, py = 256 - py, px
-        return round(px, 3), round(py, 3)
-    while i < len(toks):
-        t = toks[i]; i += 1
-        if t == 'M':
-            x, y = float(toks[i]), float(toks[i + 1]); i += 2; out.append('M%s %s' % rot(x, y))
-        elif t == 'V':
-            y = float(toks[i]); i += 1; out.append('L%s %s' % rot(x, y))
-        elif t == 'H':
-            x = float(toks[i]); i += 1; out.append('L%s %s' % rot(x, y))
-        elif t == 'A':
-            rx, ry, xr, la, sw, ex, ey = toks[i:i + 7]; i += 7
-            x, y = float(ex), float(ey)
-            out.append(f'A{rx} {ry} {xr} {la} {sw} ' + '%s %s' % rot(x, y))
-        elif t == 'Z':
-            out.append('Z')
-    return ''.join(out)
-
-
-def frame(w):
-    b = bracket(w)
-    return ''.join(rotate_path(b, q) for q in range(4))
+def f(v):
+    s = f'{v:.2f}'.rstrip('0').rstrip('.')
+    return '0' if s == '-0' else s
 
 
 def cubic(p0, p1, p2, p3, t):
     u = 1 - t
-    return tuple(u ** 3 * a + 3 * u * u * t * b + 3 * u * t * t * c + t ** 3 * d for a, b, c, d in zip(p0, p1, p2, p3))
+    return (u ** 3 * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t ** 3 * p3[0],
+            u ** 3 * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t ** 3 * p3[1])
 
 
-PLAYHEAD_X = 178
-PLATEAU_Y = 110
+def centreline(end_x, n=40):
+    xa, xb = RISE
+    c = [(xa, FLAT_Y), ((xa + xb) / 2, FLAT_Y), ((xa + xb) / 2, PEN_Y), (xb, PEN_Y)]
+    pts = [(T0, FLAT_Y)] + [cubic(*c, i / n) for i in range(n + 1)] + [(end_x, PEN_Y)]
+    out = [pts[0]]
+    for p in pts[1:]:
+        if math.dist(p, out[-1]) > 0.5:
+            out.append(p)
+    return out
 
 
-def centreline(start_x):
-    """Sample the shot curve's centreline densely: flat, the rise, the plateau up to the playhead."""
-    pts = [(start_x + (88 - start_x) * k / 8, 168) for k in range(9)]
-    rise = [(88, 168), (106, 168), (112, PLATEAU_Y), (134, PLATEAU_Y)]
-    pts += [cubic(*rise, k / 40) for k in range(1, 41)]
-    pts += [(134 + (PLAYHEAD_X - 134) * k / 8, PLATEAU_Y) for k in range(1, 9)]
-    return pts
-
-
-def stroke_outline(pts, w, keep=40):
-    """A round-capped stroke of width [w] along [pts], as one filled outline (offset sides joined by arcs)."""
+def edges(pts, w):
+    """The two edges of the trace: lower (below the centreline) and upper, both from left to right."""
     h = w / 2
-    n = len(pts)
-    normals = []
-    for i in range(n):
-        a = pts[max(i - 1, 0)]; b = pts[min(i + 1, n - 1)]
-        tx, ty = b[0] - a[0], b[1] - a[1]
-        L = math.hypot(tx, ty)
-        normals.append((-ty / L, tx / L))
-    left = [(p[0] + nx * h, p[1] + ny * h) for p, (nx, ny) in zip(pts, normals)]
-    right = [(p[0] - nx * h, p[1] - ny * h) for p, (nx, ny) in zip(pts, normals)]
-    # Keep a subset of points for a light path, always with both ends.
-    idx = sorted(set([0, n - 1] + [round(k * (n - 1) / keep) for k in range(keep + 1)]))
-    def smooth(seq):
-        s = [seq[i] for i in idx]
-        d = []
-        for i in range(len(s) - 1):
-            p0 = s[max(i - 1, 0)]; p1 = s[i]; p2 = s[i + 1]; p3 = s[min(i + 2, len(s) - 1)]
-            c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
-            c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
-            d.append('C%.2f %.2f %.2f %.2f %.2f %.2f' % (*c1, *c2, *p2))
-        return s, ''.join(d)
-    ls, ld = smooth(left)
-    rs, rd = smooth_rev(right, idx)
-    return ('M%.2f %.2f' % ls[0]) + ld + ('A%g %g 0 0 0 %.2f %.2f' % (h, h, *rs[0])) + rd + \
-        ('A%g %g 0 0 0 %.2f %.2f' % (h, h, *ls[0])) + 'Z'
+    lower, upper = [], []
+    for i, p in enumerate(pts):
+        a, b = pts[max(i - 1, 0)], pts[min(i + 1, len(pts) - 1)]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        ln = math.hypot(dx, dy) or 1
+        nx, ny = -dy / ln, dx / ln          # points down for a left-to-right segment (SVG y grows down)
+        lower.append((p[0] + nx * h, p[1] + ny * h))
+        upper.append((p[0] - nx * h, p[1] - ny * h))
+    lower[0] = (T0, lower[0][1])            # square the entry exactly on the tile's edge
+    upper[0] = (T0, upper[0][1])
+    return lower, upper
 
 
-def smooth_rev(seq, idx):
-    s = [seq[i] for i in idx][::-1]
-    d = []
-    for i in range(len(s) - 1):
-        p0 = s[max(i - 1, 0)]; p1 = s[i]; p2 = s[i + 1]; p3 = s[min(i + 2, len(s) - 1)]
-        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
-        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
-        d.append('C%.2f %.2f %.2f %.2f %.2f %.2f' % (*c1, *c2, *p2))
-    return s, ''.join(d)
+def channel_points(weight):
+    """The channel (trace + head + stem) as one closed outline, clockwise from the trace's lower entry."""
+    tw, m, sw = WEIGHTS[weight]
+    hl, hr, ht, hb = PEN_X - m / 2, PEN_X + m / 2, PEN_Y - m / 2, PEN_Y + m / 2
+    sl, sr = PEN_X - sw / 2, PEN_X + sw / 2
+    lower, upper = edges(centreline(hl), tw)
+    lower[-1] = (hl, PEN_Y + tw / 2)
+    upper[-1] = (hl, PEN_Y - tw / 2)
+    pen = [(hl, hb), (sl, hb), (sl, STEM_END), (sr, STEM_END), (sr, hb), (hr, hb), (hr, ht), (hl, ht)]
+    return lower, pen, upper[::-1]
 
 
-def dot_path(cx, cy, r):
-    return f'M{cx - r:.2f} {cy:.2f}A{r} {r} 0 1 0 {cx + r:.2f} {cy:.2f}A{r} {r} 0 1 0 {cx - r:.2f} {cy:.2f}Z'
+def tile_path(weight, k=1.0, ox=0.0, oy=0.0):
+    """The tile with the channel cut into it: a single outline that runs around the tile and in through the cut."""
+    lower, pen, upper_back = channel_points(weight)
+    P = lambda x, y: f'{f(x * k + ox)} {f(y * k + oy)}'  # noqa: E731
+    pts = [(T0, T0), (T1, T0), (T1, T1), (T0, T1)]                 # tile: top-left, clockwise to bottom-left
+    pts += [lower[0]]                                              # up the left edge to the cut's lower lip
+    # Into the cut: along the lower lip to the pen, around the pen, back along the upper lip, out to the edge.
+    pts += lower[1:] + pen + upper_back
+    return 'M' + 'L'.join(P(x, y) for x, y in pts) + 'Z'
 
 
-def capsule(x, y0, y1, w):
-    """A vertical round-ended bar from y0 to y1 on the centreline, as a filled outline."""
-    h = w / 2
-    return f'M{x - h} {y0}V{y1}A{h} {h} 0 0 0 {x + h} {y1}V{y0}A{h} {h} 0 0 0 {x - h} {y0}Z'
+def channel_path(weight, k=1.0, ox=0.0, oy=0.0):
+    """The channel alone (for Android's foreground and monochrome layers)."""
+    lower, pen, upper_back = channel_points(weight)
+    P = lambda x, y: f'{f(x * k + ox)} {f(y * k + oy)}'  # noqa: E731
+    return 'M' + 'L'.join(P(x, y) for x, y in lower + pen + upper_back) + 'Z'
 
-
-def symbol(w, dot_r, playhead_w):
-    """(frame and playhead path, curve and dot path) for one weight. The curve starts 12 units clear of the brackets'
-    inner edge whatever the weight."""
-    start_x = 40 + w + 12
-    pts = centreline(start_x)
-    camera = frame(w) + capsule(PLAYHEAD_X, 78, 182, playhead_w)
-    shot = stroke_outline(pts, w) + dot_path(PLAYHEAD_X, PLATEAU_Y, dot_r)
-    return camera, shot
-
-
-WEIGHTS = {
-    'regular': (20, 18, 14),      # everything from 48 px up
-    'small': (28, 23, 18),        # 16 to 47 px and favicons: heavier, so the frame, playhead and dot survive
-    'reversed': (18, 16, 12),     # light on dark at large sizes: thinned against irradiation
-}
-
-# ── files ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 def svg(view, body, title, w=None, h=None):
     size = f' width="{w}" height="{h}"' if w else ''
@@ -161,87 +112,104 @@ def svg(view, body, title, w=None, h=None):
             f'  <title>{title}</title>\n{body}</svg>\n')
 
 
-def mark(weight, frame_c, shot_c, transform=''):
-    f, s = symbol(*WEIGHTS[weight])
-    g = f' transform="{transform}"' if transform else ''
-    return f'  <g{g}>\n    <path fill="{frame_c}" d="{f}"/>\n    <path fill="{shot_c}" d="{s}"/>\n  </g>\n'
+def mark(weight, colour, transform=''):
+    t = f' transform="{transform}"' if transform else ''
+    return f'  <path fill="{colour}"{t} d="{tile_path(weight)}"/>\n'
 
 
 def write(name, text):
-    with open(os.path.join(OUT, name), 'w') as fh:
-        fh.write(text)
+    path = os.path.join(OUT, name)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, 'w').write(text)
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
     T = 'OnlyShots logo'
-    # Symbol: one-colour master, the two-colour brand versions, and the size cuts.
-    write('onlyshots-symbol-master.svg', svg('0 0 256 256', mark('regular', '#000000', '#000000'), T))
-    write('onlyshots-symbol-small-master.svg', svg('0 0 256 256', mark('small', '#000000', '#000000'), T))
-    write('onlyshots-symbol.svg', svg('0 0 256 256', mark('regular', ESPRESSO, ORANGE), T))
-    write('onlyshots-symbol-on-dark.svg', svg('0 0 256 256', mark('reversed', CREAM, ORANGE), T))
-    write('onlyshots-symbol-small.svg', svg('0 0 256 256', mark('small', ESPRESSO, ORANGE), T))
-    write('onlyshots-symbol-small-on-dark.svg', svg('0 0 256 256', mark('small', CREAM, ORANGE), T))
+    ground = f'  <rect width="256" height="256" fill="{INK}"/>\n'
 
-    # Wordmark: Open Sans SemiBold, outlined, tracked in a touch, with a few pairs eased by eye.
+    # Symbol: one-colour masters and the brand versions. The mark is one colour; on dark it simply sits on ink.
+    write('onlyshots-symbol-master.svg', svg('0 0 256 256', mark('regular', '#000000'), T))
+    write('onlyshots-symbol-small-master.svg', svg('0 0 256 256', mark('small', '#000000'), T))
+    write('onlyshots-symbol.svg', svg('0 0 256 256', mark('regular', SIGNAL), T))
+    write('onlyshots-symbol-small.svg', svg('0 0 256 256', mark('small', SIGNAL), T))
+    write('onlyshots-symbol-on-dark.svg', svg('0 0 256 256', ground + mark('regular', SIGNAL), T))
+    write('onlyshots-symbol-small-on-dark.svg', svg('0 0 256 256', ground + mark('small', SIGNAL), T))
+
+    # Wordmark: IBM Plex Mono SemiBold, upper case like the app's labels, outlined. A monospace face sets its own
+    # rhythm; it is tracked out 2 % so the caps breathe at small sizes.
     font = Font(FONT)
-    size, base = 112, 158
-    pairs = {'ly': -0.02, 'ys': 0.006, 'ot': -0.008, 'ts': -0.012}
-    wd, wend = word_path(font, 'onlyshots', 0, base, size, tracking=-0.012, adjust=pairs)
+    size = 100
+    cap = 0.698 * size                      # Plex Mono's cap height
+    wd, wend = word_path(font, 'ONLYSHOTS', 0, 0, size, tracking=0.02)
     wwidth = math.ceil(wend)
 
-    # Horizontal lockup: symbol, a gap of two frame strokes, the word on the symbol's optical centre line.
+    # Horizontal lockup: the tile, a gap of two traces, the caps centred on the tile's centre line.
     gap = 40
-    hw = 256 + gap + wwidth + 8
-    for name, fc, sc, wc, weight in [('onlyshots-horizontal.svg', ESPRESSO, ORANGE, ESPRESSO, 'regular'),
-                                     ('onlyshots-horizontal-on-dark.svg', CREAM, ORANGE, CREAM, 'reversed'),
-                                     ('onlyshots-horizontal-master.svg', '#000000', '#000000', '#000000', 'regular')]:
-        body = mark(weight, fc, sc) + f'  <path fill="{wc}" transform="translate({256 + gap} 0)" d="{wd}"/>\n'
-        write(name, svg(f'0 0 {hw} 256', body, T))
+    x0 = 0                                  # the same 32 margin on every side
+    word_x = T1 + gap
+    hw = word_x + wwidth + T0
+    base = 128 + cap / 2
+    for name, tc, wc, dark in [('onlyshots-horizontal.svg', SIGNAL, INK, False),
+                               ('onlyshots-horizontal-on-dark.svg', SIGNAL, BONE, True),
+                               ('onlyshots-horizontal-master.svg', '#000000', '#000000', False)]:
+        body = (f'  <rect x="{x0}" width="{hw}" height="256" fill="{INK}"/>\n' if dark else '')
+        body += mark('regular', tc) + f'  <path fill="{wc}" transform="translate({word_x} {f(base)})" d="{wd}"/>\n'
+        write(name, svg(f'{x0} 0 {hw} 256', body, T))
 
-    # Stacked lockup: the word centred under the symbol, a quarter wider than it.
-    ws = 256 * 1.25 / wwidth
-    sw = 256 * 1.25 + 16
-    sx = (sw - 256) / 2
-    wx = (sw - wwidth * ws) / 2
-    for name, fc, sc, wc, weight in [('onlyshots-stacked.svg', ESPRESSO, ORANGE, ESPRESSO, 'regular'),
-                                     ('onlyshots-stacked-on-dark.svg', CREAM, ORANGE, CREAM, 'reversed')]:
-        body = mark(weight, fc, sc, f'translate({sx} 0)') + \
-            f'  <path fill="{wc}" transform="translate({wx:.2f} {258 - 78 * ws:.2f}) scale({ws:.4f})" d="{wd}"/>\n'
-        write(name, svg(f'0 0 {sw:.0f} 330', body, T))
+    # Stacked lockup: the word centred under the tile, as wide as the tile.
+    ws = (T1 - T0) / wwidth
+    sh = 256 + cap * ws + 24
+    for name, tc, wc, dark in [('onlyshots-stacked.svg', SIGNAL, INK, False),
+                               ('onlyshots-stacked-on-dark.svg', SIGNAL, BONE, True)]:
+        body = (f'  <rect width="256" height="{f(sh)}" fill="{INK}"/>\n' if dark else '')
+        body += mark('regular', tc) + \
+            f'  <path fill="{wc}" transform="translate({T0} {f(T1 + 32 + cap * ws)}) scale({ws:.4f})" d="{wd}"/>\n'
+        write(name, svg(f'0 0 256 {f(sh)}', body, T))
 
     # Wordmark alone.
-    write('onlyshots-wordmark.svg', svg(f'0 50 {wwidth + 8} 170', f'  <path fill="{ESPRESSO}" d="{wd}"/>\n', T))
+    write('onlyshots-wordmark.svg', svg(f'0 {f(-cap - 8)} {wwidth} {f(cap + 16)}', f'  <path fill="{INK}" d="{wd}"/>\n', T))
 
-    # One-colour variants: the masters in black, white and the brand orange.
-    os.makedirs(os.path.join(OUT, 'variants'), exist_ok=True)
+    # One-colour variants: black, white and signal.
     for kind in ('symbol', 'horizontal'):
         master = open(os.path.join(OUT, f'onlyshots-{kind}-master.svg')).read()
-        for label, colour in (('black', '#000000'), ('white', '#ffffff'), ('mono-ef4e2b', '#ef4e2b')):
-            text = master.replace('#000000', colour).replace('<svg ', f'<svg fill="{colour}" ', 1)
-            write(f'variants/onlyshots-{kind}-{label}.svg', text)
+        for label, colour in (('black', '#000000'), ('white', '#ffffff'), ('mono-ff5a1f', '#ff5a1f')):
+            write(f'variants/onlyshots-{kind}-{label}.svg', master.replace('#000000', colour))
 
-    # App icons. iOS and the stores: the full square, the system rounds it. The mark sits in the middle 62 %.
-    def tile_icon(weight, scale, rounded=False, size=1024):
-        k = size / 256 * scale
-        off = size * (1 - scale) / 2
-        rect = (f'  <rect width="{size}" height="{size}" rx="{size * 0.2237:.0f}" fill="{TILE}"/>\n' if rounded
-                else f'  <rect width="{size}" height="{size}" fill="{TILE}"/>\n')
-        return svg(f'0 0 {size} {size}', rect + mark(weight, CREAM, ORANGE, f'translate({off:.2f} {off:.2f}) scale({k:.4f})'),
-                   T, size, size)
-    write('app-icon-ios-1024.svg', tile_icon('regular', 0.62))
-    write('app-icon-store-512.svg', tile_icon('regular', 0.62, size=512))
-    write('app-icon-desktop-1024.svg', tile_icon('regular', 0.56, rounded=True))
-    write('app-icon-small-tile.svg', tile_icon('small', 0.70, rounded=True, size=256))
+    # App icons. iOS and the stores: the tile IS the icon, full bleed; the system rounds its corners. Ink fills the
+    # cut, so the trace still enters from the icon's left edge.
+    def full_bleed(weight, size):
+        k = size / (T1 - T0)
+        o = -T0 * k
+        body = (f'  <rect width="{size}" height="{size}" fill="{INK}"/>\n'
+                f'  <path fill="{SIGNAL}" d="{tile_path(weight, k, o, o)}"/>\n')
+        return svg(f'0 0 {size} {size}', body, T, size, size)
+    write('app-icon-ios-1024.svg', full_bleed('regular', 1024))
+    write('app-icon-store-512.svg', full_bleed('regular', 512))
 
-    # Android adaptive icon: 108 × 108 dp layers; the mark inside the 66 dp safe circle (and so any mask).
-    k = 60 / 256
-    fg = mark('regular', CREAM, ORANGE, f'translate(24 24) scale({k:.4f})')
-    os.makedirs(os.path.join(OUT, 'android'), exist_ok=True)
-    write('android/android-adaptive-foreground.svg', svg('0 0 108 108', fg, T, 108, 108))
-    write('android/android-adaptive-background.svg', svg('0 0 108 108', f'  <rect width="108" height="108" fill="{TILE}"/>\n', T, 108, 108))
-    mono = mark('regular', '#000000', '#000000', f'translate(24 24) scale({k:.4f})')
-    write('android/android-adaptive-monochrome.svg', svg('0 0 108 108', mono, T, 108, 108))
+    # Desktop: the platforms' rounded-square template (824 in 1024), in ink, with the tile at 72 % inside it.
+    def desktop(weight, size, scale):
+        inset = size * 100 / 1024
+        side = size - 2 * inset
+        k = side * scale / (T1 - T0)
+        o = inset + side * (1 - scale) / 2 - T0 * k
+        body = (f'  <rect x="{f(inset)}" y="{f(inset)}" width="{f(side)}" height="{f(side)}" rx="{f(side * 0.2237)}" fill="{INK}"/>\n'
+                f'  <path fill="{SIGNAL}" d="{tile_path(weight, k, o, o)}"/>\n')
+        return svg(f'0 0 {size} {size}', body, T, size, size)
+    write('app-icon-desktop-1024.svg', desktop('regular', 1024, 0.72))
+    write('app-icon-small-tile.svg', desktop('small', 256, 0.76))
+
+    # Android adaptive icon (108 × 108 dp): the background layer is the tile's signal; the foreground is the cut in
+    # ink, mapped so the tile spans the whole layer — the trace runs in from the layer's edge and the pen sits inside
+    # the 66 dp safe circle.
+    k = 108 / (T1 - T0)
+    o = -T0 * k
+    write('android/android-adaptive-background.svg',
+          svg('0 0 108 108', f'  <rect width="108" height="108" fill="{SIGNAL}"/>\n', T, 108, 108))
+    write('android/android-adaptive-foreground.svg',
+          svg('0 0 108 108', f'  <path fill="{INK}" d="{channel_path("regular", k, o, o)}"/>\n', T, 108, 108))
+    write('android/android-adaptive-monochrome.svg',
+          svg('0 0 108 108', f'  <path fill="#000000" d="{channel_path("regular", k, o, o)}"/>\n', T, 108, 108))
     print('wrote kit to', OUT, '· word width', wwidth)
 
 

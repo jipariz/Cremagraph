@@ -39,7 +39,7 @@ import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
 @Composable
-actual fun rememberVideoPicker(onPicked: (Path) -> Unit): () -> Unit {
+internal actual fun rememberPlatformVideoPicker(onPicked: (Path) -> Unit): () -> Unit {
     // Both delegates have to outlive the call that presents their picker.
     val photos = remember { PickerDelegate() }
     val files = remember { DocumentDelegate() }

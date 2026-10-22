@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -64,6 +65,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import app.onlyshots.PRIVACY_URL
 import app.onlyshots.SharedKeys
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSize
@@ -326,6 +328,7 @@ private fun Steps(
                         next = true,
                         highlighted = dragging,
                         onClick = onPickVideo,
+                        tag = TestTags.OpenPickVideo,
                     )
                 } else {
                     PickedStep(
@@ -334,6 +337,7 @@ private fun Steps(
                         tile = { VideoTile(pickedFile?.thumb, picked.id) },
                         onChange = onPickVideo,
                         highlighted = dragging,
+                        tag = TestTags.OpenPickVideo,
                     )
                 }
             }
@@ -351,6 +355,7 @@ private fun Steps(
                         next = picked != null,
                         highlighted = false,
                         onClick = onPickShot,
+                        tag = TestTags.OpenPickShot,
                     )
                 } else {
                     PickedStep(
@@ -359,6 +364,7 @@ private fun Steps(
                         tile = { ShotTile() },
                         onChange = onPickShot,
                         highlighted = false,
+                        tag = TestTags.OpenPickShot,
                     )
                 }
             }
@@ -369,7 +375,8 @@ private fun Steps(
         val ready = picked != null && shot != null
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(
-                Modifier.heightIn(min = 56.dp)
+                Modifier.testTag(TestTags.OpenEditor)
+                    .heightIn(min = 56.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(
                         animateColorAsState(if (ready) CgColors.Brand.Orange else CgColors.Surface.Raised).value
@@ -406,6 +413,7 @@ private fun EmptyStep(
     next: Boolean,
     highlighted: Boolean,
     onClick: () -> Unit,
+    tag: String,
 ) {
     val radius = 16.dp
     val dash = if (next && number == 2) CgColors.Brand.Orange else CgColors.Text.Dim
@@ -425,7 +433,7 @@ private fun EmptyStep(
             Text(title, style = CgTheme.type.body.copy(fontSize = 18.sp), color = CgColors.Text.Primary)
             Text(detail, style = CgTheme.type.body.copy(fontSize = 14.sp), color = CgColors.Text.Dim)
         }
-        PillButton(action, light = next, onClick = onClick)
+        PillButton(action, light = next, onClick = onClick, modifier = Modifier.testTag(tag))
     }
 }
 
@@ -437,6 +445,7 @@ internal fun PickedStep(
     tile: @Composable () -> Unit,
     onChange: () -> Unit,
     highlighted: Boolean,
+    tag: String? = null,
 ) {
     val card = RoundedCornerShape(16.dp)
     Row(
@@ -459,15 +468,28 @@ internal fun PickedStep(
             )
             Text(detail, style = CgTheme.type.body.copy(fontSize = 14.sp), color = CgColors.Text.Dim)
         }
-        PillButton(stringResource(Res.string.open_change), light = false, outlined = true, onClick = onChange)
+        PillButton(
+            stringResource(Res.string.open_change),
+            light = false,
+            outlined = true,
+            onClick = onChange,
+            modifier = if (tag != null) Modifier.testTag(tag) else Modifier,
+        )
     }
 }
 
 @Composable
-internal fun PillButton(text: String, light: Boolean, onClick: () -> Unit, outlined: Boolean = false) {
+internal fun PillButton(
+    text: String,
+    light: Boolean,
+    onClick: () -> Unit,
+    outlined: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
     val shape = RoundedCornerShape(22.dp)
     Box(
-        Modifier.heightIn(min = 44.dp)
+        modifier
+            .heightIn(min = 44.dp)
             .clip(shape)
             .background(
                 when {

@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import app.onlyshots.TestTags
 import app.onlyshots.connect.label
 import app.onlyshots.connect.labelRes
 import app.onlyshots.core.designsystem.CgColors
@@ -437,6 +438,7 @@ internal fun GridControls(s: GraphStyle, change: Change, pickColor: Pick) {
             ),
             modes.indexOf(s.grid.mode),
             onSelect = { i -> change { it.withGrid(modes[i]) } },
+            tags = modes.map { TestTags.choice("grid", it.name) },
         )
     }
     if (s.grid.mode != GridMode.NONE) {

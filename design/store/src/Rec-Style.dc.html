@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Style sheet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#E8E6E1}a:hover{color:#FF5A1F}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #2B2420; color: #E8E6E1; font-family: 'IBM Plex Mono', monospace">
+  <div style="position: absolute; inset: 0; background: rgba(0,0,0,.6)"></div>
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 608px; background: #111110; border-top: 2px solid #FF5A1F; display: flex; flex-direction: column">
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 8px 16px; border-bottom: 1px solid #3A3A38">
+      <span style="font: 600 15px 'IBM Plex Mono'; letter-spacing: .06em">STYLE</span>
+      <a href="Rec-Graph.dc.html" style="height: 44px; padding: 0 16px; border: 1px solid #3A3A38; display: flex; align-items: center; text-decoration: none; font: 600 12px 'IBM Plex Mono'">DONE</a>
+    </div>
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="font: 600 12px 'IBM Plex Mono'; letter-spacing: .08em; color: #A3A19B">YOUR STYLES</div>
+      <div style="display: flex; gap: 8px">
+        <button aria-label="My style style" style="width: 104px; border: 1px solid #3A3A38; background: transparent; padding: 0; display: flex; flex-direction: column; color: #E8E6E1">
+          <svg aria-hidden="true" viewBox="0 0 104 64" style="width: 102px; height: 64px; display: block"><rect width="104" height="64" fill="#2B2420"></rect><rect x="8" y="10" width="88" height="44" fill="#3A1810" opacity=".9"></rect><path d="M12 48 C20 48 22 18 30 16 L70 16 C82 18 88 24 92 26" stroke="#FFC94D" stroke-width="2" fill="none"></path><path d="M12 48 C30 46 40 34 50 30 C70 26 80 26 92 25" stroke="#6FA8FF" stroke-width="2" fill="none"></path></svg>
+          <span style="padding: 6px 8px; font: 600 12px 'IBM Plex Mono'; text-align: left; border-top: 1px solid #3A3A38">MY STYLE</span>
+        </button>
+        <a href="Style-Panel.dc.html" style="width: 104px; border: 1px dashed #3A3A38; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 94px"><span aria-hidden="true" style="font: 600 20px 'IBM Plex Mono'; color: #FF5A1F">+</span><span style="font: 600 12px 'IBM Plex Mono'">NEW STYLE</span></a>
+      </div><div style="display: flex; gap: 8px; align-items: center" id="actions"><span style="font: 600 12px 'IBM Plex Mono'; color: #A3A19B; width: 104px">MY STYLE</span><button style="flex: 1; height: 44px; border: 1px solid #3A3A38; background: transparent; color: #E8E6E1; font: 600 12px 'IBM Plex Mono'" style-hover="background: #222220">COPY</button><button style="flex: 1; height: 44px; border: 1px solid #3A3A38; background: transparent; color: #E8E6E1; font: 600 12px 'IBM Plex Mono'" style-hover="background: #222220">EDIT</button><button style="flex: 1; height: 44px; border: 1px solid #FF5A1F; background: transparent; color: #FF5A1F; font: 600 12px 'IBM Plex Mono'" style-hover="background: #2A1608">REMOVE</button></div>
+
+      <div style="font: 600 12px 'IBM Plex Mono'; letter-spacing: .08em; color: #A3A19B; margin-top: 8px">BUILT IN</div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <button aria-label="Instrument style" style="border: 2px solid #FF5A1F; background: transparent; padding: 0; display: flex; flex-direction: column; color: #E8E6E1">
+          <svg aria-hidden="true" viewBox="0 0 104 64" preserveAspectRatio="none" style="width: 100%; height: 60px; display: block"><rect width="104" height="64" fill="#2B2420"></rect><rect x="8" y="10" width="88" height="44" fill="#0B0B0B"></rect><path d="M8 24H96M8 39H96M37 10V54M66 10V54" stroke="#2A2A28" stroke-width="1"></path><path d="M12 48 C20 48 22 18 30 16 L70 16 C82 18 88 24 92 26" stroke="#FF5A1F" stroke-width="1.5" fill="none"></path><path d="M12 48 C30 46 40 34 50 30 C70 26 80 26 92 25" stroke="#E8E6E1" stroke-width="1.5" fill="none"></path></svg>
+          <span style="padding: 6px 8px; font: 600 12px 'IBM Plex Mono'; text-align: left; border-top: 1px solid #3A3A38">INSTRUMENT</span>
+        </button>
+        <button aria-label="Gaggiuino style" style="border: 1px solid #3A3A38; background: transparent; padding: 0; display: flex; flex-direction: column; color: #E8E6E1">
+          <svg aria-hidden="true" viewBox="0 0 104 64" preserveAspectRatio="none" style="width: 100%; height: 60px; display: block"><rect width="104" height="64" fill="#2B2420"></rect><rect x="8" y="10" width="88" height="44" rx="4" fill="#121416"></rect><path d="M8 24H96M8 39H96" stroke="#3A3F44" stroke-width="1" stroke-dasharray="2 2"></path><path d="M12 48 C20 48 22 18 30 16 L70 16 C82 18 88 24 92 26" stroke="#6FA8FF" stroke-width="2" fill="none"></path><path d="M12 48 C30 46 40 34 50 30 C70 26 80 26 92 25" stroke="#FFC94D" stroke-width="2" fill="none"></path></svg>
+          <span style="padding: 6px 8px; font: 600 12px 'IBM Plex Mono'; text-align: left; border-top: 1px solid #3A3A38">GAGGIUINO</span>
+        </button>
+        <button aria-label="Metro style" style="border: 1px solid #3A3A38; background: transparent; padding: 0; display: flex; flex-direction: column; color: #E8E6E1">
+          <svg aria-hidden="true" viewBox="0 0 104 64" preserveAspectRatio="none" style="width: 100%; height: 60px; display: block"><rect width="104" height="64" fill="#2B2420"></rect><rect x="8" y="10" width="43" height="21" fill="#1F6FB8"></rect><rect x="53" y="10" width="43" height="21" fill="#C8461C"></rect><rect x="8" y="33" width="88" height="21" fill="#00807E"></rect><path d="M12 48 C30 46 40 38 50 36 C70 34 80 34 92 34" stroke="#fff" stroke-width="2" fill="none"></path></svg>
+          <span style="padding: 6px 8px; font: 600 12px 'IBM Plex Mono'; text-align: left; border-top: 1px solid #3A3A38">METRO</span>
+        </button>
+        <button aria-label="Aero style" style="border: 1px solid #3A3A38; background: transparent; padding: 0; display: flex; flex-direction: column; color: #E8E6E1">
+          <svg aria-hidden="true" viewBox="0 0 104 64" preserveAspectRatio="none" style="width: 100%; height: 60px; display: block"><rect width="104" height="64" fill="#2B2420"></rect><rect x="8" y="10" width="88" height="44" rx="6" fill="#2F6FB8"></rect><rect x="8" y="10" width="88" height="18" rx="6" fill="#8FC0F0" opacity=".5"></rect><path d="M12 48 C30 46 40 34 50 30 C70 26 80 26 92 25" stroke="#fff" stroke-width="2" fill="none"></path></svg>
+          <span style="padding: 6px 8px; font: 600 12px 'IBM Plex Mono'; text-align: left; border-top: 1px solid #3A3A38">AERO</span>
+        </button>
+        <button aria-label="Liquid Glass style" style="border: 1px solid #3A3A38; background: transparent; padding: 0; display: flex; flex-direction: column; color: #E8E6E1">
+          <svg aria-hidden="true" viewBox="0 0 104 64" preserveAspectRatio="none" style="width: 100%; height: 60px; display: block"><rect width="104" height="64" fill="#2B2420"></rect><rect x="8" y="10" width="88" height="44" rx="12" fill="#ffffff" opacity=".16" stroke="#ffffff" stroke-opacity=".5"></rect><path d="M12 48 C20 48 22 18 30 16 L70 16 C82 18 88 24 92 26" stroke="#9CC3FF" stroke-width="2" fill="none"></path></svg>
+          <span style="padding: 6px 8px; font: 600 12px 'IBM Plex Mono'; text-align: left; border-top: 1px solid #3A3A38">LIQUID GLASS</span>
+        </button>
+        <button aria-label="Minimal style" style="border: 1px solid #3A3A38; background: transparent; padding: 0; display: flex; flex-direction: column; color: #E8E6E1">
+          <svg aria-hidden="true" viewBox="0 0 104 64" preserveAspectRatio="none" style="width: 100%; height: 60px; display: block"><rect width="104" height="64" fill="#2B2420"></rect><path d="M12 48 C20 48 22 18 30 16 L70 16 C82 18 88 24 92 26" stroke="#fff" stroke-width="2" fill="none"></path><path d="M12 48 C30 46 40 34 50 30 C70 26 80 26 92 25" stroke="#FFC94D" stroke-width="2" fill="none"></path></svg>
+          <span style="padding: 6px 8px; font: 600 12px 'IBM Plex Mono'; text-align: left; border-top: 1px solid #3A3A38">MINIMAL</span>
+        </button>
+      </div>
+      <a href="Style-Menu.dc.html" style="font-size: 12px; color: #A3A19B; text-decoration: none; min-height: 44px; display: flex; align-items: center">long-press a style for the same actions: copy · edit · remove</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

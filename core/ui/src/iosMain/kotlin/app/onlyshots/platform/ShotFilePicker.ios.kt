@@ -19,7 +19,7 @@ import platform.UniformTypeIdentifiers.UTTypeJSON
 import platform.darwin.NSObject
 
 @Composable
-actual fun rememberShotFilePicker(onPicked: (Path) -> Unit): () -> Unit {
+internal actual fun rememberPlatformShotFilePicker(onPicked: (Path) -> Unit): () -> Unit {
     // The delegate has to outlive the call that presents the picker.
     val delegate = remember { ShotFileDelegate() }
     delegate.onPicked = onPicked

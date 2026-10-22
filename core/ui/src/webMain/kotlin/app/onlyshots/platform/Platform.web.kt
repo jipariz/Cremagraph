@@ -13,7 +13,7 @@ import okio.Path.Companion.toPath
 // machine, the scale or the camera, which the web never asks for.
 
 @Composable
-actual fun rememberVideoPicker(onPicked: (Path) -> Unit): () -> Unit {
+internal actual fun rememberPlatformVideoPicker(onPicked: (Path) -> Unit): () -> Unit {
     val scope = rememberCoroutineScope()
     return { scope.launch { WebMedia.pickFile("video/*,.mov,.mp4,.m4v")?.let { onPicked(it.toPath()) } } }
 }
@@ -35,7 +35,7 @@ private var dropListening = false
 
 /** A shot file is read as text into the session's file system, where the editor reads and then deletes it. */
 @Composable
-actual fun rememberShotFilePicker(onPicked: (Path) -> Unit): () -> Unit {
+internal actual fun rememberPlatformShotFilePicker(onPicked: (Path) -> Unit): () -> Unit {
     val scope = rememberCoroutineScope()
     return {
         scope.launch {

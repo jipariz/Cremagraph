@@ -14,7 +14,7 @@ import okio.Path
 import okio.Path.Companion.toOkioPath
 
 @Composable
-actual fun rememberVideoPicker(onPicked: (Path) -> Unit): () -> Unit {
+internal actual fun rememberPlatformVideoPicker(onPicked: (Path) -> Unit): () -> Unit {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // OpenDocument reaches both Photos (through the media provider) and Files.

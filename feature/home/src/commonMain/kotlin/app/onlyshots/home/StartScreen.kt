@@ -22,7 +22,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgSpace
@@ -82,7 +84,12 @@ fun StartBody(onRecord: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Mod
                     style = CgTheme.type.cardTitle,
                     modifier = Modifier.weight(1f),
                 )
-                IconCircleButton(CgIcons.Help, stringResource(Res.string.home_about), onClick = onHelp)
+                IconCircleButton(
+                    CgIcons.Help,
+                    stringResource(Res.string.home_about),
+                    onClick = onHelp,
+                    modifier = Modifier.testTag(TestTags.StartHelp),
+                )
             }
             Column(
                 Modifier.weight(1f)
@@ -105,6 +112,7 @@ fun StartBody(onRecord: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Mod
                     title = stringResource(Res.string.home_start_record_title),
                     detail = stringResource(Res.string.home_start_record_detail),
                     onClick = onRecord,
+                    modifier = Modifier.testTag(TestTags.StartRecord),
                 )
                 ChoiceCard(
                     icon = CgIcons.Film,
@@ -112,6 +120,7 @@ fun StartBody(onRecord: () -> Unit, onEdit: () -> Unit, modifier: Modifier = Mod
                     title = stringResource(Res.string.home_start_edit_title),
                     detail = stringResource(Res.string.home_start_edit_detail),
                     onClick = onEdit,
+                    modifier = Modifier.testTag(TestTags.StartCompose),
                 )
             }
         }

@@ -71,79 +71,96 @@ private fun Graph(nav: NavBackStack<NavKey>) {
         entryProvider =
             entryProvider {
                 entry<StartRoute> {
-                    StartScreen(
-                        onRecord = { nav.go(HomeRoute) },
-                        onEdit = { nav.go(OpenRoute) },
-                        onPrivacy = { nav.go(PrivacyRoute) },
-                    )
+                    TaggedScreen(TestTags.ScreenStart) {
+                        StartScreen(
+                            onRecord = { nav.go(HomeRoute) },
+                            onEdit = { nav.go(OpenRoute) },
+                            onPrivacy = { nav.go(PrivacyRoute) },
+                        )
+                    }
                 }
                 entry<OpenRoute> {
-                    OpenScreen(
-                        onOpen = { id -> nav.go(EditRoute(id, manual = true)) },
-                        onBack = { nav.back() },
-                        onFromMachine = { nav.go(MachineShotsRoute) },
-                        pickedShot = results.pickedShot,
-                        onPickedShotUsed = { results.pickedShot.value = null },
-                    )
+                    TaggedScreen(TestTags.ScreenOpen) {
+                        OpenScreen(
+                            onOpen = { id -> nav.go(EditRoute(id, manual = true)) },
+                            onBack = { nav.back() },
+                            onFromMachine = { nav.go(MachineShotsRoute) },
+                            pickedShot = results.pickedShot,
+                            onPickedShotUsed = { results.pickedShot.value = null },
+                        )
+                    }
                 }
                 entry<HomeRoute> {
-                    HomeScreen(
-                        onOpenCamera = { nav.go(RecordRoute()) },
-                        onTrySample = { nav.go(RecordRoute(sample = true)) },
-                        onBack = { nav.back() },
-                    )
+                    TaggedScreen(TestTags.ScreenHome) {
+                        HomeScreen(
+                            onOpenCamera = { nav.go(RecordRoute()) },
+                            onTrySample = { nav.go(RecordRoute(sample = true)) },
+                            onBack = { nav.back() },
+                        )
+                    }
                 }
-                entry<PrivacyRoute>(metadata = ModalMotion) { PrivacyScreen(onBack = { nav.back() }) }
+                entry<PrivacyRoute>(metadata = ModalMotion) {
+                    TaggedScreen(TestTags.ScreenPrivacy) { PrivacyScreen(onBack = { nav.back() }) }
+                }
                 entry<RecordRoute> { route ->
-                    RecordScreen(
-                        playSample = route.sample,
-                        onBack = { nav.backTo(HomeRoute) },
-                        // The editor replaces the record screen, so leaving it starts a fresh session.
-                        onSaved = { id -> nav.replaceAbove(HomeRoute, EditRoute(id)) },
-                        onStyleEditor = { nav.go(it) },
-                        savedStyle = results.savedStyle,
-                        onSavedStyleUsed = { results.savedStyle.value = null },
-                    )
+                    TaggedScreen(TestTags.ScreenRecord) {
+                        RecordScreen(
+                            playSample = route.sample,
+                            onBack = { nav.backTo(HomeRoute) },
+                            // The editor replaces the record screen, so leaving it starts a fresh session.
+                            onSaved = { id -> nav.replaceAbove(HomeRoute, EditRoute(id)) },
+                            onStyleEditor = { nav.go(it) },
+                            savedStyle = results.savedStyle,
+                            onSavedStyleUsed = { results.savedStyle.value = null },
+                        )
+                    }
                 }
                 entry<EditRoute> { route ->
-                    val id = route.id
-                    // A recording goes on to the next take; a video opened by hand goes back to where it was picked.
-                    val next = {
-                        if (route.manual) nav.backTo(OpenRoute) else nav.replaceAbove(HomeRoute, RecordRoute())
+                    TaggedScreen(TestTags.ScreenEdit) {
+                        val id = route.id
+                        // A recording goes on to the next take; a video opened by hand goes back to where it was
+                        // picked.
+                        val next = {
+                            if (route.manual) nav.backTo(OpenRoute) else nav.replaceAbove(HomeRoute, RecordRoute())
+                        }
+                        EditScreen(
+                            id = id,
+                            onBack = { next() },
+                            onExported = { next() },
+                            askBeforeLeaving = !route.manual,
+                            onFromMachine = { nav.go(MachineShotsRoute) },
+                            pickedShot = results.pickedShot,
+                            onPickedShotUsed = { results.pickedShot.value = null },
+                            onStyleEditor = { nav.go(it.copy(videoId = id)) },
+                            savedStyle = results.savedStyle,
+                            onSavedStyleUsed = { results.savedStyle.value = null },
+                        )
                     }
-                    EditScreen(
-                        id = id,
-                        onBack = { next() },
-                        onExported = { next() },
-                        askBeforeLeaving = !route.manual,
-                        onFromMachine = { nav.go(MachineShotsRoute) },
-                        pickedShot = results.pickedShot,
-                        onPickedShotUsed = { results.pickedShot.value = null },
-                        onStyleEditor = { nav.go(it.copy(videoId = id)) },
-                        savedStyle = results.savedStyle,
-                        onSavedStyleUsed = { results.savedStyle.value = null },
-                    )
                 }
                 entry<MachineShotsRoute>(metadata = ModalMotion) {
-                    MachineShotsScreen(
-                        onPicked = { shot ->
-                            results.pickedShot.value = SidecarCodec.json.encodeToString(Shot.serializer(), shot)
-                            nav.back()
-                        },
-                        onBack = { nav.back() },
-                    )
+                    TaggedScreen(TestTags.ScreenMachineShots) {
+                        MachineShotsScreen(
+                            onPicked = { shot ->
+                                results.pickedShot.value = SidecarCodec.json.encodeToString(Shot.serializer(), shot)
+                                nav.back()
+                            },
+                            onBack = { nav.back() },
+                        )
+                    }
                 }
                 entry<StyleEditorRoute>(metadata = FadeMotion) { route ->
-                    StyleEditorScreen(
-                        baseId = route.baseId,
-                        editId = route.editId,
-                        videoId = route.videoId,
-                        camera = if (route.camera) liveCamera() else null,
-                        onClose = { saved ->
-                            if (saved != null) results.savedStyle.value = saved
-                            nav.back()
-                        },
-                    )
+                    TaggedScreen(TestTags.ScreenStyleEditor) {
+                        StyleEditorScreen(
+                            baseId = route.baseId,
+                            editId = route.editId,
+                            videoId = route.videoId,
+                            camera = if (route.camera) liveCamera() else null,
+                            onClose = { saved ->
+                                if (saved != null) results.savedStyle.value = saved
+                                nav.back()
+                            },
+                        )
+                    }
                 }
             },
     )

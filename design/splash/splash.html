@@ -3,290 +3,212 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OnlyShots splash</title>
+<title>OnlyShots splash · Signal tile</title>
 <style>
-  :root {
-    --bg: #F6F3F0; --ink: #1A1412; --muted: #6B615C; --line: #E2DAD5;
-    --espresso: #120D0B; --frame: #F4EEEA; --shot: #EF4E2B; --tile: #1C1412;
-  }
+  :root { --ink: #0B0B0B; --signal: #FF5A1F; --bone: #E8E6E1; --dim: #A3A19B; --line: #3A3A38; --surface: #111110; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, sans-serif; }
+  body { margin: 0; background: #161616; color: var(--bone); font: 14px/1.45 "IBM Plex Sans", system-ui, sans-serif; }
   main { display: flex; gap: 40px; padding: 32px; flex-wrap: wrap; align-items: flex-start; }
-  .phone { position: relative; width: 360px; height: 760px; border-radius: 44px; background: var(--espresso);
-           box-shadow: 0 0 0 10px #2A2220, 0 24px 60px rgba(0,0,0,.25); overflow: hidden; flex: none; }
-  #mark { position: absolute; left: 100px; top: 300px; width: 160px; height: 160px; overflow: visible;
-          transform-origin: 0 0; }
+  .phone { position: relative; width: 360px; height: 760px; background: var(--ink); overflow: hidden; flex: none;
+           box-shadow: 0 0 0 1px var(--line), 0 24px 60px rgba(0,0,0,.4); }
+  #stage { position: absolute; left: 100px; top: 300px; width: 160px; height: 160px; overflow: visible; transform-origin: 0 0; }
   .mask { position: absolute; left: 60px; top: 260px; width: 240px; height: 240px; border-radius: 50%;
-          outline: 2px dashed rgba(244,238,234,.35); outline-offset: -40px; pointer-events: none; display: none; }
+          outline: 2px dashed rgba(232,230,225,.35); outline-offset: -40px; pointer-events: none; display: none; }
   .mask.on { display: block; }
-  .home { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
-  .home .head { position: absolute; left: 16px; top: 52px; display: flex; align-items: center; gap: 10px;
-                color: var(--frame); font: 300 26px/1 "Open Sans", system-ui, sans-serif; }
-  .home .spot { width: 32px; height: 32px; }
-  .home .rows { position: absolute; left: 16px; right: 16px; top: 118px; display: grid; gap: 10px; }
-  .home .rows div { height: 66px; border-radius: 12px; background: #1A1412; border: 1px solid #3A2F2B; }
-  .home .cta { position: absolute; left: 16px; right: 16px; bottom: 36px; height: 54px; border-radius: 28px; background: var(--frame); }
+  .screen { position: absolute; inset: 0; opacity: 0; pointer-events: none; font-family: "IBM Plex Mono", Menlo, monospace; }
+  .screen .head { position: absolute; left: 16px; top: 52px; display: flex; align-items: center; gap: 10px;
+                  font: 600 15px/1 "IBM Plex Mono", Menlo, monospace; letter-spacing: .08em; }
+  .screen .spot { width: 32px; height: 32px; }
+  .screen .card { position: absolute; left: 16px; right: 16px; border: 1px solid var(--line); background: var(--surface); }
+  .screen h2 { position: absolute; left: 16px; top: 330px; margin: 0; font: 600 26px/1.15 "IBM Plex Mono", Menlo, monospace; }
   .panel { flex: 1; min-width: 300px; max-width: 520px; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  p.lede { color: var(--muted); margin: 0 0 20px; }
+  h1 { font: 600 20px/1.2 "IBM Plex Mono", Menlo, monospace; margin: 0 0 6px; letter-spacing: .02em; }
+  p.lede { color: var(--dim); margin: 0 0 20px; }
   .group { margin: 0 0 18px; }
-  .group > label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-                   color: var(--muted); margin: 0 0 6px; }
-  .seg { display: inline-flex; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
-  .seg button { border: 0; background: none; padding: 7px 12px; border-radius: 8px; font: inherit; color: var(--ink); cursor: pointer; }
-  .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
-  .row { display: flex; gap: 10px; align-items: center; }
-  .play { border: 0; background: var(--shot); color: #120D0B; font: 600 14px/1 system-ui; padding: 11px 18px; border-radius: 22px; cursor: pointer; }
-  .ghost { border: 1px solid var(--line); background: #fff; font: inherit; padding: 9px 14px; border-radius: 22px; cursor: pointer; }
-  input[type=range] { flex: 1; accent-color: var(--shot); }
-  .time { font: 600 13px/1 ui-monospace, monospace; min-width: 92px; text-align: right; }
-  .phase { margin-top: 8px; color: var(--muted); min-height: 20px; }
-  .lanes { margin-top: 14px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
-  .lane { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; height: 22px; font-size: 12px; color: var(--muted); }
-  .track { position: relative; height: 8px; background: #F1ECE8; border-radius: 4px; }
-  .track span { position: absolute; top: 0; height: 8px; border-radius: 4px; background: var(--ink); opacity: .75; }
-  .track span.shot { background: var(--shot); opacity: 1; }
-  .cursor { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--shot); }
-  .note { font-size: 13px; color: var(--muted); margin-top: 14px; }
-  body.markonly .phone { position: fixed; inset: 0; width: auto; height: auto; } body.markonly #mark { position: fixed; left: 50%; top: 50%; width: 64vmin; height: 64vmin; margin: -32vmin 0 0 -32vmin; } body.markonly .home, body.markonly .mask { display: none; }
-  body.still { background: #120D0B; } body.still main { padding: 0; min-height: 100vh; display: grid; place-items: center; } body.still .panel { display: none; } body.still .phone { border-radius: 0; box-shadow: none; }
-  @media (max-width: 760px) { main { padding: 16px; } .phone { transform: scale(.85); transform-origin: top left; margin-bottom: -110px; } }
+  .group > label { display: block; font: 600 12px/1 "IBM Plex Mono", Menlo, monospace; letter-spacing: .08em; color: var(--dim); margin: 0 0 8px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); flex-wrap: wrap; }
+  .seg button { border: 0; border-right: 1px solid var(--line); background: none; padding: 9px 12px; font: 600 12px/1 "IBM Plex Mono", Menlo, monospace;
+                color: var(--bone); cursor: pointer; min-height: 36px; }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: var(--bone); color: var(--ink); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .play { border: 0; background: var(--signal); color: var(--ink); font: 600 13px/1 "IBM Plex Mono", Menlo, monospace; padding: 12px 18px; cursor: pointer; }
+  .ghost { border: 1px solid var(--line); background: transparent; color: var(--bone); font: 600 13px/1 "IBM Plex Mono", Menlo, monospace; padding: 11px 14px; cursor: pointer; }
+  input[type=range] { width: 100%; accent-color: var(--signal); }
+  .t { font: 600 13px/1 "IBM Plex Mono", Menlo, monospace; min-width: 80px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td, th { border-top: 1px solid var(--line); padding: 6px 8px 6px 0; text-align: left; vertical-align: top; }
+  th { font: 600 12px/1.3 "IBM Plex Mono", Menlo, monospace; color: var(--dim); letter-spacing: .06em; }
+  td:first-child { font-family: "IBM Plex Mono", Menlo, monospace; white-space: nowrap; color: var(--dim); }
+  .note { color: var(--dim); font-size: 13px; }
 </style>
 </head>
 <body>
 <main>
-  <div class="phone" id="phone">
-    <div class="home" id="home">
-      <div class="head"><div class="spot" id="spot"></div>OnlyShots</div>
-      <div class="rows"><div></div><div></div><div></div></div>
-      <div class="cta"></div>
+  <div class="phone" aria-label="Splash preview">
+    <div class="screen" id="screen">
+      <div class="head"><svg class="spot" id="spot" viewBox="32 32 192 192" aria-hidden="true"></svg>ONLYSHOTS</div>
+      <div class="card" style="top: 104px; height: 160px"></div>
+      <h2>Your shot,<br>with its graph</h2>
+      <div class="card" style="bottom: 120px; height: 72px; background: var(--signal); border-color: var(--signal)"></div>
+      <div class="card" style="bottom: 40px; height: 72px"></div>
     </div>
-    <div class="mask" id="maskShape"></div>
-    <svg id="mark" viewBox="0 0 256 256" aria-label="OnlyShots">
-      <g id="whole">
-        <g id="brackets"><path class="bracket" data-i="0" fill="var(--frame)" d="M30.0 88.0L30.0 60.0A30.0 30.0 0 0 1 60.0 30.0L88.0 30.0A10.0 10.0 0 0 1 88.0 50.0L60.0 50.0A10.0 10.0 0 0 0 50.0 60.0L50.0 88.0A10.0 10.0 0 0 1 30.0 88.0Z"/>
-<path class="bracket" data-i="1" fill="var(--frame)" d="M168.0 30.0L196.0 30.0A30.0 30.0 0 0 1 226.0 60.0L226.0 88.0A10.0 10.0 0 0 1 206.0 88.0L206.0 60.0A10.0 10.0 0 0 0 196.0 50.0L168.0 50.0A10.0 10.0 0 0 1 168.0 30.0Z"/>
-<path class="bracket" data-i="2" fill="var(--frame)" d="M226.0 168.0L226.0 196.0A30.0 30.0 0 0 1 196.0 226.0L168.0 226.0A10.0 10.0 0 0 1 168.0 206.0L196.0 206.0A10.0 10.0 0 0 0 206.0 196.0L206.0 168.0A10.0 10.0 0 0 1 226.0 168.0Z"/>
-<path class="bracket" data-i="3" fill="var(--frame)" d="M88.0 226.0L60.0 226.0A30.0 30.0 0 0 1 30.0 196.0L30.0 168.0A10.0 10.0 0 0 1 50.0 168.0L50.0 196.0A10.0 10.0 0 0 0 60.0 206.0L88.0 206.0A10.0 10.0 0 0 1 88.0 226.0Z"/></g>
-        <line id="playhead" x1="72" x2="72" y1="130" y2="130" stroke="var(--frame)" stroke-width="14" stroke-linecap="round"/>
-        <path id="curve" d="M72 168 H88 C106 168 112 110 134 110 H178" fill="none" stroke="var(--shot)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle id="ring" cx="178" cy="110" r="18" fill="none" stroke="var(--shot)" stroke-width="4" opacity="0"/>
-        <circle id="dot" cx="72" cy="168" r="0" fill="var(--shot)"/>
-      </g>
-    </svg>
+    <svg id="stage" viewBox="32 32 192 192" aria-label="OnlyShots mark"></svg>
+    <div class="mask" id="mask"></div>
   </div>
 
-  <section class="panel">
-    <h1>Splash: recording the shot</h1>
-    <p class="lede">The viewfinder snaps into focus, the playhead sweeps and the shot is drawn behind it, the dot pulses
-      once at "now", and the mark hands off to the app.</p>
+  <div class="panel">
+    <h1>SPLASH · SIGNAL TILE</h1>
+    <p class="lede">The tile cuts in, the pen lands on its edge and plots the shot's trace across it, the stem drops, the head ticks once, and the mark hands off into the first screen's header mark. See SPEC.md for the numbers.</p>
 
-    <div class="group"><label>Where it runs</label>
+    <div class="group">
+      <label>PLAY</label>
+      <div class="row">
+        <button class="play" id="play">PLAY</button>
+        <button class="ghost" id="slow" aria-pressed="false">¼ SPEED</button>
+        <span class="t" id="clock">0 ms</span>
+      </div>
+      <input type="range" id="scrub" min="0" max="1750" step="1" value="0" aria-label="time">
+    </div>
+
+    <div class="group">
+      <label>PLATFORM</label>
       <div class="seg" id="mode">
-        <button data-v="app" aria-pressed="true">App, full sequence</button>
-        <button data-v="android" aria-pressed="false">Android 12+ system splash</button>
-        <button data-v="web" aria-pressed="false">Web loader</button>
+        <button data-mode="app" aria-pressed="true">IN-APP</button>
+        <button data-mode="android" aria-pressed="false">ANDROID</button>
+        <button data-mode="ios" aria-pressed="false">IOS</button>
+        <button data-mode="desktop" aria-pressed="false">DESKTOP</button>
+        <button data-mode="web" aria-pressed="false">WEB LOOP</button>
       </div>
     </div>
-    <div class="group"><label>Exit</label>
-      <div class="seg" id="exit">
-        <button data-v="handoff" aria-pressed="true">Hand off to Home</button>
-        <button data-v="fade" aria-pressed="false">Fade</button>
-      </div>
-    </div>
-    <div class="group"><label>Motion</label>
-      <div class="seg" id="speed">
-        <button data-v="1" aria-pressed="true">1×</button>
-        <button data-v="0.25" aria-pressed="false">¼×</button>
-      </div>
-      <div class="seg" id="reduce" style="margin-left:8px">
-        <button data-v="0" aria-pressed="true">Full motion</button>
-        <button data-v="1" aria-pressed="false">Reduced motion</button>
+    <div class="group">
+      <label>OPTIONS</label>
+      <div class="seg">
+        <button id="reduced" aria-pressed="false">REDUCED MOTION</button>
+        <button id="maskBtn" aria-pressed="false">ANDROID ICON MASK</button>
       </div>
     </div>
 
-    <div class="row">
-      <button class="play" id="play">Replay</button>
-      <button class="ghost" id="loaded" hidden>Simulate loaded</button>
-      <input type="range" id="scrub" min="0" max="1750" value="0" step="1" aria-label="Scrub the timeline">
-      <span class="time" id="time">0 ms</span>
-    </div>
-    <div class="phase" id="phase"></div>
-    <div class="lanes" id="lanes"></div>
-    <p class="note" id="note"></p>
-  </section>
+    <table>
+      <tr><th>MS</th><th>WHAT MOVES</th></tr>
+      <tr><td>0–260</td><td>Tile wipes in from the left (out-cubic).</td></tr>
+      <tr><td>220–340</td><td>Pen head lands on the tile's left edge (out-back 1.6).</td></tr>
+      <tr><td>300–1000</td><td>Trace is plotted to the head's left edge; the head rides just ahead of its tip (in-out sine).</td></tr>
+      <tr><td>1000–1120</td><td>Stem drops from the head (out-cubic).</td></tr>
+      <tr><td>1120–1400</td><td>Tick: the head swells to 1.2× and back in the first 60 % (sine bump); optional haptic.</td></tr>
+      <tr><td>1400–1750</td><td>Hand-off into the 32 dp header mark; the screen fades in from 1520 (in-out cubic).</td></tr>
+    </table>
+    <p class="note">Android plays 0–1000 in the system splash on its own compressed timeline (wipe 0–200, land 180–260, draw 240–880, stem 880–1000); the app carries on with the tick and the hand-off. iOS starts from the finished mark (launch image) and plays only the tick and the hand-off. Desktop plays the full sequence and fades out (no header mark). The web loops the draw until the app is ready.</p>
+  </div>
 </main>
 
 <script>
 (() => {
-  const $ = id => document.getElementById(id);
-  const brackets = [...document.querySelectorAll('.bracket')];
-  const curve = $('curve'), dot = $('dot'), ring = $('ring'), playhead = $('playhead'), whole = $('whole');
-  const mark = $('mark'), home = $('home');
-  const L = curve.getTotalLength();
-  curve.style.strokeDasharray = L;
-  const PX = 178, PY = 110, SX = 72;
-  const DIAG = [[-1, -1], [1, -1], [1, 1], [-1, 1]];   // top-left, top-right, bottom-right, bottom-left
-
-  // Easing.
-  const clamp = (x) => Math.min(1, Math.max(0, x));
-  const seg = (t, a, b) => clamp((t - a) / (b - a));
-  const outCubic = x => 1 - Math.pow(1 - x, 3);
-  const inOutSine = x => -(Math.cos(Math.PI * x) - 1) / 2;
-  const outBack = (x, s = 1.5) => 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2);
-  const inOutCubic = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-
-  // Timelines (ms). Android's system splash may animate its icon for at most 1000 ms, so its draw ends sooner and the
-  // pulse and exit run in the app's exit animation, after the system hands over.
-  const PROFILES = {
-    app:     { focus: [0, 320], stagger: 40, head: [260, 420], draw: [380, 1100], pulse: [1100, 1400], exit: [1400, 1750] },
-    android: { focus: [0, 280], stagger: 30, head: [220, 360], draw: [320, 960],  pulse: [1000, 1300], exit: [1300, 1650] },
-    web:     { focus: [0, 320], stagger: 40, head: [260, 420], draw: [380, 1100], pulse: [1100, 1400], exit: [1400, 1750], loop: 1500 },
+  const SIGNAL = '#FF5A1F', INK = '#0B0B0B';
+  const T0 = 32, T1 = 224, TRACE_W = 20, HEAD = 32, STEM_W = 12;
+  const PEN_X = 172, PEN_Y = 100, FLAT_Y = 166, RISE = [80, 140], STEM_END = T1 - 28;
+  const TRACE_END = PEN_X - HEAD / 2, LEAD = HEAD / 2;
+  const P = {
+    app: { wipe: [0, 260], land: [220, 340], draw: [300, 1000], stem: [1000, 1120], tick: [1120, 1400], hand: [1400, 1750], screen: 1520, total: 1750 },
+    android: { wipe: [0, 200], land: [180, 260], draw: [240, 880], stem: [880, 1000], tick: [1000, 1280], hand: [1280, 1630], screen: 1400, total: 1630 },
   };
-  const LANES = [['Corners focus', 'focus'], ['Playhead in', 'head'], ['Shot drawn', 'draw', 'shot'], ['Dot pulse', 'pulse', 'shot'], ['Exit', 'exit']];
-
-  const state = { mode: 'app', exit: 'handoff', speed: 1, reduce: false, t: 0, playing: false, loops: 0, loaded: false };
-
-  function render(t) {
-    const P = PROFILES[state.mode];
-    const end = P.exit[1];
-    if (state.reduce) {
-      // Reduced motion: the finished mark fades in, holds, and fades out; nothing moves.
-      const a = seg(t, 0, 200), out = seg(t, 1200, 1500);
-      brackets.forEach(b => { b.setAttribute('transform', ''); b.style.opacity = 1; });
-      curve.style.strokeDashoffset = 0; curve.style.opacity = 1;
-      playhead.setAttribute('x1', PX); playhead.setAttribute('x2', PX); playhead.setAttribute('y1', 78); playhead.setAttribute('y2', 182);
-      dot.setAttribute('cx', PX); dot.setAttribute('cy', PY); dot.setAttribute('r', 18);
-      ring.setAttribute('opacity', 0);
-      whole.style.opacity = a * (1 - out); whole.setAttribute('transform', '');
-      mark.style.transform = ''; home.style.opacity = out;
-      return 'Reduced motion: the finished mark fades in and out; no movement.';
-    }
-    // 1 · Corners: each bracket comes in along its diagonal and settles with a slight overshoot, like focus locking.
-    brackets.forEach((b, i) => {
-      const k = seg(t, P.focus[0] + i * P.stagger, P.focus[1] + i * P.stagger);
-      const off = (1 - outBack(k, 1.4)) * 26;
-      b.setAttribute('transform', `translate(${DIAG[i][0] * off} ${DIAG[i][1] * off})`);
-      b.style.opacity = outCubic(seg(t, P.focus[0] + i * P.stagger, P.focus[0] + i * P.stagger + 140));
-    });
-    // 2 · The playhead grows from its middle at the start of the curve.
-    let p = inOutSine(seg(t, P.draw[0], P.draw[1]));
-    let curveFade = 1;
-    if (state.mode === 'web' && !state.loaded) {
-      // Loader: draw, hold, let the curve fade, sweep again, until the app has loaded.
-      const local = t - P.draw[0];
-      if (local > 0) {
-        const cyc = local % P.loop;
-        p = inOutSine(clamp(cyc / (P.draw[1] - P.draw[0])));
-        curveFade = 1 - seg(cyc, (P.draw[1] - P.draw[0]) + 200, (P.draw[1] - P.draw[0]) + 450);
-        if (cyc > (P.draw[1] - P.draw[0]) + 450) p = 0;
-      }
-    }
-    const h = outCubic(seg(t, P.head[0], P.head[1]));
-    const tip = p > 0 ? curve.getPointAtLength(L * p) : { x: SX, y: 168 };
-    playhead.setAttribute('x1', tip.x); playhead.setAttribute('x2', tip.x);
-    playhead.setAttribute('y1', 130 - 52 * h); playhead.setAttribute('y2', 130 + 52 * h);
-    playhead.style.opacity = h > 0 ? 1 : 0;
-    // 3 · The shot is drawn behind the playhead; the dot rides its tip.
-    curve.style.strokeDashoffset = L * (1 - p);
-    curve.style.opacity = p > 0.004 ? curveFade : 0;
-    dot.setAttribute('cx', tip.x); dot.setAttribute('cy', tip.y);
-    const dotIn = outBack(seg(t, P.draw[0], P.draw[0] + 160), 1.8);
-    // 4 · One pulse at "now", and a ring that leaves it.
-    const pk = seg(t, P.pulse[0], P.pulse[1]);
-    const bump = state.mode === 'web' && !state.loaded ? 0 : Math.sin(Math.PI * Math.min(1, pk * 1.6)) * 0.28;
-    dot.setAttribute('r', 18 * dotIn * (1 + bump));
-    const rk = state.mode === 'web' && !state.loaded ? 0 : outCubic(pk);
-    ring.setAttribute('r', 18 + 26 * rk); ring.setAttribute('opacity', pk > 0 && pk < 1 ? 0.6 * (1 - rk) : 0);
-    // 5 · Exit: hand off to the mark in Home's header, or fade.
-    const ek = inOutCubic(seg(t, P.exit[0], P.exit[1]));
-    if (state.exit === 'handoff') {
-      const spot = $('spot').getBoundingClientRect(), ph = $('phone').getBoundingClientRect();
-      const k = ph.width / 360, tx = (spot.left - ph.left) / k - 100, ty = (spot.top - ph.top) / k - 300, s = 1 + (32 / 160 - 1) * ek;
-      mark.style.transform = `translate(${tx * ek}px, ${ty * ek}px) scale(${s})`;
-      whole.style.opacity = 1; home.style.opacity = seg(t, P.exit[0] + 120, P.exit[1]);
-    } else {
-      mark.style.transform = '';
-      whole.setAttribute('transform', `translate(128 128) scale(${1 - 0.08 * ek}) translate(-128 -128)`);
-      whole.style.opacity = 1 - ek; home.style.opacity = ek;
-    }
-    if (state.exit !== 'fade') whole.setAttribute('transform', '');
-    if (t < P.head[0]) return 'The corners come in along their diagonals and lock, like a camera finding focus.';
-    if (t < P.draw[0]) return 'The playhead appears at the start of the shot.';
-    if (t < P.draw[1] || (state.mode === 'web' && !state.loaded)) return state.mode === 'web' && !state.loaded
-      ? 'Loader: the shot is drawn and redrawn behind the playhead until the app has loaded.'
-      : 'Recording: the playhead sweeps right and the shot is drawn behind it; the dot rides the tip.';
-    if (t < P.pulse[1]) return 'Now: the dot pulses once and a ring leaves it.';
-    if (t < end) return state.exit === 'handoff' ? 'Hand-off: the mark shrinks into its place in Home\'s header.' : 'Exit: the mark eases back and fades into the app.';
-    return 'Done.';
-  }
-
-  function lanes() {
-    const P = PROFILES[state.mode], end = P.exit[1];
-    $('lanes').innerHTML = LANES.map(([name, key, cls]) => {
-      const [a, b] = P[key];
-      return `<div class="lane"><span>${name}</span><div class="track"><span class="${cls || ''}" style="left:${a / end * 100}%;width:${(b - a) / end * 100}%"></span></div></div>`;
-    }).join('') + '<div class="lane"><span></span><div class="track" style="background:none"><div class="cursor" id="cursor"></div></div></div>';
-    $('scrub').max = end;
-    $('loaded').hidden = state.mode !== 'web';
-    $('maskShape').classList.toggle('on', state.mode === 'android');
-    $('note').textContent = {
-      app: 'In-app sequence, 1.75 s. iOS shows a static launch screen (the first frame) and plays this as the first composable; the desktop plays it while the editor starts.',
-      android: 'Android 12+: the system splash draws the icon (corners, playhead, shot) as an animated vector drawable, ending by 1000 ms inside the 240 dp icon box (the dashed circle is the visible area). The pulse and exit run in the app\'s exit animation.',
-      web: 'Web: plain SVG and CSS in index.html, so it runs before the Kotlin code has downloaded. It loops until the app is ready, then pulses and hands off.',
-    }[state.mode];
-  }
-
-  // state.t is wall time since play. On the web, `offset` maps it back onto the timeline once the app has loaded:
-  // the sweep in progress carries on from where it is, then the pulse and the exit follow as everywhere else.
-  let last = 0, raf = 0;
-  const timeline = () => state.mode === 'web' && state.loaded ? state.t - state.offset : state.t;
-  function finishLoading() {
-    const P = PROFILES.web, drawLen = P.draw[1] - P.draw[0];
-    const cyc = Math.max(0, state.t - P.draw[0]) % P.loop;
-    const resumeAt = cyc < drawLen ? P.draw[0] + cyc : P.draw[0];   // mid-sweep: go on; in the gap: start a sweep
-    state.loaded = true;
-    state.offset = state.t - resumeAt;
-  }
-  function frame(now) {
-    state.t += (now - last) * state.speed; last = now;
-    const P = PROFILES[state.mode];
-    if (state.mode === 'web' && !state.loaded && state.t > P.draw[0] + 3 * P.loop) finishLoading();
-    show(timeline());
-    if (timeline() < P.exit[1] + 600 || (state.mode === 'web' && !state.loaded)) raf = requestAnimationFrame(frame);
-    else state.playing = false;
-  }
-  function show(t) {
-    const P = PROFILES[state.mode];
-    $('phase').textContent = render(t);
-    const disp = Math.min(t, P.exit[1]);
-    $('time').textContent = state.mode === 'web' && !state.loaded ? 'loading…' : Math.round(disp) + ' ms';
-    $('scrub').value = disp;
-    const c = $('cursor'); if (c) c.style.left = (disp / P.exit[1] * 100) + '%';
-  }
-  function play() {
-    cancelAnimationFrame(raf);
-    state.t = 0; state.loaded = false; state.offset = 0; state.playing = true;
-    last = performance.now(); raf = requestAnimationFrame(frame);
-  }
-  $('loaded').onclick = () => { if (state.mode === 'web' && !state.loaded) finishLoading(); };
-  $('scrub').oninput = e => {
-    cancelAnimationFrame(raf); state.playing = false;
-    state.loaded = true; state.offset = 0; state.t = +e.target.value; show(state.t);
+  const bez = (x1, y1, x2, y2) => x => {
+    if (x <= 0) return 0; if (x >= 1) return 1;
+    const at = (t, a, b) => { const u = 1 - t; return 3 * u * u * t * a + 3 * u * t * t * b + t * t * t; };
+    let lo = 0, hi = 1; for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (at(m, x1, x2) < x) lo = m; else hi = m; }
+    return at((lo + hi) / 2, y1, y2);
   };
-  $('play').onclick = play;
-  for (const [id, key, conv] of [['mode', 'mode', String], ['exit', 'exit', String], ['speed', 'speed', Number], ['reduce', 'reduce', v => v === '1']]) {
-    $(id).onclick = e => {
-      const b = e.target.closest('button'); if (!b) return;
-      [...$(id).children].forEach(x => x.setAttribute('aria-pressed', x === b));
-      state[key] = conv(b.dataset.v); lanes(); play();
-    };
+  const E = { wipe: bez(.33, 1, .68, 1), land: bez(.34, 1.6, .64, 1), draw: bez(.37, 0, .63, 1), stem: bez(.33, 1, .68, 1), hand: bez(.65, 0, .35, 1) };
+  const seg = (t, [a, b]) => Math.max(0, Math.min(1, (t - a) / (b - a)));
+
+  // The logo's centreline, densely sampled, plus the head's lead.
+  const pts = [[T0, FLAT_Y]];
+  const mid = (RISE[0] + RISE[1]) / 2, c = [[RISE[0], FLAT_Y], [mid, FLAT_Y], [mid, PEN_Y], [RISE[1], PEN_Y]];
+  for (let i = 0; i <= 400; i++) {
+    const t = i / 400, u = 1 - t;
+    pts.push([0, 1].map(k => u * u * u * c[0][k] + 3 * u * u * t * c[1][k] + 3 * u * t * t * c[2][k] + t * t * t * c[3][k]));
   }
-  if (window.FIXED_T !== undefined) {
-    // A still of one moment, for the filmstrip: only the phone, frozen at FIXED_T.
-    document.body.classList.add('still'); if (window.MARK_ONLY) document.body.classList.add('markonly');
-    lanes(); state.loaded = true; state.offset = 0; state.t = window.FIXED_T; show(window.FIXED_T);
-  } else { lanes(); play(); }
+  pts.push([TRACE_END, PEN_Y], [PEN_X, PEN_Y]);
+  const len = [0]; for (let i = 1; i < pts.length; i++) len.push(len[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const TRACE_LEN = len[len.length - 2];
+  const at = s => { s = Math.max(0, Math.min(len[len.length - 1], s));
+    for (let i = 1; i < pts.length; i++) if (len[i] >= s) { const f = (s - len[i - 1]) / Math.max(1e-9, len[i] - len[i - 1]);
+      return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f]; }
+    return pts[pts.length - 1]; };
+  const upto = s => { const o = [pts[0]]; for (let i = 1; i < pts.length; i++) { if (len[i] >= s) { o.push(at(s)); return o; } o.push(pts[i]); } return o; };
+
+  function draw(svg, st) {
+    let b = '';
+    const w = (T1 - T0) * st.wipe;
+    if (w > 0) b += `<rect x="${T0}" y="${T0}" width="${w.toFixed(2)}" height="${T1 - T0}" fill="${SIGNAL}"/>`;
+    if (st.s > 0.5) b += `<path d="M${upto(st.s).map(p => p[0].toFixed(2) + ' ' + p[1].toFixed(2)).join('L')}" fill="none" stroke="${INK}" stroke-width="${TRACE_W}" stroke-linejoin="round"/>`;
+    if (st.stem > 0) { const top = PEN_Y + HEAD / 2; b += `<rect x="${PEN_X - STEM_W / 2}" y="${top}" width="${STEM_W}" height="${((STEM_END - top) * st.stem).toFixed(2)}" fill="${INK}"/>`; }
+    const hs = HEAD * st.headScale;
+    if (hs > 0.2) { let [hx, hy] = st.head; hx = Math.max(hx, T0 + hs / 2); b += `<rect x="${(hx - hs / 2).toFixed(2)}" y="${(hy - hs / 2).toFixed(2)}" width="${hs.toFixed(2)}" height="${hs.toFixed(2)}" fill="${INK}"/>`; }
+    svg.innerHTML = b;
+  }
+  const DONE = { wipe: 1, s: TRACE_LEN, stem: 1, head: [PEN_X, PEN_Y], headScale: 1 };
+
+  function stateAt(t, p, from) {
+    if (from === 'finished') {          // iOS: the launch image is the finished mark; only the tick plays
+      t = Math.max(t, p.stem[1]);
+    }
+    const land = E.land(seg(t, p.land)), d = E.draw(seg(t, p.draw)), tick = seg(t, p.tick);
+    const s = TRACE_LEN * d;
+    const bump = tick > 0 && tick < 1 ? Math.sin(Math.PI * Math.min(1, tick / 0.6)) * 0.2 : 0;
+    return { wipe: E.wipe(seg(t, p.wipe)), s, stem: E.stem(seg(t, p.stem)), head: at(s + LEAD), headScale: land * (1 + bump) };
+  }
+
+  const stage = document.getElementById('stage'), screen = document.getElementById('screen'), spot = document.getElementById('spot');
+  const scrub = document.getElementById('scrub'), clock = document.getElementById('clock');
+  draw(spot, DONE);
+  let mode = 'app', reduced = false, slow = false, t = 0, playing = false, last = 0, webPhase = 0;
+
+  // Hand-off: the 160 px stage at (100, 300) flies into the 32 px header mark at (16, 52).
+  function place(k, fade) {
+    const x = 100 + (16 - 100) * k, y = 300 + (52 - 300) * k, s = 1 + (32 / 160 - 1) * k;
+    stage.style.transform = `translate(${x - 100}px, ${y - 300}px) scale(${s})`;
+    stage.style.opacity = fade == null ? 1 : fade;
+  }
+
+  function render() {
+    clock.textContent = Math.round(t) + ' ms';
+    if (reduced) {                                   // fade in 200, hold, cross-fade 300
+      draw(stage, DONE); place(0, Math.min(1, t / 200) * (1 - seg(t, [1450, 1750])));
+      screen.style.opacity = seg(t, [1450, 1750]); return;
+    }
+    if (mode === 'web') {                            // loop the draw: 720 draw, 200 hold, 250 refill
+      const cyc = 1170, k = t % cyc, p = { wipe: [-1, 0], land: [-1, 0], draw: [0, 720], stem: [720, 800], tick: [9e9, 9e9 + 1] };
+      const st = stateAt(k, p);
+      if (k > 920) { const r = seg(k, [920, 1170]); st.s = TRACE_LEN * (1 - r); st.stem = 1 - r; st.head = at(st.s + LEAD); }
+      draw(stage, st); place(0); screen.style.opacity = 0; return;
+    }
+    const p = mode === 'android' ? P.android : P.app;
+    draw(stage, stateAt(t, p, mode === 'ios' ? 'finished' : null));
+    const h = E.hand(seg(t, p.hand));
+    if (mode === 'desktop') { place(0.08 * h, 1 - h); stage.style.transform += ''; screen.style.opacity = seg(t, [p.screen, p.total]); }
+    else { place(h); screen.style.opacity = seg(t, [p.screen, p.total]); if (h >= 1) stage.style.opacity = 0; }
+  }
+
+  function tick(now) {
+    if (!playing) return;
+    const dt = (now - last) * (slow ? 0.25 : 1); last = now; t += dt;
+    const end = mode === 'web' ? Infinity : (mode === 'android' ? P.android.total : P.app.total);
+    if (t >= end) { t = end; playing = false; }
+    scrub.value = Math.min(t, 1750); render();
+    if (playing) requestAnimationFrame(tick);
+  }
+  document.getElementById('play').onclick = () => { t = mode === 'ios' ? P.app.stem[1] : 0; playing = true; last = performance.now(); requestAnimationFrame(tick); };
+  document.getElementById('slow').onclick = e => { slow = !slow; e.target.setAttribute('aria-pressed', slow); };
+  document.getElementById('reduced').onclick = e => { reduced = !reduced; e.target.setAttribute('aria-pressed', reduced); render(); };
+  document.getElementById('maskBtn').onclick = e => { const on = e.target.getAttribute('aria-pressed') !== 'true'; e.target.setAttribute('aria-pressed', on); document.getElementById('mask').classList.toggle('on', on); };
+  scrub.oninput = () => { playing = false; t = +scrub.value; render(); };
+  document.querySelectorAll('#mode button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#mode button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    mode = b.dataset.mode; t = 0; scrub.value = 0; render();
+  });
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { reduced = true; document.getElementById('reduced').setAttribute('aria-pressed', 'true'); }
+  render();
 })();
 </script>
 </body>

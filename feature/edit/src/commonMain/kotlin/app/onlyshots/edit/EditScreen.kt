@@ -68,6 +68,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
@@ -75,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.SharedKeys
 import app.onlyshots.StyleEditorRoute
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
@@ -701,6 +703,7 @@ private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions) {
         TopChip(
             text = video?.shot?.profileName ?: stringResource(Res.string.edit_add_shot),
             onClick = { actions.openSheet(EditSheet.SHOT) },
+            modifier = Modifier.testTag(TestTags.EditShotChip),
             dot =
                 when {
                     video?.shot == null -> CgColors.Text.Dim
@@ -713,6 +716,7 @@ private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions) {
         TopChip(
             stringResource(Res.string.edit_export),
             onClick = { actions.openSheet(EditSheet.EXPORT) },
+            modifier = Modifier.testTag(TestTags.EditExport),
             primary = true,
         )
     }
@@ -873,7 +877,10 @@ private fun Picture(
                     else stringResource(Res.string.edit_frame_switch),
                     onClick = { set(!reframing) },
                     light = reframing,
-                    modifier = Modifier.align(BiasAlignment(1f, bias)).padding(horizontal = CgSpace.S8),
+                    modifier =
+                        Modifier.align(BiasAlignment(1f, bias))
+                            .padding(horizontal = CgSpace.S8)
+                            .testTag(TestTags.EditFrame),
                 )
             }
         }
@@ -1039,14 +1046,14 @@ private fun RowScope.UndoRedo(ui: EditUiState, actions: EditActions) {
         enter = fadeIn(CgMotion.short()) + expandHorizontally(CgMotion.sizeSpec),
         exit = fadeOut(CgMotion.short()) + shrinkHorizontally(CgMotion.sizeSpec),
     ) {
-        Pill("↺", onClick = actions::undo)
+        Pill("↺", onClick = actions::undo, modifier = Modifier.testTag(TestTags.EditUndo))
     }
     AnimatedVisibility(
         ui.canRedo,
         enter = fadeIn(CgMotion.short()) + expandHorizontally(CgMotion.sizeSpec),
         exit = fadeOut(CgMotion.short()) + shrinkHorizontally(CgMotion.sizeSpec),
     ) {
-        Pill("↻", onClick = actions::redo)
+        Pill("↻", onClick = actions::redo, modifier = Modifier.testTag(TestTags.EditRedo))
     }
 }
 
@@ -1264,7 +1271,12 @@ private val FORMAT_OPTIONS = VideoFormat.entries.map { FormatOption(it.label, it
 private fun FormatStrip(format: VideoFormat, onPick: (VideoFormat) -> Unit, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
         for (f in VideoFormat.entries) {
-            Pill(f.label, onClick = { onPick(f) }, light = f == format)
+            Pill(
+                f.label,
+                onClick = { onPick(f) },
+                light = f == format,
+                modifier = Modifier.testTag(TestTags.format(f.label)),
+            )
         }
     }
 }
@@ -1321,11 +1333,16 @@ private fun EditPanel(
             onSelect = { onPage(PanelPages[it]) },
             fill = true,
             modifier = Modifier.fillMaxWidth(),
+            tags = listOf(TestTags.ToolbarStyle, TestTags.ToolbarData, TestTags.ToolbarText),
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
             Text(title, style = CgTheme.type.sheetTitle, modifier = Modifier.weight(1f))
             tools()
-            Pill(stringResource(Res.string.edit_done), onClick = onDone)
+            Pill(
+                stringResource(Res.string.edit_done),
+                onClick = onDone,
+                modifier = Modifier.testTag(TestTags.SheetDone),
+            )
         }
         Column(
             Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),

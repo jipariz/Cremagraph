@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -50,6 +51,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.onlyshots.SharedKeys
+import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
@@ -111,19 +113,19 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                     modifier = Modifier.animateItem(),
                     onPick = { actions.pick(style.id) },
                     menu = { close ->
-                        Item(stringResource(Res.string.style_edit)) {
+                        Item(stringResource(Res.string.style_edit), TestTags.StyleMenuEdit) {
                             close()
                             actions.edit(style.id)
                         }
-                        Item(stringResource(Res.string.style_edit_a_copy)) {
+                        Item(stringResource(Res.string.style_edit_a_copy), TestTags.StyleMenuCopy) {
                             close()
                             actions.create(style.id)
                         }
-                        Item(stringResource(Res.string.style_rename)) {
+                        Item(stringResource(Res.string.style_rename), TestTags.StyleMenuRename) {
                             close()
                             renaming = style
                         }
-                        Item(stringResource(Res.string.style_delete)) {
+                        Item(stringResource(Res.string.style_delete), TestTags.StyleMenuDelete) {
                             close()
                             deleting = style
                         }
@@ -148,7 +150,7 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                                     width = null,
                                     onPick = { actions.pick(style.id) },
                                     menu = { close ->
-                                        Item(stringResource(Res.string.style_edit_a_copy)) {
+                                        Item(stringResource(Res.string.style_edit_a_copy), TestTags.StyleMenuCopy) {
                                             close()
                                             actions.create(style.id)
                                         }
@@ -189,6 +191,7 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
                 name,
                 onValueChange = { name = it.take(MAX_NAME) },
                 label = stringResource(Res.string.style_name),
+                modifier = Modifier.testTag(TestTags.StyleNameField),
             )
         }
     }
@@ -209,8 +212,8 @@ fun StylePicker(currentId: String, custom: List<GraphStyle>, actions: StylePicke
 }
 
 @Composable
-private fun Item(text: String, onClick: () -> Unit) {
-    DropdownMenuItem(text = { Text(text) }, onClick = onClick)
+private fun Item(text: String, tag: String, onClick: () -> Unit) {
+    DropdownMenuItem(text = { Text(text) }, onClick = onClick, modifier = Modifier.testTag(tag))
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -229,6 +232,7 @@ private fun StyleTile(
     Column(
         modifier
             .then(if (width != null) Modifier.width(width) else Modifier.fillMaxWidth())
+            .testTag(TestTags.styleTile(style.id))
             .semantics {
                 selected = picked
                 contentDescription = description
@@ -259,7 +263,9 @@ private fun StyleTile(
 private fun NewStyleTile(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val label = stringResource(Res.string.style_new_style)
     Column(
-        modifier.width(TILE_SMALL).combinedClickableCompat(onClick).semantics { contentDescription = label },
+        modifier.width(TILE_SMALL).testTag(TestTags.StyleNew).combinedClickableCompat(onClick).semantics {
+            contentDescription = label
+        },
         verticalArrangement = Arrangement.spacedBy(CgSpace.S6),
     ) {
         val shape = RoundedCornerShape(10.dp)

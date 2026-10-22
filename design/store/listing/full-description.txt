@@ -1,0 +1,37 @@
+OnlyShots films your espresso shot with its graph on top, drawn live from your machine and scale, showing the readings you pick. Export the video and share it.
+
+RECORD A SHOT
+• Connects to a Gaggiuino-modded machine over your Wi-Fi, and to a Bluetooth scale.
+• Starts recording when the brew switch flips on and stops a few seconds after the shot, so your hands stay free.
+• Keeps a few seconds from before the shot, so the first drops are on film.
+• No machine? Use a scale on its own, or try the built-in sample shot.
+
+PUT THE GRAPH WHERE YOU WANT IT
+• Drag and resize the graph on the camera view.
+• Pick what it shows: pressure, flow, weight, temperature, phases and shot time.
+• Choose a built-in style or make your own: colours, lines, grid, readings, text, glass and blur.
+• What you see in the preview is exactly what the export draws.
+
+EDIT AFTER
+• Pick any video you filmed and a shot file, and line them up: by the video's clock, by the pump's sound, or by hand.
+• Trim, frame it in 9:16, 4:5, 1:1 or 16:9, and move the crop.
+• Undo and redo every change.
+• Import shots from your Gaggiuino's history, or from .shot files (SproFiler, visualizer.coffee).
+
+EXPORT
+• Save to your gallery in up to 4K, or share at 1080p to Instagram, WhatsApp, Messages and anywhere else.
+• Keep the sound, or mute it.
+
+WORKS WITH
+• Machines: Gaggiuino.
+• Scales: Acaia, Bookoo, Decent Scale, DiFluid, Eclair, EspressiScale, Felicita, iKape, Insmart, MyScale, Precisa, Timemore, Varia, WeighMyBru, Wilfa and more.
+
+PHONES, TABLETS AND FOLDABLES
+Layouts for phones, tablets and foldables, in portrait and landscape, including tabletop on a folding phone.
+
+PRIVATE BY DESIGN
+No account, no ads, no analytics, no tracking. Your videos, shots and settings stay on your device. OnlyShots talks only to the machine and scale you pick.
+
+OnlyShots is an independent app, not affiliated with Gaggia, Gaggiuino or any scale maker. Names are used only to say what the app works with.
+
+Questions or ideas: github.com/parez-dev/OnlyShots/issues

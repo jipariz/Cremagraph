@@ -142,11 +142,15 @@ fun SectionHeader(
             }
             val ink by animateColorAsState(trailingColor, CgMotion.medium())
             Box(target ?: Modifier, contentAlignment = Alignment.CenterEnd) {
-                // "searching…" ticks over to "2 found", like a readout.
-                AnimatedContent(searching, transitionSpec = { with(CgMotion) { tick() } }, label = "searching") { busy
-                    ->
-                    if (busy && searchingDot) SearchingNote(trailing.caps(), ink)
-                    else Text(trailing.caps(), style = CgTheme.type.labelStrong, color = ink)
+                // "searching…" ticks over to "1 found", and that to "2 found", like a readout; the light stays on while
+                // the search does.
+                AnimatedContent(
+                    trailing to (searching && searchingDot),
+                    transitionSpec = { with(CgMotion) { tick() } },
+                    label = "searching",
+                ) { (note, busy) ->
+                    if (busy) SearchingNote(note.caps(), ink)
+                    else Text(note.caps(), style = CgTheme.type.labelStrong, color = ink)
                 }
             }
         }

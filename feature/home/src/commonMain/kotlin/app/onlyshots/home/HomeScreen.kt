@@ -358,7 +358,8 @@ private fun Machines(state: HomeUiState, onMachine: (FoundMachine) -> Unit, onAd
         stringResource(Res.string.home_machines_title),
         trailing = foundNote(state.machines.size).text(),
         trailingColor = if (state.machines.isEmpty()) CgColors.Text.Secondary else CgColors.Text.Primary,
-        searching = state.machines.isEmpty(),
+        // The search goes on after a find (there may be more than one machine): the light stays on beside the count.
+        searching = true,
     )
     // Machines turn up one by one as the search finds them: each slides open rather than pushing the list down. They
     // stack as one grid, meeting on single hairlines.
@@ -412,9 +413,7 @@ private fun Scales(state: HomeUiState, onScale: (FoundBleDevice) -> Unit, onAllo
                 state.scales.isEmpty() -> CgColors.Text.Secondary
                 else -> CgColors.Text.Primary
             },
-        searching = state.scales.isEmpty() && !state.bluetoothOff && !state.bluetoothDenied,
-        // The machines' search shows the light; the scales' just says so.
-        searchingDot = false,
+        searching = !state.bluetoothOff && !state.bluetoothDenied,
     )
     val settled = rememberListSettled()
     if (scale != null || others.isNotEmpty()) {

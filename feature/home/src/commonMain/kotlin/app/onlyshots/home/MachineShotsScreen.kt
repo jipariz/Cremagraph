@@ -250,7 +250,7 @@ private fun MachineList(
         stringResource(Res.string.home_machines_title),
         trailing = foundNote(state.machines.size).text(),
         trailingColor = if (state.machines.isEmpty()) CgColors.Text.Secondary else CgColors.Text.Primary,
-        searching = state.machines.isEmpty(),
+        searching = true,
     )
     val settled = rememberListSettled()
     if (state.machines.isNotEmpty()) {

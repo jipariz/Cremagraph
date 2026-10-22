@@ -4,7 +4,8 @@ Guide for Claude Code in this repo.
 
 OnlyShots films espresso shot with graph on top (pressure, flow, weight…). Live or synced after. Exports MP4.
 Compose Multiplatform: Android, iOS. Same Compose editor on desktop (JVM, FFmpeg) and web (wasm + JS). README.md =
-long reference. Figma = behaviour reference; spec cards' acceptance criteria = test cases.
+product page + machines; docs/DEVELOPMENT.md = long reference. Figma = behaviour reference; spec cards' acceptance
+criteria = test cases.
 
 ## Secrets
 
@@ -72,7 +73,8 @@ Format: ktfmt `kotlinLangStyle`, 4 spaces, width 120. Run `ktfmtFormat` before c
   (`MainViewController()`, `platform.IosBackground.shared`). Swift-facing API = `:app:shared` iosMain only; its `api`
   dependencies are `HIDDEN` there (exporting them breaks on okio). A Swift class implementing a Kotlin interface
   subclasses `KotlinBase`. Read the generated `build/SPMPackage/.../OnlyShotsApp.swift` after changing that API.
-- **R8** breaks reflection quietly. Touch keep rules or serialization? Walk README's six release paths by hand.
+- **R8** breaks reflection quietly. Touch keep rules or serialization? Walk the six release paths in
+  docs/DEVELOPMENT.md by hand.
 
 ## CI
 

@@ -54,8 +54,17 @@ xcrun simctl ui "$udid" appearance dark
 # The same status everywhere, so it never makes a difference.
 xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
     --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
-# mobilecli folds through its own agent on the simulator; a fresh simulator needs it installed once.
-"$mobilecli" agent install --device "$udid" >/dev/null
+# mobilecli folds through its own agent on the simulator; a fresh simulator needs it installed once. Its daemon can take
+# a moment to see a simulator that has just booted.
+for _ in $(seq 30); do
+    "$mobilecli" devices --platform ios --type simulator 2>/dev/null | grep -q "$udid" && break
+    sleep 2
+done
+if ! "$mobilecli" agent install --device "$udid" >/dev/null; then
+    echo "mobilecli does not see $udid; it sees:" >&2
+    "$mobilecli" devices --include-offline --platform ios --type simulator -v >&2 || true
+    exit 1
+fi
 xcrun simctl privacy "$udid" grant camera dev.parez.onlyshots 2>/dev/null || true
 xcrun simctl privacy "$udid" grant microphone dev.parez.onlyshots 2>/dev/null || true
 

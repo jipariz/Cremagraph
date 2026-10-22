@@ -50,7 +50,8 @@ to share. Filmed already? Bring any video and a shot file, and OnlyShots lines t
 
 - Pick any video and a shot file, and line them up by the video's clock, by the pump's sound, or by hand.
 - Trim, frame it in 9:16, 4:5, 1:1 or 16:9, and move the crop. Undo and redo every change.
-- Import shots from your Gaggiuino's history, or from `.shot` files (SproFiler, visualizer.coffee).
+- Import shots from your Gaggiuino's history, from `.shot` files, or from [Visualizer](https://visualizer.coffee) by
+  share code or link: any machine's shot there, or a Beanconqueror brew.
 
 <p align="center">
   <img src="./assets/readme/edit.webp" width="100%" alt="The editor on a tablet: the video with its graph, the timeline with trim handles, and the export panel.">
@@ -154,8 +155,8 @@ store them by name. Compiler then flags every `when` to fill:
 
 **4. Optional:**
 
-- **Shot files:** parser beside `GaggiuinoShotFile` (`core/model`). Wire into import in `OpenViewModel` and
-  `EditViewModel`.
+- **Shot files:** parser beside `GaggiuinoShotFile` (`core/model`), routed by shape in `ShotFiles.parse`, which
+  every import goes through. A machine whose shots reach Visualizer needs nothing: its normalized form is read already.
 - **Own look:** built-in style in `GraphStyles.matching(source)`. Else Metro.
 - **Style editor:** add machine to source list in `StyleEditorScreen.kt`.
 - **Words:** user text goes in `core/resources/.../values/strings_<area>.xml`. Machine name stays code.

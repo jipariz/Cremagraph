@@ -13,6 +13,8 @@ kotlin {
             api(projects.core.designsystem)
             api(projects.core.model)
             api(projects.video)
+            // A shot fetched from visualizer.coffee, offered wherever a shot is picked.
+            api(projects.visualizer)
             api(libs.okio)
             api(libs.kotlinx.coroutines.core)
             api(libs.kotlinx.serialization.json)

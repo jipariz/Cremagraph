@@ -46,6 +46,10 @@ object TestTags {
     const val OpenPickShot = "open.pickShot"
     const val OpenFromFile = "open.fromFile"
     const val OpenFromMachine = "open.fromMachine"
+    const val ShotFromVisualizer = "shot.fromVisualizer"
+    const val VisualizerInput = "visualizer.input"
+    const val VisualizerFetch = "visualizer.fetch"
+    const val VisualizerError = "visualizer.error"
     const val OpenEditor = "open.editor"
 
     // Edit.

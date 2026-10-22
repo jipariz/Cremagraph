@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fetching a shot from visualizer.coffee: the Open screen's and the editor's shot sheet share these. -->
+<resources>
+    <string name="visualizer_from">from Visualizer</string>
+    <string name="visualizer_from_detail">A share code or shot link from visualizer.coffee</string>
+    <string name="visualizer_field">share code or link</string>
+    <string name="visualizer_placeholder">ABCD or visualizer.coffee/shots/…</string>
+    <string name="visualizer_hint">On the shot's page on visualizer.coffee, tap Share: its four letters work for an hour. A public shot's link works any time.</string>
+    <string name="visualizer_fetch">fetch shot</string>
+    <string name="visualizer_fetching">fetching…</string>
+    <string name="visualizer_error_input">That is neither a four-letter code nor a shot's link.</string>
+    <string name="visualizer_error_not_found">No shot by that code or link. A share code lasts an hour: ask for a new one.</string>
+    <string name="visualizer_error_busy">Visualizer is busy with too many requests. Try again in a minute.</string>
+    <string name="visualizer_error_unreachable">Could not reach visualizer.coffee. Check the connection and try again.</string>
+    <string name="visualizer_error_not_a_shot">That shot has no readings to draw.</string>
+</resources>

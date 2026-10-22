@@ -106,8 +106,9 @@
     <string name="edit_use_another_shot">use another shot</string>
     <string name="edit_file">file</string>
     <string name="edit_machine">machine</string>
+    <string name="edit_visualizer">visualizer</string>
     <string name="edit_shot_file">a shot file</string>
-    <string name="edit_shot_file_detail">.shot or .json, from SproFiler or the machine</string>
+    <string name="edit_shot_file_detail">.shot or .json, from visualizer.coffee or the machine</string>
     <string name="edit_from_machine">from the machine</string>
     <string name="edit_from_machine_detail">a recent shot from your Gaggiuino on this Wi‑Fi</string>
     <string name="edit_on_connected_machine">on the connected machine</string>

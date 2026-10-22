@@ -58,6 +58,7 @@ object CgColors {
         val Gaggimate = Color(0xFF00807E)
         val Decent = Color(0xFF2F4A6A)
         val Scale = Color(0xFF5B3FA8)
+        val Visualizer = Color(0xFF8A6A3B)
     }
 
     /** Series colours of the Tiles style, also used for the series chips. */

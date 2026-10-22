@@ -78,6 +78,7 @@ include(
     ":overlay",
     ":overlay:compose",
     ":sources",
+    ":visualizer",
     ":camera",
     ":video",
     ":storage",

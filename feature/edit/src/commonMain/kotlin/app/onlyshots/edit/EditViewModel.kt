@@ -3,12 +3,12 @@ package app.onlyshots.edit
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.onlyshots.core.model.GaggiuinoShotFile
 import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.PumpOnsetDetector
 import app.onlyshots.core.model.Quality
 import app.onlyshots.core.model.Reframe
 import app.onlyshots.core.model.Shot
+import app.onlyshots.core.model.ShotFiles
 import app.onlyshots.core.model.ShotHistory
 import app.onlyshots.core.model.ShotSummary
 import app.onlyshots.core.model.VideoFormat
@@ -41,6 +41,9 @@ import app.onlyshots.video.LumaTrack
 import app.onlyshots.video.VideoProbe
 import app.onlyshots.video.availableQualities
 import app.onlyshots.video.sourceMapping
+import app.onlyshots.visualizer.Visualizer
+import app.onlyshots.visualizer.VisualizerFetchState
+import app.onlyshots.visualizer.VisualizerFetcher
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +84,10 @@ data class EditUiState(
     /** The source picture's width over height as shown, once read: how far it reaches past the frame. */
     val sourceAspect: Float? = null,
     val sheet: EditSheet? = null,
+    /** Whether a shot can be fetched from visualizer.coffee here. */
+    val hasVisualizer: Boolean = false,
+    /** The shot sheet shows the Visualizer's code-or-link form instead of its choices, in this state. */
+    val visualizer: VisualizerFetchState? = null,
     val busy: UiText? = null,
     val message: UiText? = null,
     /** Frames across the clip for the filmstrip, in order; empty until they are all made. */
@@ -121,6 +128,8 @@ class EditViewModel(
     val styles: StyleLibrary,
     private val settings: AppSettingsRepo,
     private val sampler: FrameSampler,
+    /** visualizer.coffee, for a shot shared there; null hides the way. */
+    visualizer: Visualizer? = null,
     private val nowMs: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     /** Where the reading, decoding and saving run: a test hands its own dispatcher so nothing outlives it. */
     private val work: CoroutineDispatcher = Dispatchers.Default,
@@ -129,12 +138,24 @@ class EditViewModel(
     private var saveJob: Job? = null
 
     val ui: StateFlow<EditUiState>
-        field = MutableStateFlow(EditUiState(hasShotHistory = source !== ShotHistory.None))
+        field =
+            MutableStateFlow(
+                EditUiState(hasShotHistory = source !== ShotHistory.None, hasVisualizer = visualizer != null)
+            )
+
+    private val fetcher = visualizer?.let { VisualizerFetcher(it, viewModelScope) }
 
     val videoPath: Path?
         get() = ui.value.item?.let { store.videoPath(it) }
 
     init {
+        fetcher?.let { f ->
+            viewModelScope.launch {
+                f.state.collect { fetch ->
+                    ui.update { if (it.visualizer == null) it else it.copy(visualizer = fetch) }
+                }
+            }
+        }
         viewModelScope.launch {
             val item = withContext(work) { library.load(id) }
             if (item == null) {
@@ -296,10 +317,27 @@ class EditViewModel(
 
     override fun openSheet(sheet: EditSheet) {
         if (sheet == EditSheet.SHOT) loadShots()
-        ui.update { it.copy(sheet = sheet) }
+        fetcher?.reset()
+        ui.update { it.copy(sheet = sheet, visualizer = null) }
     }
 
-    override fun closeSheet() = ui.update { it.copy(sheet = null, savedToGallery = false) }
+    override fun closeSheet() {
+        fetcher?.reset()
+        ui.update { it.copy(sheet = null, savedToGallery = false, visualizer = null) }
+    }
+
+    override fun openVisualizer() {
+        val f = fetcher ?: return
+        ui.update { it.copy(visualizer = f.state.value) }
+    }
+
+    /** A shot shared on visualizer.coffee, by its code or link, attached as one picked here. */
+    override fun fetchFromVisualizer(input: String) {
+        fetcher?.fetch(input) { shot ->
+            ui.update { it.copy(sheet = null, visualizer = null) }
+            attachShot(shot)
+        }
+    }
 
     override fun acknowledgeExport() = ui.update { it.copy(exported = false, savedToGallery = false) }
 
@@ -321,15 +359,15 @@ class EditViewModel(
     }
 
     /**
-     * Attaches a Gaggiuino `.shot` file: what SproFiler, the visualizer and the machine's own API hand out. The shot in
-     * it carries its own clock, so the flag on the timeline still decides where it starts in the video.
+     * Attaches a shot file: a Gaggiuino's `.shot`, a visualizer.coffee download or a Beanconqueror brew. The shot in it
+     * carries its own clock, so the flag on the timeline still decides where it starts in the video.
      */
     fun importShotFile(path: Path) {
         ui.update { it.copy(busy = Res.string.edit_reading_file.text(), sheet = null) }
         viewModelScope.launch {
             val shot =
                 withContext(work) {
-                    runCatching { GaggiuinoShotFile.parse(fs.read(path) { readUtf8() }, fallbackId = "file-$id") }
+                    runCatching { ShotFiles.parse(fs.read(path) { readUtf8() }, fallbackId = "file-$id") }
                         .also { fs.delete(path, mustExist = false) }
                         .getOrNull()
                 }

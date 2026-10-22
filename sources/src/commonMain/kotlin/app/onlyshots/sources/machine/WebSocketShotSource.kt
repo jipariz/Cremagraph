@@ -23,8 +23,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -86,22 +84,22 @@ class WebSocketShotSource(
     private val nowUs: () -> Long = MonotonicClock::nowUs,
     private val busyWindowUs: Long = 2_000_000,
 ) : ShotSource {
-    private val _connection = MutableStateFlow<ConnectionState>(ConnectionState.Connecting)
-    override val connection: StateFlow<ConnectionState> = _connection.asStateFlow()
+    override val connection: StateFlow<ConnectionState>
+        field = MutableStateFlow<ConnectionState>(ConnectionState.Connecting)
 
-    private val _live = MutableSharedFlow<Sample>(extraBufferCapacity = 256)
-    override val live: SharedFlow<Sample> = _live.asSharedFlow()
+    override val live: SharedFlow<Sample>
+        field = MutableSharedFlow<Sample>(extraBufferCapacity = 256)
 
-    private val _brew = MutableSharedFlow<BrewEvent>(extraBufferCapacity = 16)
-    override val brewEvents: SharedFlow<BrewEvent> = _brew.asSharedFlow()
+    override val brewEvents: SharedFlow<BrewEvent>
+        field = MutableSharedFlow<BrewEvent>(extraBufferCapacity = 16)
 
-    private val _frames = MutableSharedFlow<String>(extraBufferCapacity = 64)
     /** Raw text frames, for the machine log screen. */
-    val frames: SharedFlow<String> = _frames.asSharedFlow()
+    val frames: SharedFlow<String>
+        field = MutableSharedFlow<String>(extraBufferCapacity = 64)
 
     /** Starts the connection loop in [scope]; cancel the job when the app leaves the foreground. */
     fun start(scope: CoroutineScope): Job = scope.launch {
-        keepConnected(_connection) { onConnected ->
+        keepConnected(connection) { onConnected ->
             decoder.reset()
             val decode = Mutex()
             var opened = 0
@@ -116,7 +114,7 @@ class WebSocketShotSource(
                                 when (frame) {
                                     is Frame.Text ->
                                         frame.readText().let {
-                                            _frames.tryEmit(it)
+                                            frames.tryEmit(it)
                                             decoder.decodeText(it, at, path)
                                         }
                                     is Frame.Binary -> decoder.decodeBinary(frame.readBytes(), at, path)
@@ -124,8 +122,8 @@ class WebSocketShotSource(
                                 }
                             }
                             for (m in messages) when (m) {
-                                is MachineMessage.Reading -> _live.emit(m.sample)
-                                is MachineMessage.Brew -> _brew.emit(m.event)
+                                is MachineMessage.Reading -> live.emit(m.sample)
+                                is MachineMessage.Brew -> brewEvents.emit(m.event)
                                 MachineMessage.Ignored -> Unit
                             }
                         }

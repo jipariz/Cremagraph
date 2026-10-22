@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="150" viewBox="0 0 1200 150" role="img" aria-labelledby="t d">
+  <title id="t">03 Works With</title>
+  <desc id="d">03 Works with: the espresso machines and Bluetooth scales OnlyShots reads.</desc>
+  <defs><pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#161616"/></pattern></defs>
+  <rect width="1200" height="150" fill="#0B0B0B"/>
+  <rect width="1200" height="150" fill="url(#g)"/>
+  <g font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-weight="600">
+    <text x="56" y="58" font-size="22" letter-spacing="2" fill="#FF5A1F">03 / WORKS WITH</text>
+    <text x="54" y="112" font-size="44" fill="#E8E6E1">YOUR MACHINE. YOUR SCALE.</text>
+  </g>
+  <g transform="translate(968 48) scale(0.95)"><path d="M0 56 H48 C78 56 84 0 114 0 H150" fill="none" stroke="#FF5A1F" stroke-width="6"/><rect x="150" y="-14" width="28" height="28" fill="#FF5A1F"/><rect x="160" y="14" width="8" height="40" fill="#FF5A1F"/></g>
+</svg>

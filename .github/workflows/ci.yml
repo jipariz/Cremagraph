@@ -128,9 +128,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Shared tests and the export test on the iOS simulator
         run: ./gradlew iosSimulatorArm64Test --stacktrace
-      - name: Link the iOS framework
-        run: ./gradlew :app:shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace
-      # Builds the app and runs its smoke tests (XCUITest, iosAppUITests) with the camera and microphone already
+      # Builds the app (its pre-build phase builds the Kotlin module through Swift export) and runs its smoke tests (XCUITest, iosAppUITests) with the camera and microphone already
       # allowed, so no system prompt stands over it.
       - name: Build the iOS app and run its UI tests
         run: |

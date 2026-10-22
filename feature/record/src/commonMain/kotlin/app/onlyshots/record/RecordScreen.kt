@@ -521,7 +521,7 @@ private fun CameraPane(
         var frame by remember { mutableStateOf(Rect.Zero) }
         // The graph may go anywhere the frame is on screen, under the floating controls too: they are the screen's,
         // not the video's, and they step aside while it moves.
-        val bounds = graphBounds(shown, capture)
+        val bounds = context(capture) { graphBounds(shown) }
         val rect = settings.overlay.rect.within(bounds)
         // A graph the screen would cut off is moved where it shows, and kept there: the video draws it as placed.
         LaunchedEffect(bounds, settings.overlay.rect, state.recording, state.hasData) {
@@ -714,7 +714,8 @@ private fun CameraPane(
 }
 
 /** Where the graph may go, in the frame's fractions: what of the frame is [shown], a side margin in. */
-private fun graphBounds(shown: NormRect, capture: VideoFormat): NormRect {
+context(capture: VideoFormat)
+private fun graphBounds(shown: NormRect): NormRect {
     var left = shown.x
     var top = shown.y
     var right = shown.right
@@ -726,7 +727,7 @@ private fun graphBounds(shown: NormRect, capture: VideoFormat): NormRect {
     top += my
     bottom -= my
     // Never less room than the smallest graph: a sliver of window keeps the whole frame instead.
-    if (right - left < NormRect.minW(capture) || bottom - top < NormRect.minH(capture)) return NormRect(0f, 0f, 1f, 1f)
+    if (right - left < NormRect.minW() || bottom - top < NormRect.minH()) return NormRect(0f, 0f, 1f, 1f)
     return NormRect(left, top, right - left, bottom - top)
 }
 

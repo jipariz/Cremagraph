@@ -15,7 +15,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -49,10 +48,10 @@ class ScaleShotSource(
     override val capabilities = Capabilities.of(SourceKind.SCALE)
     override val connection: StateFlow<ConnectionState> = scale.connection
 
-    private val _live = MutableSharedFlow<Sample>(extraBufferCapacity = 256)
-    override val live: SharedFlow<Sample> = _live.asSharedFlow()
-    private val _brew = MutableSharedFlow<BrewEvent>(extraBufferCapacity = 16)
-    override val brewEvents: SharedFlow<BrewEvent> = _brew.asSharedFlow()
+    override val live: SharedFlow<Sample>
+        field = MutableSharedFlow<Sample>(extraBufferCapacity = 256)
+    override val brewEvents: SharedFlow<BrewEvent>
+        field = MutableSharedFlow<BrewEvent>(extraBufferCapacity = 16)
 
     private val lock = Mutex()
     private val firstDrops = FirstDropsDetector()
@@ -72,10 +71,10 @@ class ScaleShotSource(
                 Sample(tUs = at, weight = seen.weight, weightFlow = r.weightFlowGps, brewing = firstDrops.brewing) to
                     seen
             }
-        seen.started?.let { _brew.emit(it) }
+        seen.started?.let { brewEvents.emit(it) }
         // The cup came off (or the scale was tared): the shot ends at that reading.
-        seen.ended?.let { _brew.emit(it) }
-        _live.emit(sample)
+        seen.ended?.let { brewEvents.emit(it) }
+        live.emit(sample)
     }
 
     override suspend fun prepareForShot() = tare()

@@ -36,7 +36,8 @@ object OverlaySnap {
      * [free] pulled onto the nearest target within [pullX] / [pullY] (normalized). Drags keep their own unsnapped rect
      * and pass it here every frame, so a snap never traps the graph: past the pull distance it lets go.
      */
-    fun snap(free: NormRect, pullX: Float, pullY: Float, format: VideoFormat = VideoFormat.PORTRAIT_9_16): Snapped {
+    context(format: VideoFormat)
+    fun snap(free: NormRect, pullX: Float, pullY: Float): Snapped {
         val margin = NormRect.MARGIN_REF / format.refW
         val marginY = NormRect.MARGIN_REF / format.refH
         val vertical =
@@ -62,7 +63,7 @@ object OverlaySnap {
                 )
                 .filter { (x, _) -> kotlin.math.abs(free.x - x) <= pullX }
                 .minByOrNull { (x, _) -> kotlin.math.abs(free.x - x) }
-        val rect = free.copy(x = horizontal?.first ?: free.x, y = vertical?.first ?: free.y).clamped(format)
+        val rect = free.copy(x = horizontal?.first ?: free.x, y = vertical?.first ?: free.y).clamped()
         return Snapped(rect, vertical?.second, horizontal?.second)
     }
 }

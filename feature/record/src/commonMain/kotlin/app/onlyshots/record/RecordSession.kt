@@ -53,7 +53,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -125,25 +124,25 @@ class RecordSession(
     private val wallClock: () -> Instant = { Clock.System.now() },
     private val tickMs: Long = 100,
 ) {
-    private val _state =
-        MutableStateFlow(
-            RecordUiState(
-                    phase = idlePhase(source.connection.value),
-                    status = "".raw(),
-                    connection = source.connection.value,
-                    sourceKind = source.kind,
-                    shot = emptyShot(),
-                    stopRuleText = stopRuleText(settings.stopRule),
-                )
-                .withStatus()
-        )
-    val state: StateFlow<RecordUiState> = _state.asStateFlow()
+    val state: StateFlow<RecordUiState>
+        field =
+            MutableStateFlow(
+                RecordUiState(
+                        phase = idlePhase(source.connection.value),
+                        status = "".raw(),
+                        connection = source.connection.value,
+                        sourceKind = source.kind,
+                        shot = emptyShot(),
+                        stopRuleText = stopRuleText(settings.stopRule),
+                    )
+                    .withStatus()
+            )
 
     /** The camera may not be used; see [RecordUiState.noCamera]. */
     var noCamera: Boolean = false
         set(value) {
             field = value
-            _state.update { it.copy(noCamera = value).withStatus() }
+            state.update { it.copy(noCamera = value).withStatus() }
         }
 
     private var assembler: LiveShotAssembler? = null
@@ -159,7 +158,7 @@ class RecordSession(
         scope.launch {
             source.connection.collect { c ->
                 assembler?.let { if (c !is ConnectionState.Connected) it.onConnectionLost() }
-                _state.update { s ->
+                state.update { s ->
                     val phase =
                         if (s.phase == RecordPhase.RECORDING || s.phase == RecordPhase.SAVED) s.phase else idlePhase(c)
                     s.copy(connection = c, phase = phase).withStatus()
@@ -179,7 +178,7 @@ class RecordSession(
 
     /** The record / stop button. */
     fun recordPressed() {
-        when (_state.value.phase) {
+        when (state.value.phase) {
             RecordPhase.RECORDING -> stop(null)
             RecordPhase.SAVED -> recordAnother()
             else -> if (!noCamera) startRecording(trigger = null)
@@ -187,7 +186,7 @@ class RecordSession(
     }
 
     fun recordAnother() {
-        _state.update {
+        state.update {
             it.copy(
                     phase = idlePhase(it.connection),
                     finished = null,
@@ -200,7 +199,7 @@ class RecordSession(
     }
 
     private fun onBrewEvent(e: BrewEvent) {
-        val s = _state.value
+        val s = state.value
         when {
             e is BrewEvent.Started && s.phase == RecordPhase.ARMED && settings.autoStart && !noCamera ->
                 startRecording(e)
@@ -209,7 +208,7 @@ class RecordSession(
                 if (e is BrewEvent.Started && a.startSourceUs == null) {
                     // Recording was started by hand; the shot starts now.
                     sourceOffsetUs = e.atUs - nowUs()
-                    _state.update { it.copy(shotStartInVideoUs = nowUs() - fileStartUs) }
+                    state.update { it.copy(shotStartInVideoUs = nowUs() - fileStartUs) }
                 }
                 a.onBrewEvent(e)
             }
@@ -236,7 +235,7 @@ class RecordSession(
             a.onBrewEvent(trigger)
             sourceOffsetUs = trigger.atUs - now
         }
-        _state.update {
+        state.update {
             it.copy(
                     phase = RecordPhase.RECORDING,
                     shot = a.shot(),
@@ -271,7 +270,7 @@ class RecordSession(
                     if (camera?.state?.value?.supports4k == true) StopRules.MIN_FREE_BYTES_4K
                     else StopRules.MIN_FREE_BYTES,
             )
-        _state.update { it.copy(shot = a.shot(), videoTimeUs = videoUs).withStatus() }
+        state.update { it.copy(shot = a.shot(), videoTimeUs = videoUs).withStatus() }
         if (reason != null) stop(reason)
     }
 
@@ -282,7 +281,7 @@ class RecordSession(
         val durationUs = nowUs() - fileStartUs
         val shot = a.shot().takeIf { a.startSourceUs != null }
         assembler = null
-        _state.update {
+        state.update {
             it.copy(
                     phase = RecordPhase.SAVED,
                     videoTimeUs = durationUs,

@@ -2,12 +2,14 @@ name: iosApp
 options:
   bundleIdPrefix: dev.parez
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "18.0"
   createIntermediateGroups: true
 settings:
   base:
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "10000"
+    # Kotlin builds no iosX64: Swift export refuses an Xcode request for it ("Any iOS Simulator Device").
+    "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
 targets:
   iosApp:
     type: application
@@ -23,21 +25,15 @@ targets:
         CODE_SIGN_ENTITLEMENTS: iosApp/iosApp.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_VERSION: "5.0"
-        # The Kotlin framework is built and copied by the Gradle phase below.
-        FRAMEWORK_SEARCH_PATHS:
-          - $(inherited)
-          - $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
-        OTHER_LDFLAGS:
-          - $(inherited)
-          - -framework
-          - OnlyShotsApp
+        # The Kotlin module (Swift export: `import OnlyShotsApp`) is built and put in the products by the Gradle phase
+        # below, which writes outside the sandbox.
         ENABLE_USER_SCRIPT_SANDBOXING: NO
     preBuildScripts:
-      - name: Build the Kotlin framework
+      - name: Build the Kotlin module
         basedOnDependencyAnalysis: false
         script: |
           cd "$SRCROOT/../.."
-          ./gradlew :app:shared:embedAndSignAppleFrameworkForXcode
+          ./gradlew :app:shared:embedSwiftExportForXcode
   # End-to-end smoke tests of the installed app (XCUITest), finding controls by their Compose test tags, which iOS
   # shows as accessibility identifiers (app.onlyshots.TestTags):
   #   xcodebuild test -project iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 16'

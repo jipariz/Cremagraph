@@ -1,0 +1,86 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>OnlyShots link banner</title>
+<!-- The web editor's link preview (og:image): a real pour on the Gaggiuino with the Instrument graph, as an export
+     draws it. One artboard for every size: open as og.html#1200x630, #1200x675 or #1200x1200. render.py shoots them. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  body { margin: 0; background: #0B0B0B; }
+  #f { position: relative; overflow: hidden; background: #0B0B0B; }
+  #f div { box-sizing: border-box; }
+</style>
+<div id="f"></div>
+<script>
+// Tokens.kt, and the Instrument style's series and text colours (overlay/.../GraphStyles.kt).
+const C = { ink: "#0B0B0B", div: "#2A2A28", hair: "#3A3A38", bone: "#E8E6E1", dim: "#A3A19B", signal: "#FF5A1F",
+            p: "#FF5A1F", f: "#E8E6E1", w: "#7FA7B8" };
+const MONO = "'IBM Plex Mono', ui-monospace, Menlo, monospace";
+const PHOTO = "../../store/photos/pouring.jpg";
+const SYMBOL = "M32 32L224 32L224 224L32 224L32 176L80.02 176L83.31 175.82L86.52 175.27L89.6 174.37L92.5 173.16L95.2 171.68L97.68 169.99L99.97 168.11L102.07 166.09L104 163.96L105.78 161.73L107.44 159.43L108.99 157.07L110.44 154.65L111.83 152.19L113.14 149.7L114.41 147.19L115.63 144.67L116.81 142.15L117.97 139.63L119.1 137.14L120.22 134.69L121.33 132.28L122.43 129.93L123.53 127.66L124.63 125.47L125.73 123.38L126.84 121.42L127.95 119.58L129.05 117.89L130.15 116.36L131.24 115L132.31 113.82L133.34 112.82L134.33 112L135.27 111.36L136.18 110.86L137.06 110.49L137.96 110.22L138.92 110.06L140.07 110L156 110L156 116L166 116L166 196L178 196L178 116L188 116L188 84L156 84L156 90L139.93 90L136.69 90.18L133.48 90.73L130.4 91.63L127.5 92.84L124.8 94.32L122.32 96.01L120.03 97.89L117.93 99.91L116 102.04L114.22 104.27L112.56 106.57L111.01 108.93L109.56 111.35L108.17 113.81L106.86 116.3L105.59 118.81L104.37 121.33L103.19 123.85L102.03 126.37L100.9 128.86L99.78 131.31L98.67 133.72L97.57 136.07L96.47 138.34L95.37 140.53L94.27 142.62L93.16 144.58L92.05 146.42L90.95 148.11L89.85 149.64L88.76 151L87.69 152.18L86.66 153.18L85.67 154L84.73 154.64L83.82 155.14L82.94 155.51L82.04 155.78L81.08 155.94L79.98 156L32 156Z";
+
+// A 30 s shot: preinfusion at 2 bar, ramp to 9, declining profile; flow fills then settles; 36.4 g out.
+const sm = (a, b, t) => { const x = Math.min(1, Math.max(0, (t - a) / (b - a))); return x * x * (3 - 2 * x); };
+const pressure = t => 2 + 0.3 * sm(0, 4, t) + 6.7 * sm(5, 8.5, t) - 2.4 * sm(19, 30, t);
+const flow = t => 3.2 * sm(0, 1.2, t) * (1 - sm(2.5, 5.5, t)) + 0.4 + 1.1 * sm(7.5, 11, t) + 0.6 * sm(15, 30, t);
+const weight = t => t < 8 ? 0 : 36.4 * Math.pow((t - 8) / 22, 1.12);
+
+const at = (x, y, html, more = "") => `<div style="position:absolute;left:${x}px;top:${y}px;${more}">${html}</div>`;
+
+/* The plot: grid, phase lines, dashed targets, the three traces up to `upto` of the shot. */
+function plot(w, h, upto) {
+  const T = 30 * upto, N = 160, xs = t => (t / 30) * w, sw = 2;
+  const line = (fn, max) => { let d = ""; for (let i = 0; i <= N; i++) { const t = (T * i) / N;
+    d += (i ? "L" : "M") + xs(t).toFixed(1) + " " + (h - (fn(t) / max) * h).toFixed(1); } return d; };
+  let g = "";
+  for (let i = 1; i < 4; i++) g += `<path d="M0 ${(h * i / 4).toFixed(1)}H${w}" stroke="${C.div}"/>`;
+  for (let i = 1; i < 5; i++) g += `<path d="M${(w * i / 5).toFixed(1)} 0V${h}" stroke="${C.div}"/>`;
+  for (const [ts, name] of [[5, "PHASE 2"], [8.5, "PHASE 3"]]) { const x = xs(ts);
+    g += `<path d="M${x.toFixed(1)} 0V${h}" stroke="rgba(163,161,155,.5)"/><text x="${x + 4}" y="8.5" fill="${C.dim}" font-family="IBM Plex Mono" font-size="6.5" letter-spacing=".04em">${name}</text>`; }
+  g += `<path d="M${xs(8.5)} ${h * 0.25}H${w}" stroke="${C.dim}" stroke-opacity=".5" stroke-dasharray="4 4" stroke-width="1.6"/>`;
+  g += `<path d="M0 ${h - (36 / 44) * h}H${w}" stroke="${C.w}" stroke-opacity=".5" stroke-dasharray="4 4" stroke-width="1.6"/>`;
+  const tr = (d, c) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+  g += tr(line(weight, 44), C.w) + tr(line(flow, 6), C.f) + tr(line(pressure, 12), C.p);
+  return `<svg width="${w}" height="${h}" style="position:absolute;left:0;top:0;overflow:visible">${g}</svg>`;
+}
+
+/* The Instrument overlay (OverlayPreviews.InstrumentAfter): laid out 330 wide like the golden, scaled to w. */
+function instrument(w) {
+  const k = w / 330, H = 168, lab = `font:500 7.5px/1 ${MONO};letter-spacing:.06em;color:${C.dim}`;
+  const leg = (c, n, dash) => `<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:10px;border-top:1.6px ${dash ? "dashed" : "solid"} ${c}"></span>${n}</span>`;
+  const tile = (name, v, unit, c, target) => `<div style="flex:1;border:1px solid ${C.hair};padding:4px 5px;display:grid;gap:3px;min-width:0">
+      <span style="${lab}">${name}</span><span style="font:500 17px/1 ${MONO};color:${c};white-space:nowrap">${v}<small style="font-size:8px;color:${C.dim}"> ${unit}</small></span>
+      <span style="${lab};font-size:6.5px;visibility:${target ? "visible" : "hidden"}">${target || "-"}</span></div>`;
+  const body = `<div style="position:relative;width:330px;height:${H}px;background:rgba(11,11,11,.88);padding:6px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:5px;border-bottom:1px solid ${C.div};${lab}">
+      <span style="font-size:8.5px">ZER0 · GAGGIUINO</span>
+      <span style="display:flex;gap:8px">${leg(C.p, "PRESSURE")}${leg(C.f, "FLOW")}${leg(C.w, "WEIGHT")}${leg(C.dim, "TARGET", 1)}</span></div>
+    <div style="position:relative;height:78px;margin-top:4px">${plot(318, 78, 0.93)}</div>
+    <div style="display:flex;gap:4px;margin-top:5px">${tile("TIME", "28.0", "s", C.bone)}${tile("G", "36.4", "", C.w, "TARGET 36.0G")}${tile("BAR", "9.0", "", C.p)}${tile("ML/S", "2.1", "", C.f, "TARGET 2.0ML/S")}</div></div>`;
+  return `<div style="position:relative;width:${w}px;height:${H * k}px"><div style="position:absolute;transform:scale(${k});transform-origin:0 0">${body}</div></div>`;
+}
+
+const lockup = s => `<div style="display:flex;align-items:center;gap:${s * 0.16}px"><svg width="${s}" height="${s}" viewBox="0 0 256 256"><path fill="${C.signal}" d="${SYMBOL}"/></svg><span style="font:600 ${s * 0.36}px/1 ${MONO};letter-spacing:.02em;color:${C.bone}">ONLYSHOTS</span></div>`;
+const head = size => `<div style="font:600 ${size}px/1.04 ${MONO};color:${C.bone};white-space:nowrap">FILM THE SHOT.<br>KEEP THE DATA.</div>`;
+const url = (size, color = C.signal) => `<div style="font:500 ${size}px/1 ${MONO};letter-spacing:.06em;color:${color}">ONLYSHOTS.PAREZ.DEV</div>`;
+
+function banner(W, H) {
+  if (H < W * 0.75) {
+    // Wide: the words and the graph on ink at the left, the pour at the right, faded into the ink.
+    const ty = (H - 540) / 2;
+    return `<div style="position:absolute;left:${W - 700}px;top:0;width:700px;height:${H}px;background:url(${PHOTO}) 50% 45%/cover"></div>
+      <div style="position:absolute;inset:0;background:linear-gradient(90deg,#0B0B0B 0%,#0B0B0B 41%,rgba(11,11,11,.55) 50%,rgba(11,11,11,0) 64%)"></div>`
+      + at(64, ty, lockup(56)) + at(64, ty + 98, head(50)) + at(64, ty + 238, instrument(480)) + at(64, ty + 522, url(17));
+  }
+  // Square: the pour full bleed, the words over its dark top, the graph along the bottom as an export places it.
+  return `<div style="position:absolute;inset:0;background:url(${PHOTO}) 50% 100%/cover"></div>
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,11,11,.9) 0%,rgba(11,11,11,.3) 32%,rgba(11,11,11,0) 50%)"></div>`
+    + at(80, 80, lockup(72)) + at(80, 214, head(70)) + at(80, H - 80 - 168 * (900 / 330), instrument(900))
+    + at(W - 80, 104, url(22, C.bone), "transform:translateX(-100%)");
+}
+
+const [W, H] = (location.hash.slice(1) || "1200x630").split("x").map(Number);
+const f = document.getElementById("f");
+f.style.width = W + "px";
+f.style.height = H + "px";
+f.innerHTML = banner(W, H);
+</script>

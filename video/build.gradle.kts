@@ -118,12 +118,41 @@ val copySpikeClip by
         into(layout.projectDirectory.dir("src/androidDeviceTest/assets"))
     }
 
+/**
+ * The exporters read their overlay labels from :core:resources (overlayLabels()), but nothing packages those Compose
+ * resources into this module's test binaries: AGP 9's KMP library plugin leaves them out of the device-test APK, and
+ * without the Compose Gradle plugin nothing copies them beside the iOS test executable. Every export test failed with
+ * MissingResourceException. Copy them where the runtime reader looks (as app/androidApp does for the app).
+ */
+val coreComposeResources =
+    project(":core:resources")
+        .layout
+        .buildDirectory
+        .dir("generated/compose/resourceGenerator/preparedResources/commonMain/composeResources")
+val coreResourcePath = "composeResources/app.onlyshots.core.resources"
+
+val copyCoreComposeResources by
+    tasks.registering(Sync::class) {
+        from(coreComposeResources)
+        into(layout.projectDirectory.dir("src/androidDeviceTest/assets/$coreResourcePath"))
+        dependsOn(":core:resources:prepareComposeResourcesTaskForCommonMain")
+    }
+
+// iOS reads them from compose-resources/ beside the test executable.
+val copyCoreComposeResourcesForIosTest by
+    tasks.registering(Sync::class) {
+        from(coreComposeResources)
+        into(layout.buildDirectory.dir("bin/iosSimulatorArm64/debugTest/compose-resources/$coreResourcePath"))
+        dependsOn(":core:resources:prepareComposeResourcesTaskForCommonMain")
+    }
+
 tasks
     .matching { it.name == "mergeAndroidDeviceTestAssets" || it.name == "generateAndroidDeviceTestAssets" }
-    .configureEach { dependsOn(copySpikeClip) }
+    .configureEach { dependsOn(copySpikeClip, copyCoreComposeResources) }
 
 // The iOS export test reads the spike clip from the repository (simctl passes SIMCTL_CHILD_*).
 tasks.withType<KotlinNativeSimulatorTest>().configureEach {
+    dependsOn(copyCoreComposeResourcesForIosTest)
     environment(
         "SIMCTL_CHILD_ONLYSHOTS_SPIKE_CLIP",
         layout.projectDirectory.file("testdata/spike_alignment.mp4").asFile.absolutePath,

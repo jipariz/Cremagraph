@@ -14,6 +14,7 @@ app/iosApp/Pods/
 
 # Copied from the app's resources by the device-test setup; not a second source of truth.
 video/src/androidDeviceTest/assets/spike_alignment.mp4
+video/src/androidDeviceTest/assets/composeResources/
 
 # Linked by tools/deploy-web.sh; it holds this machine's project ids, not the project.
 .vercel/

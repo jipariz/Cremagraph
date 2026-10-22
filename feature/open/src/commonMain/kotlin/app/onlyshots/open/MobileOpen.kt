@@ -189,7 +189,7 @@ private fun Banner(store: Store, onOpen: () -> Unit, onDismiss: () -> Unit) {
             .fillMaxWidth()
             .background(CgColors.Surface.Bar)
             .border(CgStroke.Hairline, CgColors.Line.Hairline)
-            .drawBehind { drawRect(CgColors.Brand.Signal, size = Size(size.width, CgStroke.Rule.toPx())) }
+            .drawBehind { drawRect(CgColors.Line.Hairline, size = Size(size.width, CgStroke.Rule.toPx())) }
             .padding(start = 14.dp, end = 6.dp, top = 14.dp, bottom = 14.dp),
         verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
     ) {

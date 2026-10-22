@@ -88,7 +88,7 @@ import app.onlyshots.core.designsystem.component.SettingRow
 import app.onlyshots.core.designsystem.component.SheetHeader
 import app.onlyshots.core.designsystem.component.SkeletonRow
 import app.onlyshots.core.designsystem.component.rememberListSettled
-import app.onlyshots.core.designsystem.component.signalRule
+import app.onlyshots.core.designsystem.component.topRule
 import app.onlyshots.core.model.AppVersion
 import app.onlyshots.core.model.RecordingSettings
 import app.onlyshots.core.model.SourceKind
@@ -357,7 +357,7 @@ private fun Machines(state: HomeUiState, onMachine: (FoundMachine) -> Unit, onAd
     SectionHeader(
         stringResource(Res.string.home_machines_title),
         trailing = foundNote(state.machines.size).text(),
-        trailingColor = if (state.machines.isEmpty()) CgColors.Brand.Signal else CgColors.Text.Primary,
+        trailingColor = if (state.machines.isEmpty()) CgColors.Text.Secondary else CgColors.Text.Primary,
         searching = state.machines.isEmpty(),
     )
     // Machines turn up one by one as the search finds them: each slides open rather than pushing the list down. They
@@ -409,7 +409,7 @@ private fun Scales(state: HomeUiState, onScale: (FoundBleDevice) -> Unit, onAllo
         trailingColor =
             when {
                 state.bluetoothOff -> CgColors.Status.Warning
-                state.scales.isEmpty() -> CgColors.Brand.Signal
+                state.scales.isEmpty() -> CgColors.Text.Secondary
                 else -> CgColors.Text.Primary
             },
         searching = state.scales.isEmpty() && !state.bluetoothOff && !state.bluetoothDenied,
@@ -486,7 +486,7 @@ private fun AddressSheet(address: String, onAddress: (String) -> Unit, onConnect
 /** The address sheet as a book foldable's right page: the same header and form under a signal rule. */
 @Composable
 private fun AddressPage(address: String, onAddress: (String) -> Unit, onConnect: () -> Unit, onDismiss: () -> Unit) {
-    Column(Modifier.fillMaxSize().signalRule().padding(top = CgStroke.Rule)) {
+    Column(Modifier.fillMaxSize().topRule().padding(top = CgStroke.Rule)) {
         SheetHeader(stringResource(Res.string.home_add_by_address), onDone = onDismiss)
         Box(Modifier.padding(CgSpace.S16)) { AddressForm(address, onAddress, onConnect) }
     }

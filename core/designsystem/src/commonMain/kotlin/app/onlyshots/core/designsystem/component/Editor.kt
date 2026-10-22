@@ -303,7 +303,7 @@ fun ExportOverlay(
                 .padding(CgSpace.S24)
                 .background(CgColors.Surface.Bar)
                 .border(CgStroke.Hairline, CgColors.Line.Hairline)
-                .signalRule()
+                .topRule()
                 .padding(CgSpace.S24),
             verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
         ) {
@@ -498,10 +498,10 @@ private fun ExportScreen(
     }
 }
 
-/** The 2 dp signal rule across the top of a sheet or a card that stands over the screen. */
-fun Modifier.signalRule(): Modifier = drawWithContent {
+/** The 2 dp rule across the top of a sheet or a card that stands over the screen: an edge, not a signal. */
+fun Modifier.topRule(): Modifier = drawWithContent {
     drawContent()
-    drawRect(CgColors.Brand.Signal, Offset.Zero, Size(size.width, CgStroke.Rule.toPx()))
+    drawRect(CgColors.Line.Hairline, Offset.Zero, Size(size.width, CgStroke.Rule.toPx()))
 }
 
 /**
@@ -698,7 +698,7 @@ fun CardBar(modifier: Modifier = Modifier, content: @Composable RowScope.() -> U
         modifier
             .height(IntrinsicSize.Min)
             .background(CgColors.Line.Hairline)
-            .border(CgStroke.Hairline, CgColors.Brand.Signal)
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .padding(CgStroke.Hairline),
         horizontalArrangement = Arrangement.spacedBy(CgStroke.Hairline),
         verticalAlignment = Alignment.CenterVertically,
@@ -807,7 +807,7 @@ fun EditorSheet(
             // Rows that come and go inside (a switch that shows its settings) grow the sheet rather than jump it.
             .animateContentSize(CgMotion.sizeSpec)
             .background(CgColors.Surface.Bar)
-            .signalRule()
+            .topRule()
             // Touches on the sheet stay on the sheet: without this they fall through to the timeline under it.
             .pointerInput(Unit) { awaitEachGesture { awaitFirstDown().consume() } }
             // After it, so it sees the touch first: the top and the gaps between controls drag the sheet.

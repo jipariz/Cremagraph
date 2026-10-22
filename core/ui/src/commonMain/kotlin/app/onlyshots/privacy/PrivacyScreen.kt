@@ -154,7 +154,7 @@ private fun LeadAndUses() {
     val lead = stringResource(Res.string.privacy_lead)
     val leadDetail = stringResource(Res.string.privacy_lead_detail)
     Column(
-        Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Brand.Signal).padding(CgSpace.S12),
+        Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline).padding(CgSpace.S12),
         verticalArrangement = Arrangement.spacedBy(CgSpace.S6),
     ) {
         Text(lead, style = CgTheme.type.label.copy(letterSpacing = 0.em))

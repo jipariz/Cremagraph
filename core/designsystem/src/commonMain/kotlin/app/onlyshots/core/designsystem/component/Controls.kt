@@ -88,8 +88,8 @@ fun CgToggle(
     // Placed as an alignment's bias would (BiasAlignment's own sum), so the settled knob sits on exactly the pixels
     // Start and End put it on; read while placing, so a slide only moves it rather than recomposing the switch.
     val knobAt by animateFloatAsState(if (checked) 1f else -1f, CgMotion.settle(), label = "knob")
-    val track by animateColorAsState(if (checked) CgColors.Brand.Signal else Color.Transparent, CgMotion.short())
-    val edge by animateColorAsState(if (checked) CgColors.Brand.Signal else CgColors.Line.Hairline, CgMotion.short())
+    val track by animateColorAsState(if (checked) CgColors.Brand.Bone else Color.Transparent, CgMotion.short())
+    val edge by animateColorAsState(if (checked) CgColors.Brand.Bone else CgColors.Line.Hairline, CgMotion.short())
     val knob by animateColorAsState(if (checked) CgColors.Text.OnLight else CgColors.Line.Hairline, CgMotion.short())
     val alpha by animateFloatAsState(if (enabled) 1f else 0.4f, CgMotion.short())
     Box(
@@ -344,7 +344,7 @@ fun CgSlider(
         val thumbH = 16.dp.toPx()
         val x = half + (size.width - 2 * half) * shown.value
         drawRect(CgColors.Line.Hairline, Offset(half, y - track / 2), Size(size.width - 2 * half, track))
-        drawRect(CgColors.Brand.Signal, Offset(half, y - track / 2), Size(x - half, track))
+        drawRect(CgColors.Text.Secondary, Offset(half, y - track / 2), Size(x - half, track))
         drawRect(CgColors.Brand.Bone, Offset(x - half, y - thumbH / 2), Size(2 * half, thumbH))
     }
 }

@@ -46,7 +46,7 @@ fun ShotRow(
             .background(if (selected) CgColors.Surface.Raised else CgColors.Surface.Base)
             .then(
                 when {
-                    selected -> Modifier.border(CgStroke.Hairline, CgColors.Brand.Signal)
+                    selected -> Modifier.border(CgStroke.Hairline, CgColors.Brand.Bone)
                     framed -> Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline)
                     else -> Modifier
                 }

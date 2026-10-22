@@ -428,13 +428,14 @@ private fun DeskEmptyStep(
     onClick: () -> Unit,
     tag: String,
 ) {
-    val accent = if (next || highlighted) CgColors.Brand.Signal else CgColors.Text.Secondary
+    val accent =
+        if (highlighted) CgColors.Brand.Signal else if (next) CgColors.Text.Primary else CgColors.Text.Secondary
     Column(
         Modifier.fillMaxSize()
             .background(if (highlighted) CgColors.Surface.Raised else Color.Transparent)
             .then(
                 if (highlighted) Modifier.border(CgStroke.Rule, CgColors.Brand.Signal)
-                else Modifier.drawBehind { dashedBorder(if (next) CgColors.Brand.Signal else CgColors.Line.Hairline) }
+                else Modifier.drawBehind { dashedBorder(CgColors.Line.Hairline) }
             )
             .padding(CgSpace.S16),
         // The words at the top, the key in the bottom corner: side by side, both cells' keys line up.

@@ -38,7 +38,7 @@ fun CgSheet(title: String, onDismiss: () -> Unit, modifier: Modifier = Modifier,
     ) {
         Column(
             Modifier.fillMaxWidth()
-                .drawBehind { drawRect(CgColors.Brand.Signal, Offset.Zero, Size(size.width, CgStroke.Rule.toPx())) }
+                .drawBehind { drawRect(CgColors.Line.Hairline, Offset.Zero, Size(size.width, CgStroke.Rule.toPx())) }
                 .padding(top = CgStroke.Rule, bottom = 18.dp),
             verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
         ) {

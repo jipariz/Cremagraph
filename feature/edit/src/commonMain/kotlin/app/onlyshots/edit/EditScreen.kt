@@ -116,7 +116,7 @@ import app.onlyshots.core.designsystem.component.SegmentedControl
 import app.onlyshots.core.designsystem.component.StatusChip
 import app.onlyshots.core.designsystem.component.TopChip
 import app.onlyshots.core.designsystem.component.TwoPane
-import app.onlyshots.core.designsystem.component.signalRule
+import app.onlyshots.core.designsystem.component.topRule
 import app.onlyshots.core.model.Shot
 import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.VideoFormat
@@ -1497,7 +1497,7 @@ private fun EditPanel(
     footer: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().signalRule()) {
+    Column(Modifier.fillMaxSize().topRule()) {
         Row(
             Modifier.fillMaxWidth()
                 .bottomRule()

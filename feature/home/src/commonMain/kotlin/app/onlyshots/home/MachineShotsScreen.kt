@@ -249,7 +249,7 @@ private fun MachineList(
     SectionHeader(
         stringResource(Res.string.home_machines_title),
         trailing = foundNote(state.machines.size).text(),
-        trailingColor = if (state.machines.isEmpty()) CgColors.Brand.Signal else CgColors.Text.Primary,
+        trailingColor = if (state.machines.isEmpty()) CgColors.Text.Secondary else CgColors.Text.Primary,
         searching = state.machines.isEmpty(),
     )
     val settled = rememberListSettled()
@@ -296,7 +296,7 @@ private fun MachineShots(
     SectionHeader(
         stringResource(Res.string.home_shots_recent, shown.machine.name),
         trailing = state.busy?.text() ?: if (shots == null) stringResource(Res.string.home_shots_loading) else null,
-        trailingColor = CgColors.Brand.Signal,
+        trailingColor = CgColors.Text.Secondary,
         searching = shots == null || state.busy != null,
         modifier = headerModifier,
     )
@@ -365,7 +365,7 @@ private fun RowScope.Step(text: String, lit: Boolean, bar: Color? = null) {
     Row(
         Modifier.weight(1f)
             .fillMaxHeight()
-            .background(if (lit) CgColors.Brand.Signal else Color.Transparent)
+            .background(if (lit) CgColors.Brand.Bone else Color.Transparent)
             .padding(horizontal = CgSpace.S12, vertical = CgSpace.S8),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
         verticalAlignment = Alignment.CenterVertically,

@@ -79,7 +79,7 @@ import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
 import app.onlyshots.core.designsystem.component.SheetHeader
 import app.onlyshots.core.designsystem.component.TwoPane
-import app.onlyshots.core.designsystem.component.signalRule
+import app.onlyshots.core.designsystem.component.topRule
 import app.onlyshots.core.model.Shot
 import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.VideoItem
@@ -594,7 +594,7 @@ private fun FoldPageSheet(
             Column(
                 Modifier.fillMaxSize()
                     .background(CgColors.Surface.Bar)
-                    .signalRule()
+                    .topRule()
                     .windowInsetsPadding(
                         WindowInsets.safeDrawing.only(
                             WindowInsetsSides.Top + WindowInsetsSides.End + WindowInsetsSides.Bottom
@@ -740,13 +740,13 @@ internal fun StepRow(
     val edge =
         when {
             done -> CgColors.Brand.Bone
-            next || highlighted -> CgColors.Brand.Signal
+            highlighted -> CgColors.Brand.Signal
             else -> CgColors.Line.Hairline
         }
     val digit =
         when {
             done -> CgColors.Text.OnLight
-            next -> CgColors.Brand.Signal
+            next -> CgColors.Text.Primary
             else -> CgColors.Text.Secondary
         }
     Row(

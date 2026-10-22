@@ -368,7 +368,7 @@ private fun DrawScope.overview(item: VideoItem, v: TimelineView, pad: Float) {
     if (start != null && shot != null) {
         val a = x(start.coerceIn(0, item.durationUs))
         val b = x((start + shot.durationUs).coerceIn(0, item.durationUs))
-        if (b > a) drawRect(CgColors.Brand.Signal, Offset(a, y), Size(b - a, h))
+        if (b > a) drawRect(CgColors.Text.Secondary, Offset(a, y), Size(b - a, h))
     }
     if (v.zoomed) {
         val a = x(v.us(pad))

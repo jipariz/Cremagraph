@@ -226,7 +226,7 @@ fun MachineRow(
         animateColorAsState(
             when {
                 selected && offline -> CgColors.Text.Primary
-                selected -> CgColors.Brand.Signal
+                selected -> CgColors.Brand.Bone
                 framed -> CgColors.Line.Hairline
                 else -> Color.Transparent
             },
@@ -407,7 +407,7 @@ fun AddRow(title: String, onClick: () -> Unit, modifier: Modifier = Modifier, su
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CgIcon(CgIcons.Plus, tint = CgColors.Brand.Signal, size = 24.dp)
+        CgIcon(CgIcons.Plus, tint = CgColors.Text.Primary, size = 24.dp)
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title.caps(), style = CgTheme.type.label)
             if (subtitle != null) Text(subtitle, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)

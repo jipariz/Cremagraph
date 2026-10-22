@@ -70,7 +70,11 @@ object CgColors {
     }
 
     object Brand {
-        /** The signal: the mark's tile, the one primary action on a screen, the selection. Ink on it (6.6 : 1). */
+        /**
+         * The signal, kept for what matters: the mark's tile, the one primary action on a screen, the selected graph,
+         * the playhead and shot start, armed. Everything else chosen or on (switches, segments, tiles, sliders) is
+         * [Bone]; edges and rules are hairlines. Ink on it (6.6 : 1).
+         */
         val Signal = Color(0xFFFF5A1F)
         /** The mark's ink and the light fill of a selected segment. */
         val Bone = Color(0xFFE8E6E1)
@@ -87,7 +91,7 @@ object CgSpace {
     val S24 = 24.dp
 }
 
-/** Line weights: every edge is a hairline; the signal rule tops sheets and dialogs. */
+/** Line weights: every edge is a hairline; a 2 dp rule tops sheets and dialogs. */
 object CgStroke {
     val Hairline = 1.dp
     val Rule = 2.dp

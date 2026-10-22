@@ -67,7 +67,7 @@ fun FormatPicker(
         options.forEachIndexed { i, option ->
             val on = i == selected
             val ink by animateColorAsState(if (on) CgColors.Text.OnLight else CgColors.Text.Primary, CgMotion.short())
-            val ground by animateColorAsState(if (on) CgColors.Brand.Signal else Color.Transparent, CgMotion.short())
+            val ground by animateColorAsState(if (on) CgColors.Brand.Bone else Color.Transparent, CgMotion.short())
             val edge by
                 animateColorAsState(if (on) CgColors.Text.OnLight else CgColors.Text.Secondary, CgMotion.short())
             if (i > 0) {

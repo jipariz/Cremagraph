@@ -253,7 +253,7 @@ internal fun TakeStatus(state: RecordUiState, modifier: Modifier = Modifier) {
                 modifier
                     .semantics { liveRegion = LiveRegionMode.Polite }
                     .background(CgColors.Surface.Base.copy(alpha = 0.85f))
-                    .border(CgStroke.Hairline, CgColors.Brand.Signal)
+                    .border(CgStroke.Hairline, CgColors.Line.Hairline)
                     .padding(horizontal = 10.dp, vertical = CgSpace.S6),
         )
     } else {

@@ -247,7 +247,7 @@ private fun StyleTile(
 ) {
     var open by remember { mutableStateOf(false) }
     val description = stringResource(Res.string.style_tile_description, style.name)
-    val edge by animateColorAsState(if (picked) CgColors.Brand.Signal else CgColors.Line.Hairline, CgMotion.short())
+    val edge by animateColorAsState(if (picked) CgColors.Brand.Bone else CgColors.Line.Hairline, CgMotion.short())
     val edgeWidth by animateDpAsState(if (picked) CgStroke.Rule else CgStroke.Hairline, CgMotion.short())
     Column(
         modifier
@@ -277,7 +277,7 @@ private fun StyleTile(
                         .then(
                             if (builtIn)
                                 Modifier.drawBehind {
-                                    drawRect(CgColors.Brand.Signal, size = Size(size.width, CgStroke.Rule.toPx()))
+                                    drawRect(CgColors.Line.Hairline, size = Size(size.width, CgStroke.Rule.toPx()))
                                 }
                             else Modifier
                         ),
@@ -314,7 +314,7 @@ private fun NewStyleTile(onClick: () -> Unit, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(CgSpace.S4, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        CgIcon(CgIcons.Plus, tint = CgColors.Brand.Signal, size = 24.dp)
+        CgIcon(CgIcons.Plus, tint = CgColors.Text.Primary, size = 24.dp)
         Text(label.caps(), style = CgTheme.type.labelStrong.copy(letterSpacing = 0.em))
     }
 }

@@ -714,7 +714,7 @@ private fun Tabs(
             val line = CgStroke.Hairline.toPx()
             drawRect(CgColors.Line.Hairline, Offset(0f, size.height - line), Size(size.width, line))
             val h = CgStroke.Rule.toPx()
-            drawRect(CgColors.Brand.Signal, Offset(w * at.value, size.height - h), Size(w, h))
+            drawRect(CgColors.Brand.Bone, Offset(w * at.value, size.height - h), Size(w, h))
         }
     ) {
         for (t in StyleTab.entries) {
@@ -890,7 +890,7 @@ private fun SwatchGrid(swatches: List<Swatch>, current: Int, onPick: (Swatch) ->
                             )
                             .border(
                                 if (on) CgStroke.Rule else CgStroke.Hairline,
-                                if (on) CgColors.Brand.Signal else CgColors.Line.Hairline,
+                                if (on) CgColors.Brand.Bone else CgColors.Line.Hairline,
                             )
                             .semantics {
                                 contentDescription = name

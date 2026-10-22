@@ -49,7 +49,7 @@ import app.onlyshots.core.designsystem.component.ChoiceCard
 import app.onlyshots.core.designsystem.component.IconCircleButton
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
 import app.onlyshots.core.designsystem.component.SheetHeader
-import app.onlyshots.core.designsystem.component.signalRule
+import app.onlyshots.core.designsystem.component.topRule
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.app_name
 import app.onlyshots.core.resources.home_about
@@ -94,7 +94,7 @@ fun StartScreen(onRecord: () -> Unit, onEdit: () -> Unit, onPrivacy: (() -> Unit
         helpPage =
             if (help && fold) {
                 {
-                    Column(Modifier.fillMaxSize().signalRule().padding(top = CgStroke.Rule)) {
+                    Column(Modifier.fillMaxSize().topRule().padding(top = CgStroke.Rule)) {
                         SheetHeader(title, onDone = { help = false })
                         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(CgSpace.S16)) {
                             content()

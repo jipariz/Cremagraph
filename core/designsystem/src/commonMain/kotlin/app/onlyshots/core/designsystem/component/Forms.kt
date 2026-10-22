@@ -144,7 +144,7 @@ fun CgDialogCard(
             .background(CgColors.Surface.Bar)
             .border(CgStroke.Hairline, CgColors.Line.Hairline)
             .drawBehind {
-                val rule = if (risk == DialogRisk.Confirm) CgColors.Status.Record else CgColors.Brand.Signal
+                val rule = if (risk == DialogRisk.Confirm) CgColors.Status.Record else CgColors.Line.Hairline
                 drawRect(rule, Offset.Zero, Size(size.width, CgStroke.Rule.toPx()))
             }
     ) {

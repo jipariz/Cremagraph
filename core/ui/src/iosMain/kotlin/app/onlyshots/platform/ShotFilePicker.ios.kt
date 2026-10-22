@@ -25,7 +25,7 @@ internal actual fun rememberPlatformShotFilePicker(onPicked: (Path) -> Unit): ()
     delegate.onPicked = onPicked
     return {
         // JSON first so the picker highlights those; UTTypeData lets a .shot with no declared
-        // type through, which is how SproFiler's download arrives.
+        // type through, which is how a browser download often arrives.
         val picker =
             UIDocumentPickerViewController(forOpeningContentTypes = listOf(UTTypeJSON, UTTypeData), asCopy = true)
                 .apply { setDelegate(delegate) }

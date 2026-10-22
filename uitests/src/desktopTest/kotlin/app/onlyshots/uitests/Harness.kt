@@ -4,6 +4,8 @@ import app.onlyshots.camera.CameraController
 import app.onlyshots.camera.CameraState
 import app.onlyshots.camera.Recording
 import app.onlyshots.core.designsystem.loadOverlayFonts
+import app.onlyshots.core.model.Shot
+import app.onlyshots.core.model.ShotFiles
 import app.onlyshots.core.model.ShotHistory
 import app.onlyshots.di.appModule
 import app.onlyshots.editor.CACHE_DIR
@@ -21,6 +23,10 @@ import app.onlyshots.video.FfmpegVideoProbe
 import app.onlyshots.video.FrameSampler
 import app.onlyshots.video.VideoExporter
 import app.onlyshots.video.VideoProbe
+import app.onlyshots.visualizer.Visualizer
+import app.onlyshots.visualizer.VisualizerError
+import app.onlyshots.visualizer.VisualizerException
+import app.onlyshots.visualizer.VisualizerRef
 import java.io.File
 import java.nio.file.Files
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,7 +54,7 @@ class Harness(private val phone: Boolean) {
     val gallery = RecordingGallery()
     val share = RecordingShare()
 
-    /** A Gaggiuino shot file, as SproFiler saves one, for "pick the shot". */
+    /** A Gaggiuino shot file, as the machine's API hands one out, for "pick the shot". */
     val shotFile: Path = (root / "londinium.shot").also { FileSystem.SYSTEM.write(it) { writeUtf8(SHOT_FILE) } }
 
     /** Answers the app's pickers: the test clip for a video, [shotFile] for a shot. */
@@ -80,6 +86,7 @@ class Harness(private val phone: Boolean) {
             single<BackgroundWork> { ImmediateBackgroundWork }
             single<VideoGallery> { gallery }
             if (!phone) single<ShotHistory> { ShotHistory.None }
+            single<Visualizer> { SharedOnVisualizer }
         }
         startKoin { modules(listOfNotNull(editorModule, if (phone) appModule else null, platform)) }
     }
@@ -87,6 +94,22 @@ class Harness(private val phone: Boolean) {
     fun stop() {
         stopKoin()
         root.toFile().deleteRecursively()
+    }
+}
+
+/** The code [SharedOnVisualizer] knows; any other has expired. */
+const val SHARED_CODE = "ABCD"
+
+/** visualizer.coffee, offline: one shot, shared under [SHARED_CODE]. */
+object SharedOnVisualizer : Visualizer {
+    override suspend fun fetch(ref: VisualizerRef): Shot {
+        if (ref != VisualizerRef.Code(SHARED_CODE)) throw VisualizerException(VisualizerError.NOT_FOUND)
+        return ShotFiles.parse(
+            """{ "id": "832f7109-46d5-47f5-86bc-5349de2957d8", "profile_title": "Zer0", "duration": 6,
+                  "timeframe": [0, 2, 4, 6],
+                  "data": { "espresso_pressure": [0.5, 6, 9, 9], "espresso_weight": [0, 2, 12, 24] } }""",
+            fallbackId = "visualizer",
+        )
     }
 }
 

@@ -73,6 +73,12 @@ interface EditActions {
     /** The quality exports [to] that destination make from now on, remembered for the next videos. */
     fun pickQuality(to: ExportManager.Destination, quality: Quality)
 
+    /** The shot sheet turns to the Visualizer's code-or-link form. */
+    fun openVisualizer() = Unit
+
+    /** Fetches the shot shared on visualizer.coffee by [input], a code or a link, and attaches it. */
+    fun fetchFromVisualizer(input: String) = Unit
+
     /** Does nothing: for previews. */
     object None : EditActions {
         override fun openSheet(sheet: EditSheet) = Unit

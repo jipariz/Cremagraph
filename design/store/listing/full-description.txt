@@ -16,7 +16,7 @@ EDIT AFTER
 • Pick any video you filmed and a shot file, and line them up: by the video's clock, by the pump's sound, or by hand.
 • Trim, frame it in 9:16, 4:5, 1:1 or 16:9, and move the crop.
 • Undo and redo every change.
-• Import shots from your Gaggiuino's history, or from .shot files (SproFiler, visualizer.coffee).
+• Import shots from your Gaggiuino's history, from .shot files, or from Visualizer (visualizer.coffee) by share code or link: any machine's shot, or a Beanconqueror brew.
 
 EXPORT
 • Save to your gallery in up to 4K, or share at 1080p to Instagram, WhatsApp, Messages and anywhere else.

@@ -4,7 +4,7 @@ Guide for Claude Code in this repo.
 
 OnlyShots films espresso shot with graph on top (pressure, flow, weight…). Live or synced after. Exports MP4.
 Compose Multiplatform: Android, iOS. Same Compose editor on desktop (JVM, FFmpeg) and web (wasm + JS). README.md =
-long reference. Figma = behaviour reference; spec cards' acceptance criteria = test cases.
+product page + machines; docs/DEVELOPMENT.md = long reference. Figma = behaviour reference; spec cards' acceptance criteria = test cases.
 
 ## Secrets
 
@@ -68,7 +68,7 @@ Format: ktfmt `kotlinLangStyle`, 4 spaces, width 120. Run `ktfmtFormat` before c
   then record the sample shot and export it) and writes `app/androidApp/src/release/generated/baselineProfiles/`, checked
   in; release builds never regenerate it. Journeys find buttons by their words: reword one, regenerate. ProfileInstaller
   installs it outside the store.
-- **R8** breaks reflection quietly. Touch keep rules or serialization? Walk README's six release paths by hand.
+- **R8** breaks reflection quietly. Touch keep rules or serialization? Walk the six release paths in docs/DEVELOPMENT.md by hand.
 
 ## CI
 

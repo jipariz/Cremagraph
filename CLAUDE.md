@@ -29,7 +29,7 @@ variants. Only CI secret: `VERCEL_TOKEN` (org secret, web deploy on `main`).
 ./gradlew :app:uitests:connectedAndroidTest            # Android smoke, UI Automator, device/emulator
 (cd tools/web-smoke && node smoke.mjs)                 # web smoke, Playwright, after the web build
 ./gradlew :app:androidApp:assembleDebug                # Android debug APK
-./gradlew :app:androidApp:assembleRelease              # R8 on, unsigned
+./gradlew :app:androidApp:assembleRelease              # R8 on; signed only with ONLYSHOTS_KEY* env
 ./gradlew :app:androidApp:generateBaselineProfile     # baseline profile, phone API 33+ (ANDROID_SERIAL=…)
 ./gradlew :app:baselineprofile:connectedBenchmarkReleaseAndroidTest  # cold start with vs without it
 ./gradlew :app:desktopApp:run                          # desktop editor
@@ -84,7 +84,7 @@ Format: ktfmt `kotlinLangStyle`, 4 spaces, width 120. Run `ktfmtFormat` before c
   the Mac. Keep that guard.
 - **`ci.yml`** (push to `main`): full build, all platforms, export tests, UI smoke tests (Android emulator, iOS
   XCUITest, web Playwright), web deploy.
-- **`release.yml`** (tag `v*`): desktop installers, GitHub Release.
+- **`release.yml`** (tag `v*`): signed Android bundle to Play internal, desktop installers, GitHub Release.
 
 ## Version and release
 
@@ -94,8 +94,9 @@ Format: ktfmt `kotlinLangStyle`, 4 spaces, width 120. Run `ktfmtFormat` before c
 - **Build number:** `major × 10000 + minor × 100 + patch`. Same version twice to store? Bump first.
 - **Change only with `bumpVersion`:** it rewrites iOS files too. `checkAppVersion` (CI) fails on drift. Previews
   pass fixed version, so bumps never move golden. macOS no take 0.x: stay ≥ 1.0.0.
-- **Release = tag `v<version>`:** `.github/workflows/release.yml` checks tag, builds desktop DMG/MSI/DEB (unsigned),
-  publishes GitHub Release. Web deploys from `main` (`ci.yml`). Phone store uploads manual.
+- **Release = tag `v<version>`:** `.github/workflows/release.yml` checks tag, uploads signed AAB to Play internal
+  track (upload key from env `ONLYSHOTS_KEY*`, secrets in docs/DEVELOPMENT.md), builds desktop DMG/MSI/DEB
+  (unsigned), publishes GitHub Release. Web deploys from `main` (`ci.yml`). iOS upload manual.
 
 ## Architecture
 

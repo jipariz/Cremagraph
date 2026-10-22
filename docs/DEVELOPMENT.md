@@ -129,8 +129,8 @@ tools/ios-screenshots/run.sh                     # iPhone Duo goldens per pose (
   `screenshots/src/androidHostTest/snapshots/images/`. Fail = HTML diff report in
   `screenshots/build/reports/tests/mugshotTestAndroidMain/`.
 - **iPhone Duo screenshots:** XCUITest `DuoScreenshotTests` takes the whole screen (system side column, status,
-  island) on the iPhone Duo simulator, closed / open / half-open (the inner display the way the simulator is turned;
-  turn it by hand and run again for the other), and compares it with the PNG goldens in
+  island) on its own iPhone Duo simulator ("OnlyShots Duo screenshots", never turned by hand), closed / open /
+  half-open, and compares it with the PNG goldens in
   `app/iosApp/screenshots/duo` (half size; fails above 0.2 % differing pixels). `tools/ios-screenshots/run.sh` pins
   the status bar to 9:41, folds the simulator with mobilecli (pinned in the script) and runs it once per pose; a
   failure leaves the new picture and a `-diff.png` in `app/iosApp/build/duo-screenshots`.

@@ -15,6 +15,8 @@ import XCTest
 final class DuoScreenshotTests: XCTestCase {
     private let app = XCUIApplication()
     private let env = ProcessInfo.processInfo.environment
+    /** How the inner display's picture is turned upright; found on the first screen, the same for the whole run. */
+    private var turn: ((CGImage) -> CGImage)?
 
     override func setUpWithError() throws {
         try XCTSkipIf(env["DUO_POSE"] == nil, "run by tools/ios-screenshots/run.sh, which folds the simulator per pose")
@@ -69,9 +71,11 @@ final class DuoScreenshotTests: XCTestCase {
         let window = app.windows.firstMatch.frame
         let wide = window.width > window.height
         let name = "\(env["DUO_POSE"] ?? "")-\(wide ? "landscape" : "portrait")-\(screenName)"
-        var shot = halfSize(screen().screenshot().image)
-        // The inner display's picture comes as its panel lies; turn it the way the app is drawn.
-        if wide != (shot.width > shot.height) { shot = turnedCounterclockwise(shot) }
+        var full = screen().screenshot().image.cgImage!
+        // The inner display's picture comes as its panel lies; turn it the way the app is drawn, before halving it, so
+        // either way the simulator is turned gives the same pixels (the panel is an odd number of pixels across).
+        if wide != (full.width > full.height) { full = upright(full, window: window) }
+        let shot = halfSize(full)
         let attachment = XCTAttachment(image: UIImage(cgImage: shot))
         attachment.name = name
         attachment.lifetime = .keepAlways
@@ -118,13 +122,53 @@ final class DuoScreenshotTests: XCTestCase {
         _ = XCTWaiter.wait(for: [XCTestExpectation(description: "settle")], timeout: 1.5)
     }
 
-    private func halfSize(_ image: UIImage) -> CGImage {
-        let source = image.cgImage!
+    private func halfSize(_ source: CGImage) -> CGImage {
         let width = source.width / 2
         let height = source.height / 2
         let context = rgbaContext(width, height)
         context.interpolationQuality = .high
         context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage()!
+    }
+
+    /**
+     * Turns a sideways picture upright. Which way depends on which way the simulator is turned, so the first time it
+     * tries both and keeps the one that puts the start screen's orange "record a shot" card where its frame says.
+     */
+    private func upright(_ shot: CGImage, window: CGRect) -> CGImage {
+        if let turn { return turn(shot) }
+        let card = element("start.record")
+        let ways: [(CGImage) -> CGImage] = [turnedCounterclockwise, turnedClockwise]
+        if card.exists {
+            // Near the card's top right corner: its orange ground, clear of its words and icon.
+            let probe = CGPoint(x: card.frame.maxX - 8 - window.minX, y: card.frame.minY + 8 - window.minY)
+            for way in ways {
+                let turned = way(shot)
+                let scale = Double(turned.width) / window.width
+                if isSignal(turned, x: Int(probe.x * scale), y: Int(probe.y * scale)) {
+                    turn = way
+                    return turned
+                }
+            }
+        }
+        XCTFail("could not tell which way the inner display is turned")
+        turn = turnedCounterclockwise
+        return turnedCounterclockwise(shot)
+    }
+
+    /** Whether the pixel is the signal orange (#FF5A1F), give or take. */
+    private func isSignal(_ image: CGImage, x: Int, y: Int) -> Bool {
+        guard x >= 0, y >= 0, x < image.width, y < image.height else { return false }
+        let p = pixels(image)
+        let i = (y * image.width + x) * 4
+        return p[i] > 200 && (50...130).contains(p[i + 1]) && p[i + 2] < 90
+    }
+
+    private func turnedClockwise(_ image: CGImage) -> CGImage {
+        let context = rgbaContext(image.height, image.width)
+        context.translateBy(x: 0, y: CGFloat(image.width))
+        context.rotate(by: -.pi / 2)
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
         return context.makeImage()!
     }
 

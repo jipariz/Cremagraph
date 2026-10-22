@@ -80,11 +80,12 @@ Format: ktfmt `kotlinLangStyle`, 4 spaces, width 120. Run `ktfmtFormat` before c
 ## CI
 
 - **`pr.yml`** (every PR): `ktfmtCheck`, `checkAppVersion`, `testAndroidHostTest`, `:screenshots:verifyMugshot`,
-  `:uitests:desktopTest`, `:app:desktopApp:test`.
+  `:uitests:desktopTest`, `:app:desktopApp:test`. Branch PRs also `duo-screenshots` (`tools/ios-screenshots/run.sh`,
+  iPhone Duo simulator, self-hosted Mac only).
   Branch PRs on self-hosted Mac (`self-hosted`, `macOS`, `ARM64`). Fork PRs on `ubuntu-latest`: fork code never runs on
   the Mac. Keep that guard.
 - **`ci.yml`** (push to `main`): full build, all platforms, export tests, UI smoke tests (Android emulator, iOS
-  XCUITest, web Playwright), web deploy.
+  XCUITest, web Playwright), iPhone Duo goldens (self-hosted Mac), web deploy.
 - **`release.yml`** (tag `v*`): signed Android bundle to Play internal, desktop installers, GitHub Release.
 
 ## Version and release
@@ -253,9 +254,10 @@ module in `app/webApp/.../Main.kt`. Platform features = `expect`/`actual` in `:c
 - **Goldens:** WebP in `screenshots/src/androidHostTest/snapshots/images/`. Fail → diff report
   `screenshots/build/reports/tests/mugshotTestAndroidMain/index.html`.
 - **iPhone Duo goldens** (`app/iosApp/screenshots/duo`, PNG, half size): whole screen as the system shows it (side
-  column, status, island), closed / open / half-open, in the way up the simulator is turned (turn it by hand for the other). XCUITest `DuoScreenshotTests`, run per pose by
+  column, status, island), closed / open / half-open (inner display sideways). XCUITest `DuoScreenshotTests`, run per pose by
   `tools/ios-screenshots/run.sh` (folds simulator with mobilecli; XCTest can't move the hinge). Skipped without
-  `DUO_POSE`, so smoke tests unaffected. Record after a wanted change on iOS: `run.sh record`.
+  `DUO_POSE`, so smoke tests unaffected. Own simulator ("OnlyShots Duo screenshots"), never turned: turned the other
+  way it lays out a pixel apart. Record after a wanted change on iOS: `run.sh record`.
 - **Can't capture:** infinite animation (`RecordButton(Armed)`), `ModalBottomSheet`, screens that default
   `koinViewModel()` or call `expect` composables. Extract stateless body first.
 

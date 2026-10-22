@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # iPhone Duo goldens (app/iosApp/screenshots/duo): the installed app on the iPhone Duo simulator, closed, open and
 # half-open, as the system shows it (side column, status, Dynamic Island). XCTest cannot move the hinge, so this folds
-# the simulator with mobilecli and runs DuoScreenshotTests once per pose. The inner display stays the way the simulator
-# is turned (neither XCTest nor mobilecli turns it): turn it in Simulator (⌘← / ⌘→) and run again for the other way.
+# the simulator with mobilecli and runs DuoScreenshotTests once per pose. The inner display stays the way a new
+# simulator starts: sideways (neither XCTest nor mobilecli turns it).
 #
 #   tools/ios-screenshots/run.sh            compare with the goldens (fails on a difference; see build/duo-screenshots)
 #   tools/ios-screenshots/run.sh record     write the goldens after a wanted visual change
 #
-# Needs Xcode 27.1 (iPhone Duo simulator, iOS 27.1), xcodegen and Node (npm, for mobilecli). DUO_UDID picks the
-# simulator; MOBILECLI a mobilecli binary to use instead of the pinned one.
+# Needs Xcode 27.1 (iPhone Duo simulator, iOS 27.1), xcodegen and Node (npm, for mobilecli). It runs on its own
+# simulator, "OnlyShots Duo screenshots", made on first use; DUO_UDID picks another, MOBILECLI another mobilecli binary.
 set -euo pipefail
 
 mode="${1:-verify}"
@@ -29,19 +29,22 @@ if [[ -z "$mobilecli" ]]; then
     [[ -x "$mobilecli" ]] || npm install --silent --no-save --prefix "$tools" @mobilenext/mobilecli-darwin-arm64@1.0.21
 fi
 
+# A simulator of its own, never turned by hand: an iPhone Duo turned the other way lays the screen out a pixel apart, so
+# the goldens hold only for the way a new one starts.
+name="OnlyShots Duo screenshots"
 udid="${DUO_UDID:-$(xcrun simctl list devices available -j | python3 -c '
 import json, sys
 for runtime, devices in json.load(sys.stdin)["devices"].items():
     for d in devices:
-        if d["deviceTypeIdentifier"].endswith("iPhone-Duo"):
+        if d["name"] == sys.argv[1]:
             print(d["udid"]); sys.exit()
-')}"
+' "$name")}"
 if [[ -z "$udid" ]]; then
     runtime="$(xcrun simctl list runtimes -j | python3 -c '
 import json, sys
 print([r["identifier"] for r in json.load(sys.stdin)["runtimes"] if r["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-27")][-1])
 ')"
-    udid="$(xcrun simctl create "iPhone Duo" com.apple.CoreSimulator.SimDeviceType.iPhone-Duo "$runtime")"
+    udid="$(xcrun simctl create "$name" com.apple.CoreSimulator.SimDeviceType.iPhone-Duo "$runtime")"
 fi
 echo "iPhone Duo simulator $udid"
 
@@ -51,6 +54,8 @@ xcrun simctl ui "$udid" appearance dark
 # The same status everywhere, so it never makes a difference.
 xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
     --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+# mobilecli folds through its own agent on the simulator; a fresh simulator needs it installed once.
+"$mobilecli" agent install --device "$udid" >/dev/null
 xcrun simctl privacy "$udid" grant camera dev.parez.onlyshots 2>/dev/null || true
 xcrun simctl privacy "$udid" grant microphone dev.parez.onlyshots 2>/dev/null || true
 

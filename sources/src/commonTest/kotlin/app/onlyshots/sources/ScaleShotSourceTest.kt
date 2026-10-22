@@ -96,4 +96,29 @@ class ScaleShotSourceTest {
         holder.prepareForShot()
         assertEquals(1, scale.tares)
     }
+
+    @Test
+    fun liftingTheCupEndsTheShotAtItsLastWeight() = runTest {
+        var now = 0L
+        val scale = FakeLink(BookooScaleProtocol)
+        val source = ScaleShotSource(scale, nowUs = { now })
+        val assembler = LiveShotAssembler("s", SourceKind.SCALE, "OnlyShots", Instant.fromEpochSeconds(0))
+        backgroundScope.launch { source.brewEvents.collect { assembler.onBrewEvent(it) } }
+        backgroundScope.launch { source.live.collect { assembler.onSample(it) } }
+        backgroundScope.launch { source.start(this) }
+        runCurrent()
+
+        for (i in 0..40) {
+            now = i * 100_000L
+            // Tared with the cup on, 2 g/s from the second reading on, still dripping when the cup is lifted at 3 s.
+            val g = if (i < 10) 0f else if (i < 30) (i - 9) * 0.2f else -118f
+            scale.readings.emit(BleReading(weightG = g))
+            runCurrent()
+        }
+        val shot = assembler.shot()
+        // The shot ends where the cup came off, at the last weight in it: never 0 g, never the cup's minus.
+        assertEquals(assembler.endedAtUs, shot.durationUs)
+        assertTrue(shot.samples.all { (it.weight ?: 0f) >= 0f })
+        assertEquals(4f, shot.finalWeight!!, 1e-3f)
+    }
 }

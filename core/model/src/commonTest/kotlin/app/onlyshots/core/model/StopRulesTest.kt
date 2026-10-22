@@ -166,4 +166,21 @@ class StopRulesTest {
         assertEquals("45s", StopRule.Fixed(45).stepLabel)
         assertNull(StopRule.Manual.stepLabel)
     }
+
+    @Test
+    fun weightSettlesStopsAtOnceWhenTheCupComesOff() {
+        // Still dripping when the cup is lifted at 31 s: nothing has settled, but the shot is over.
+        val samples = (0..31).map { Sample(tUs = sec(it.toDouble()), weight = it * 1.2f, brewing = true) }
+        val rule = StopRule.WeightSettles(seconds = 3)
+        assertNull(StopRules.evaluate(rule, ShotProgress(nowUs = sec(30.9), samples = samples), sec(33.9), plenty))
+        assertEquals(
+            StopReason.RULE,
+            StopRules.evaluate(
+                rule,
+                ShotProgress(nowUs = sec(31.0), endedAtUs = sec(31.0), samples = samples),
+                sec(34.0),
+                plenty,
+            ),
+        )
+    }
 }

@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <!-- C · Pour: the stream falls, turns, and becomes the graph; the dot is "now". -->
-  <path fill="none" stroke="#000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"
-        d="M70 36 V164 Q70 204 106 204 C134 204 140 112 166 112 C186 112 194 140 200 152"/>
-  <circle cx="218" cy="176" r="16" fill="#000"/>
-</svg>

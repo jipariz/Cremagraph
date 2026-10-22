@@ -92,8 +92,8 @@ of the mark: never crop or butt the tile's left edge against anything.
 `python3 design/logo/src/build.py` regenerates every SVG master in `kit/`, the one-colour SVGs in `kit/variants/` and
 the icon SVGs from the geometry in one file. The PNGs and icon sets are rendered from those masters with the
 logo-design skill's `render_png.py` and `export_variants.py --web-icons --favicon-source kit/onlyshots-symbol-small.svg`.
-The presentation board is `board/board.html` (slides in `board/slides/`), the size and context test `tests/preview.html`.
 
-The previous mark (Viewfinder · Playhead, orange `#EF4E2B` on espresso) is in git history.
+The previous mark (Viewfinder · Playhead, orange `#EF4E2B` on espresso), the concepts, the presentation board and the
+size test are in git history.
 
 A professional trademark search has not been done; run one before the mark is registered or launched.

@@ -1,4 +1,5 @@
-// Renders hero-layout.svg to ../hero.gif (the graph plots itself, then holds) and ../hero.png (the settled frame).
+// Renders hero-layout.svg to ../hero.gif (the graph plots itself, then holds), ../hero.png (the settled frame) and
+// ../social-preview.png (GitHub's 1280 x 640 social card, Settings › General › Social preview).
 // Run from tools/web-smoke after `npm ci`, so Playwright resolves from there:
 //   cd tools/web-smoke && npm ci && node ../../assets/readme/source/render-hero.mjs
 // Needs ffmpeg. Motion follows beautify-github-readme's defaults: 30 fps, calm reveal, a still hold, and a last frame
@@ -86,6 +87,24 @@ for (let i = 0; i < total; i++) {
 }
 await page.evaluate(() => window.setShot(1, 28));
 await page.screenshot({ path: join(out, "hero.png") });
+
+// GitHub's social preview: the settled hero on a 1280 x 640 card. Offset (40, 70) keeps everything inside the
+// template's 80 px safe border (the corner squares end at x 1183, y 541); the card's grid replaces the hero's own.
+await page.setViewportSize({ width: 1280, height: 640 });
+await page.evaluate(() => {
+  const ns = "http://www.w3.org/2000/svg";
+  const hero = document.querySelector("svg");
+  const card = document.createElementNS(ns, "svg");
+  card.setAttribute("width", "1280");
+  card.setAttribute("height", "640");
+  card.innerHTML = '<rect width="1280" height="640" fill="#0B0B0B"/><rect width="1280" height="640" fill="url(#grid)"/>';
+  hero.replaceWith(card);
+  card.appendChild(hero);
+  hero.setAttribute("x", "40");
+  hero.setAttribute("y", "70");
+  [...hero.querySelectorAll(":scope > rect")].slice(0, 2).forEach((r) => (r.style.display = "none"));
+});
+await page.screenshot({ path: join(out, "social-preview.png") });
 await browser.close();
 
 const input = ["-y", "-loglevel", "error", "-framerate", String(FPS), "-i", join(frames, "f%04d.png")];
@@ -95,4 +114,4 @@ execFileSync("ffmpeg", [
   ...input, "-i", palette, "-lavfi", "paletteuse=dither=none:diff_mode=rectangle", "-loop", "0", join(out, "hero.gif"),
 ]);
 rmSync(frames, { recursive: true, force: true });
-for (const f of ["hero.gif", "hero.png"]) console.log(f, (statSync(join(out, f)).size / 1e6).toFixed(2), "MB");
+for (const f of ["hero.gif", "hero.png", "social-preview.png"]) console.log(f, (statSync(join(out, f)).size / 1e6).toFixed(2), "MB");

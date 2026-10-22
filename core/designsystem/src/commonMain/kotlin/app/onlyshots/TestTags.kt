@@ -61,6 +61,10 @@ object TestTags {
     const val ExportSave = "export.save"
     const val ExportShare = "export.share"
     const val ExportKeepEditing = "export.keepEditing"
+    const val ExportNotifyAllow = "export.notify.allow"
+    const val ExportNotifyLater = "export.notify.later"
+    const val ExportOpenSaved = "export.openSaved"
+    const val ExportShareSaved = "export.shareSaved"
     const val ExportNext = "export.next"
     const val TextTitleField = "edit.text.title"
 

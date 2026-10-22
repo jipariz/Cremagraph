@@ -252,8 +252,10 @@ fun CgMenuItem(text: String, modifier: Modifier = Modifier, detail: String? = nu
 /**
  * The editor's export, over everything: the window closed to clicks, with a [still] of the video, the [progress] (0..1)
  * and the time [left] while it renders, or [done] (where the video went) once it finished. [detail] says what is being
- * made; [footer] what to keep in mind while it runs. A wide window dims and shows it as a card in the middle; a phone
- * ([fullScreen]) gives it the whole screen, its keys along the bottom.
+ * made; [footer] what to keep in mind while it runs, or [leave], where the export goes on outside the app; the first
+ * time, [ask] offers to say when it is done instead. Once saved, [savedKeys] open or share the video in the gallery. A
+ * wide window dims and shows it as a card in the middle; a phone ([fullScreen]) gives it the whole screen, its keys
+ * along the bottom.
  */
 @Composable
 fun ExportOverlay(
@@ -271,11 +273,15 @@ fun ExportOverlay(
     /** The video's width over height, for the still. */
     stillRatio: Float = 9f / 16f,
     fullScreen: Boolean = false,
+    leave: String? = null,
+    ask: ExportAsk? = null,
+    savedKeys: ExportSavedKeys? = null,
 ) {
+    val note = @Composable { ExportNote(footer, leave, ask) }
+    val keys = @Composable { if (savedKeys != null) SavedKeys(savedKeys) }
     if (fullScreen) {
         ExportScreen(
             detail,
-            footer,
             progress,
             left,
             done,
@@ -286,6 +292,8 @@ fun ExportOverlay(
             onNext,
             modifier,
             stillRatio,
+            note,
+            keys,
         )
         return
     }
@@ -340,6 +348,7 @@ fun ExportOverlay(
                             Text(done.orEmpty().caps(), style = CgTheme.type.screenTitle)
                         }
                         Text(detail, style = CgTheme.type.data, color = CgColors.Text.Secondary)
+                        keys()
                         Column(
                             Modifier.fillMaxWidth().padding(top = CgSpace.S8),
                             verticalArrangement = Arrangement.spacedBy(CgSpace.S8),
@@ -374,7 +383,7 @@ fun ExportOverlay(
                             )
                         }
                         Text(detail, style = CgTheme.type.data, color = CgColors.Text.Secondary)
-                        Text(footer, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+                        note()
                         CgButton(
                             stringResource(Res.string.core_cancel),
                             onClick = onCancel,
@@ -392,7 +401,6 @@ fun ExportOverlay(
 @Composable
 private fun ExportScreen(
     detail: String,
-    footer: String,
     progress: Float?,
     left: String?,
     done: String?,
@@ -403,6 +411,8 @@ private fun ExportScreen(
     onNext: () -> Unit,
     modifier: Modifier,
     stillRatio: Float,
+    note: @Composable () -> Unit,
+    keys: @Composable () -> Unit,
 ) {
     Column(
         modifier
@@ -441,6 +451,7 @@ private fun ExportScreen(
                         Text(done.orEmpty().caps(), style = CgTheme.type.screenTitle)
                     }
                     Text(detail, style = CgTheme.type.data, color = CgColors.Text.Secondary)
+                    keys()
                     Spacer(Modifier.weight(1f))
                     CgButton(
                         stringResource(Res.string.core_export_keep_editing),
@@ -484,7 +495,7 @@ private fun ExportScreen(
                         }
                     }
                     Text(detail, style = CgTheme.type.data, color = CgColors.Text.Secondary)
-                    Text(footer, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+                    note()
                     Spacer(Modifier.weight(1f))
                     CgButton(
                         stringResource(Res.string.core_cancel),
@@ -1024,6 +1035,95 @@ fun DropZone(onPick: () -> Unit, modifier: Modifier = Modifier, active: Boolean 
                 stringResource(Res.string.core_choose_file),
                 onClick = onPick,
                 modifier = Modifier.padding(top = CgSpace.S4),
+            )
+        }
+    }
+}
+
+/** The export screen's one-time offer to say outside the app when the export is done. */
+data class ExportAsk(
+    val title: String,
+    val text: String,
+    val allow: String,
+    val later: String,
+    val onAllow: () -> Unit,
+    val onLater: () -> Unit,
+)
+
+/** The done state's way back to the saved video: [open] it in the gallery's app, [share] it where that works. */
+data class ExportSavedKeys(
+    val open: String,
+    val onOpen: () -> Unit,
+    val share: String? = null,
+    val onShare: () -> Unit = {},
+)
+
+/**
+ * Under a running export: the [ask] the first time; else [leave], with a bell, where the export goes on outside the
+ * app; else the [footer].
+ */
+@Composable
+private fun ExportNote(footer: String, leave: String?, ask: ExportAsk?) {
+    when {
+        ask != null ->
+            Column(
+                Modifier.fillMaxWidth()
+                    .background(CgColors.Surface.Raised)
+                    .border(CgStroke.Hairline, CgColors.Line.Hairline)
+                    .padding(CgSpace.S16),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
+                    CgIcon(CgIcons.Bell, tint = CgColors.Text.Primary, size = 20.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(ask.title.caps(), style = CgTheme.type.label)
+                        Text(ask.text, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                    CgButton(
+                        ask.allow,
+                        onClick = ask.onAllow,
+                        modifier = Modifier.weight(1f).testTag(TestTags.ExportNotifyAllow),
+                    )
+                    CgButton(
+                        ask.later,
+                        onClick = ask.onLater,
+                        kind = CgButtonKind.Secondary,
+                        modifier = Modifier.weight(1f).testTag(TestTags.ExportNotifyLater),
+                    )
+                }
+            }
+        leave != null ->
+            Row(
+                Modifier.fillMaxWidth()
+                    .drawBehind { drawRect(CgColors.Line.Divider, size = Size(size.width, CgStroke.Hairline.toPx())) }
+                    .padding(top = CgSpace.S16),
+                horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+            ) {
+                CgIcon(CgIcons.Bell, tint = CgColors.Text.Secondary, size = 20.dp)
+                Text(leave, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+            }
+        else -> Text(footer, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+    }
+}
+
+/** Open in the gallery and share, side by side. */
+@Composable
+private fun SavedKeys(keys: ExportSavedKeys) {
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+        CgButton(
+            keys.open,
+            onClick = keys.onOpen,
+            kind = CgButtonKind.Secondary,
+            modifier = Modifier.weight(1f).fillMaxHeight().testTag(TestTags.ExportOpenSaved),
+        )
+        keys.share?.let {
+            CgButton(
+                it,
+                onClick = keys.onShare,
+                kind = CgButtonKind.Secondary,
+                modifier = Modifier.weight(1f).fillMaxHeight().testTag(TestTags.ExportShareSaved),
             )
         }
     }

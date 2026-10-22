@@ -43,6 +43,12 @@
     <string>OnlyShots reads weight from your Bluetooth scale and pressure sensor.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>Save the videos you make to Photos.</string>
+    <!-- iOS 26: an export goes on in the background with the system's progress (ContinuedExport.swift), one task per
+         video. -->
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>app.onlyshots.export.*</string>
+    </array>
     <!-- No encryption beyond the system's: the app only talks plain HTTP and WebSocket on the local network. -->
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>

@@ -29,6 +29,8 @@ data class AppSettings(
     val galleryQuality: Quality? = null,
     /** The export quality last picked for sharing; null: 1080p. */
     val shareQuality: Quality? = null,
+    /** The export screen has asked (once) whether to tell the user when an export is done. */
+    val exportNotificationsAsked: Boolean = false,
 )
 
 /** App settings in one JSON file; unreadable files fall back to defaults. */

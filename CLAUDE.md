@@ -163,6 +163,14 @@ iOS, desktop, web share `SkiaFrameDrawer` (`video/src/skikoMain`). `reframe` = `
 `MatrixTransformation`, `SkiaFrameDrawer` transform, `media.js` cover draw: same mapping as `Reframe.map`. Alignment
 proved by barcode test clip (`Media3ExportTest`, `AvFoundationExportTest`, `FfmpegExportTest`).
 
+**Background export.** `ExportManager` (Koin single, own scope) renders inside `BackgroundWork.keepAlive(ExportTask)`,
+reports progress about once a second, keeps each video's `Outcome` until the editor `consume`s it, and ends with
+`BackgroundWork.finished(ExportEnd)`. Android: `ExportService` (foreground, `mediaProcessing`/`dataSync`) whose
+notification is the progress (`ExportNotifications`, Live Update on Android 16), Cancel via `ExportCancelReceiver`, a
+result notification that plays the MediaStore video. iOS: `ContinuedExport.swift` (iOS 26 `BGContinuedProcessingTask`,
+system progress) else `beginBackgroundTask`, banner via `UNUserNotificationCenter`. Web: tab title + leave warning +
+desktop `Notification`. A tap opens the editor through `OpenRequests`. Words resolved before, built on the main thread.
+
 **Live data.** Every machine or scale = `ShotSource` in `:sources`. Network machines over WebSocket; scales = pure
 `BleProtocol` over Kable. Network machine = `NetworkMachine` (`sources/.../machine/`) in `NetworkMachines.all`
 (today only Gaggiuino). Home, saved settings, machine log go through registry. `NetworkScan` finds machines (mDNS on

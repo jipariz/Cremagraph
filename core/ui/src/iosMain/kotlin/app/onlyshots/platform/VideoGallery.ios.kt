@@ -14,24 +14,44 @@ import platform.Photos.PHAssetChangeRequest
 import platform.Photos.PHAuthorizationStatusAuthorized
 import platform.Photos.PHAuthorizationStatusLimited
 import platform.Photos.PHPhotoLibrary
+import platform.UIKit.UIApplication
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
-/** Photos, through an add-only change request. */
+/**
+ * Photos, through an add-only change request. A saved video is its asset's id; iOS has no public way to open Photos on
+ * one asset, so [open] opens Photos itself, where the newest video is first.
+ */
 class IosGallery : VideoGallery {
     override suspend fun save(file: Path) {
+        saveVideo(file)
+    }
+
+    override suspend fun saveVideo(file: Path): SavedVideo? {
         val refused = getString(Res.string.core_gallery_photos_refused)
-        suspendCancellableCoroutine { cont ->
+        return suspendCancellableCoroutine { cont ->
             val url = NSURL.fileURLWithPath(file.toString())
+            var asset: String? = null
             PHPhotoLibrary.sharedPhotoLibrary()
                 .performChanges(
-                    { PHAssetChangeRequest.creationRequestForAssetFromVideoAtFileURL(url) },
+                    {
+                        asset =
+                            PHAssetChangeRequest.creationRequestForAssetFromVideoAtFileURL(url)
+                                ?.placeholderForCreatedAsset
+                                ?.localIdentifier
+                    },
                     completionHandler = { ok, error ->
-                        if (ok) cont.resume(Unit)
+                        if (ok) cont.resume(asset?.let(::SavedVideo))
                         else cont.resumeWithException(IllegalStateException(error?.localizedDescription ?: refused))
                     },
                 )
         }
+    }
+
+    override fun open(saved: SavedVideo): Boolean {
+        val photos = NSURL.URLWithString("photos-redirect://") ?: return false
+        UIApplication.sharedApplication.openURL(photos, emptyMap<Any?, Any?>(), null)
+        return true
     }
 }
 

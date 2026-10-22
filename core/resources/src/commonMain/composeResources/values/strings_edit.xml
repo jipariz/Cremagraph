@@ -127,6 +127,16 @@
     <string name="edit_time_left">about %1$s left</string>
     <string name="edit_working_out">working out how long this will take…</string>
     <string name="edit_keep_open">Keep OnlyShots open while it runs.</string>
+    <string name="edit_export_leave">You can leave OnlyShots: it keeps going, and a notification says when the video is in your gallery.</string>
+    <string name="edit_export_leave_web">Keep this tab open: closing it stops the video. You can switch to another tab; it says when the video is ready.</string>
+    <string name="edit_export_notify_title">tell me when it's done</string>
+    <string name="edit_export_notify_text">Leave OnlyShots while it works. A notification shows the progress, and another says when the video is in your gallery.</string>
+    <string name="edit_export_notify_text_web">Switch tabs while it works. A notification says when the video is ready.</string>
+    <string name="edit_export_notify_allow">allow</string>
+    <string name="edit_export_notify_later">not now</string>
+    <string name="edit_export_open_gallery">open in gallery</string>
+    <string name="edit_export_open_photos">open in Photos</string>
+    <string name="edit_export_share_saved">share</string>
     <string name="edit_cancel">cancel</string>
     <string name="edit_no_sound">no sound</string>
     <string name="edit_with_sound">with sound</string>

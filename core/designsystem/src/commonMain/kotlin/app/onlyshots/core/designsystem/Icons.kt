@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.ic_arrow_right
+import app.onlyshots.core.resources.ic_bell
 import app.onlyshots.core.resources.ic_bluetooth
 import app.onlyshots.core.resources.ic_caret_down
 import app.onlyshots.core.resources.ic_check
@@ -17,6 +18,7 @@ import app.onlyshots.core.resources.ic_file
 import app.onlyshots.core.resources.ic_film
 import app.onlyshots.core.resources.ic_flag
 import app.onlyshots.core.resources.ic_frame
+import app.onlyshots.core.resources.ic_gallery
 import app.onlyshots.core.resources.ic_help
 import app.onlyshots.core.resources.ic_launch
 import app.onlyshots.core.resources.ic_lock
@@ -28,6 +30,7 @@ import app.onlyshots.core.resources.ic_play
 import app.onlyshots.core.resources.ic_plus
 import app.onlyshots.core.resources.ic_record
 import app.onlyshots.core.resources.ic_settings
+import app.onlyshots.core.resources.ic_share
 import app.onlyshots.core.resources.ic_shield
 import app.onlyshots.core.resources.ic_stop
 import org.jetbrains.compose.resources.vectorResource
@@ -132,6 +135,18 @@ object CgIcons {
     /** A shot file. */
     val File: ImageVector
         @Composable get() = vectorResource(Res.drawable.ic_file)
+
+    /** Told outside the app: a notification. */
+    val Bell: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_bell)
+
+    /** The share sheet. */
+    val Share: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_share)
+
+    /** The phone's gallery. */
+    val Gallery: ImageVector
+        @Composable get() = vectorResource(Res.drawable.ic_gallery)
 
     /** Settings. */
     val Settings: ImageVector

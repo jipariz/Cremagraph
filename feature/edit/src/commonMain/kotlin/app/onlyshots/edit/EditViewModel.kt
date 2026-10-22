@@ -30,6 +30,8 @@ import app.onlyshots.core.resources.text
 import app.onlyshots.export.ExportManager
 import app.onlyshots.export.exportQuality
 import app.onlyshots.overlay.GraphStyle
+import app.onlyshots.platform.SavedVideo
+import app.onlyshots.platform.exportsNotify
 import app.onlyshots.storage.AppSettingsRepo
 import app.onlyshots.storage.Library
 import app.onlyshots.storage.LibraryStore
@@ -47,6 +49,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -101,6 +104,12 @@ data class EditUiState(
     val savedToGallery: Boolean = false,
     /** Saved to the gallery or shared at least once: leaving no longer loses anything. */
     val kept: Boolean = false,
+    /** The video just saved, where the gallery gives a way back to it: the done state offers to open and share it. */
+    val savedVideo: SavedVideo? = null,
+    /** Whether the gallery can share [savedVideo] from here. */
+    val canShareSaved: Boolean = false,
+    /** The export screen asks, once, whether to say outside the app when the export is done. */
+    val askExportNotifications: Boolean = false,
 )
 
 class EditViewModel(
@@ -153,33 +162,41 @@ class EditViewModel(
         }
         viewModelScope.launch {
             var wasExporting = false
-            exports.progress.collect { all ->
-                val p = all[id]
-                if (p != null) {
-                    if (!wasExporting) exportStartMs = nowMs()
-                    wasExporting = true
-                    val elapsed = nowMs() - exportStartMs
-                    // Guessing from the first few percent swings wildly; past that it settles.
-                    val left = if (p >= 0.05f) (elapsed / p * (1f - p)).toLong() else null
-                    _ui.update { it.copy(exporting = p, exportLeftMs = left) }
-                } else if (wasExporting) {
-                    wasExporting = false
-                    val failed = exports.message.value
-                    exports.clearMessage()
-                    val cancelled = cancelling
-                    cancelling = false
-                    _ui.update {
-                        it.copy(
-                            exporting = null,
-                            exportLeftMs = null,
-                            exported = failed == null && !cancelled && destination == ExportManager.Destination.SHARE,
-                            savedToGallery =
-                                failed == null && !cancelled && destination == ExportManager.Destination.GALLERY,
-                            kept = it.kept || (failed == null && !cancelled),
-                            message = failed.takeUnless { cancelled },
-                        )
+            combine(exports.progress, exports.left) { all, left -> all[id] to left[id] }
+                .collect { (p, left) ->
+                    if (p != null) {
+                        wasExporting = true
+                        _ui.update { it.copy(exporting = p, exportLeftMs = left) }
+                    } else if (wasExporting || id in exports.outcomes.value) {
+                        // Over: here, or before this screen was opened (from the export's notification).
+                        wasExporting = false
+                        exports.consume(id)?.let(::ended)
                     }
                 }
+        }
+    }
+
+    /** The export finished, failed or was cancelled; the manager kept which, and where it went. */
+    private fun ended(outcome: ExportManager.Outcome) {
+        exports.clearMessage()
+        _ui.update {
+            when (outcome) {
+                is ExportManager.Outcome.Done ->
+                    it.copy(
+                        exporting = null,
+                        exportLeftMs = null,
+                        exported = outcome.destination == ExportManager.Destination.SHARE,
+                        savedToGallery = outcome.destination == ExportManager.Destination.GALLERY,
+                        sheet =
+                            if (outcome.destination == ExportManager.Destination.GALLERY) EditSheet.EXPORT
+                            else it.sheet,
+                        savedVideo = outcome.saved,
+                        canShareSaved = outcome.saved?.let(exports::canShare) == true,
+                        kept = true,
+                    )
+                is ExportManager.Outcome.Failed ->
+                    it.copy(exporting = null, exportLeftMs = null, message = outcome.message)
+                ExportManager.Outcome.Cancelled -> it.copy(exporting = null, exportLeftMs = null)
             }
         }
     }
@@ -359,9 +376,15 @@ class EditViewModel(
     override fun saveAndExport(quality: Quality, withSound: Boolean, to: ExportManager.Destination) {
         val item = state?.item ?: return
         saveJob?.cancel()
-        destination = to
         _ui.update {
-            it.copy(exporting = 0f, exportingQuality = quality, savedToGallery = false, sheet = EditSheet.EXPORT)
+            it.copy(
+                exporting = 0f,
+                exportingQuality = quality,
+                savedToGallery = false,
+                savedVideo = null,
+                sheet = EditSheet.EXPORT,
+                askExportNotifications = exportsNotify && !settings.value.exportNotificationsAsked,
+            )
         }
         viewModelScope.launch {
             withContext(work) { library.save(item) }
@@ -391,9 +414,19 @@ class EditViewModel(
     }
 
     /** Stops the render in progress; the screen stays, with nothing exported. */
-    override fun cancelExport() {
-        cancelling = true
-        exports.cancel()
+    override fun cancelExport() = exports.cancel()
+
+    override fun answerExportNotifications(allow: Boolean) {
+        settings.update { it.copy(exportNotificationsAsked = true) }
+        _ui.update { it.copy(askExportNotifications = false) }
+    }
+
+    override fun openSavedVideo() {
+        _ui.value.savedVideo?.let(exports::open)
+    }
+
+    override fun shareSavedVideo() {
+        _ui.value.savedVideo?.let(exports::share)
     }
 
     /**
@@ -513,10 +546,6 @@ class EditViewModel(
             withContext(work) { library.save(item) }
         }
     }
-
-    private var exportStartMs = 0L
-    private var destination = ExportManager.Destination.SHARE
-    private var cancelling = false
 
     private companion object {
         const val SAVE_DEBOUNCE_MS = 500L

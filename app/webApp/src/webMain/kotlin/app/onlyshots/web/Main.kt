@@ -8,6 +8,10 @@ import androidx.compose.ui.window.ComposeViewport
 import app.onlyshots.core.designsystem.loadOverlayFonts
 import app.onlyshots.core.model.ShotHistory
 import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.core_export_notify_failed
+import app.onlyshots.core.resources.core_export_notify_failed_text
+import app.onlyshots.core.resources.core_export_notify_ready
+import app.onlyshots.core.resources.core_export_notify_ready_text
 import app.onlyshots.core.resources.core_web_file_gone
 import app.onlyshots.core.resources.core_web_header_note
 import app.onlyshots.core.resources.core_web_videos_note
@@ -18,6 +22,7 @@ import app.onlyshots.editor.LIBRARY_DIR
 import app.onlyshots.editor.editorModule
 import app.onlyshots.open.OpenHost
 import app.onlyshots.platform.BackgroundWork
+import app.onlyshots.platform.ExportEnd
 import app.onlyshots.platform.PlatformShare
 import app.onlyshots.platform.VideoGallery
 import app.onlyshots.platform.WebBackgroundWork
@@ -38,6 +43,7 @@ import kotlinx.browser.window
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.context.startKoin
 import org.koin.core.qualifier.named
@@ -111,7 +117,19 @@ private val webModule = module {
     single<FrameSampler> { WebFrameSampler() }
     single<PlatformShare> { WebShare() }
     single<VideoGallery> { WebGallery() }
-    single<BackgroundWork> { WebBackgroundWork() }
+    single<BackgroundWork> {
+        WebBackgroundWork { end ->
+            when (end) {
+                is ExportEnd.Saved ->
+                    getString(Res.string.core_export_notify_ready) to
+                        getString(Res.string.core_export_notify_ready_text, end.name)
+                is ExportEnd.Failed ->
+                    getString(Res.string.core_export_notify_failed) to
+                        getString(Res.string.core_export_notify_failed_text, end.name, end.reason)
+                is ExportEnd.Paused -> null
+            }
+        }
+    }
 }
 
 /**

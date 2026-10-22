@@ -107,7 +107,9 @@ import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.DialogRisk
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.EditorSheetSlot
+import app.onlyshots.core.designsystem.component.ExportAsk
 import app.onlyshots.core.designsystem.component.ExportOverlay
+import app.onlyshots.core.designsystem.component.ExportSavedKeys
 import app.onlyshots.core.designsystem.component.FormatOption
 import app.onlyshots.core.designsystem.component.FormatPicker
 import app.onlyshots.core.designsystem.component.OVER_VIDEO
@@ -129,6 +131,10 @@ import app.onlyshots.core.resources.edit_change
 import app.onlyshots.core.resources.edit_data
 import app.onlyshots.core.resources.edit_done
 import app.onlyshots.core.resources.edit_export
+import app.onlyshots.core.resources.edit_export_notify_allow
+import app.onlyshots.core.resources.edit_export_notify_later
+import app.onlyshots.core.resources.edit_export_notify_title
+import app.onlyshots.core.resources.edit_export_share_saved
 import app.onlyshots.core.resources.edit_find_start
 import app.onlyshots.core.resources.edit_fit
 import app.onlyshots.core.resources.edit_frame
@@ -179,6 +185,7 @@ import app.onlyshots.machineLabel
 import app.onlyshots.overlay.compose.ShotOverlay
 import app.onlyshots.overlayTitleText
 import app.onlyshots.platform.rememberGalleryAccess
+import app.onlyshots.platform.rememberNotificationPermission
 import app.onlyshots.platform.rememberShotFilePicker
 import app.onlyshots.shareBounds
 import app.onlyshots.style.StylePicker
@@ -705,6 +712,25 @@ fun EditBody(
 }
 
 /**
+ * The first export's offer to say outside the app when it is done; Allow asks the system, whatever it answers the offer
+ * goes for good.
+ */
+@Composable
+private fun exportAsk(ui: EditUiState, wording: ExportWording, actions: EditActions): ExportAsk? {
+    val text = wording.notifyText ?: return null
+    val ask = rememberNotificationPermission { actions.answerExportNotifications(it) }
+    if (!ui.askExportNotifications || ui.exporting == null) return null
+    return ExportAsk(
+        title = stringResource(Res.string.edit_export_notify_title),
+        text = stringResource(text),
+        allow = stringResource(Res.string.edit_export_notify_allow),
+        later = stringResource(Res.string.edit_export_notify_later),
+        onAllow = ask,
+        onLater = { actions.answerExportNotifications(false) },
+    )
+}
+
+/**
  * The export over the editor while it runs and until its result is seen: a card over the dimmed window on a wide one,
  * the whole screen on a phone ([fullScreen]). Keep editing puts it down, and the export sheet with it.
  */
@@ -754,6 +780,19 @@ private fun ExportOver(
                 onExported()
             },
             fullScreen = fullScreen,
+            leave = wording.leave?.let { stringResource(it) },
+            ask = exportAsk(ui, wording, actions),
+            savedKeys =
+                ui.savedVideo?.let {
+                    wording.openSaved?.let { open ->
+                        ExportSavedKeys(
+                            open = stringResource(open),
+                            onOpen = actions::openSavedVideo,
+                            share = if (ui.canShareSaved) stringResource(Res.string.edit_export_share_saved) else null,
+                            onShare = actions::shareSavedVideo,
+                        )
+                    }
+                },
         )
     }
 }

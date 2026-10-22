@@ -42,6 +42,7 @@ import app.onlyshots.open.OpenHost
 import app.onlyshots.open.PickedFile
 import app.onlyshots.open.StoreLinks
 import app.onlyshots.overlay.GraphStyles
+import app.onlyshots.platform.SavedVideo
 import app.onlyshots.privacy.PrivacyScreen
 import app.onlyshots.record.RecordActions
 import app.onlyshots.record.RecordBody
@@ -237,6 +238,8 @@ internal fun Edit(
     exporting: Float? = null,
     saved: Boolean = false,
     selected: Boolean = !reframing,
+    askNotifications: Boolean = false,
+    savedVideo: SavedVideo? = null,
 ) = Screen {
     EditUi(
         sheet = sheet,
@@ -245,6 +248,8 @@ internal fun Edit(
         exporting = exporting,
         saved = saved,
         selected = selected,
+        askNotifications = askNotifications,
+        savedVideo = savedVideo,
     )
 }
 
@@ -257,6 +262,8 @@ internal fun EditUi(
     exporting: Float? = null,
     saved: Boolean = false,
     selected: Boolean = !reframing,
+    askNotifications: Boolean = false,
+    savedVideo: SavedVideo? = null,
 ) {
     val player = remember { PlayerState().apply { seek(18_000_000) } }
     EditBody(
@@ -270,6 +277,9 @@ internal fun EditUi(
                 exporting = exporting,
                 exportLeftMs = exporting?.let { 31_000L },
                 savedToGallery = saved,
+                askExportNotifications = askNotifications,
+                savedVideo = savedVideo,
+                canShareSaved = savedVideo != null,
             ),
         customStyles = emptyList(),
         player = player,
@@ -308,6 +318,19 @@ internal fun EditDataSheet() =
 
 /** Saved: a banner on a wide window; the export sheet says so on a phone. */
 @ScreenShots @Preview @Composable internal fun EditSaved() = Edit(sheet = EditSheet.EXPORT, saved = true)
+
+/** The first export: it offers to say outside the app when the video is done. */
+@ScreenShots
+@Preview
+@Composable
+internal fun EditExportingAsk() = Edit(sheet = EditSheet.EXPORT, exporting = 0.18f, askNotifications = true)
+
+/** Saved, with the gallery's way back to it: open it there, or share it. */
+@ScreenShots
+@Preview
+@Composable
+internal fun EditSavedOpen() =
+    Edit(sheet = EditSheet.EXPORT, saved = true, savedVideo = SavedVideo("content://media/external/video/media/1"))
 
 /** The editor at 1:1 and at 16:9: the picture in the video's shape, the graph refitted into it. */
 @ScreenShots

@@ -1,6 +1,9 @@
 package app.onlyshots
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -22,6 +25,7 @@ import app.onlyshots.home.MachineShotsScreen
 import app.onlyshots.home.StartScreen
 import app.onlyshots.layout.ProvideWindowLayout
 import app.onlyshots.open.OpenScreen
+import app.onlyshots.platform.OpenRequests
 import app.onlyshots.privacy.PrivacyScreen
 import app.onlyshots.record.RecordScreen
 import app.onlyshots.sources.SourceHolder
@@ -54,6 +58,18 @@ fun OnlyShotsApp(
 @Composable
 private fun Graph(nav: NavBackStack<NavKey>) {
     val results = remember { NavResults() }
+    // An export's notification tapped: back to that video's editor where it is in the stack, else on top of Open, so
+    // its back goes somewhere.
+    val opening by OpenRequests.video.collectAsState()
+    LaunchedEffect(opening) {
+        val id = OpenRequests.take()?.id ?: return@LaunchedEffect
+        val there = nav.lastOrNull { it is EditRoute && it.id == id }
+        if (there != null) nav.backTo(there)
+        else {
+            nav.go(OpenRoute)
+            nav.go(EditRoute(id, manual = true))
+        }
+    }
     NavDisplay(
         backStack = nav,
         onBack = { nav.back() },

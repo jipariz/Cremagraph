@@ -26,6 +26,8 @@
     <!-- Android 14 and older have no mediaProcessing type; the export runs as dataSync there. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Android 16: the export's progress as a Live Update (the status bar chip, on top of the lock screen). -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- Machines speak plain HTTP and ws:// on the local network. -->
@@ -62,6 +64,10 @@
             android:name=".platform.ExportService"
             android:exported="false"
             android:foregroundServiceType="mediaProcessing|dataSync" />
+        <!-- Cancel, from the export's progress notification. -->
+        <receiver
+            android:name=".platform.ExportCancelReceiver"
+            android:exported="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.share"

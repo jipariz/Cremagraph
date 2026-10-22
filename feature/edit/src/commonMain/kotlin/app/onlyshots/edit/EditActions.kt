@@ -64,6 +64,15 @@ interface EditActions {
 
     fun cancelExport()
 
+    /** The export screen's ask, answered: [allow] to be told outside the app when an export is done, else not now. */
+    fun answerExportNotifications(allow: Boolean) = Unit
+
+    /** The video just saved, in the gallery's own app. */
+    fun openSavedVideo() = Unit
+
+    /** The share sheet for the video just saved. */
+    fun shareSavedVideo() = Unit
+
     /** The quality exports [to] that destination make from now on, remembered for the next videos. */
     fun pickQuality(to: ExportManager.Destination, quality: Quality)
 

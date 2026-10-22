@@ -72,6 +72,13 @@ ICONS = {
     "ic_help": [stroke(rect(3.75, 3.75, 16.5, 16.5)), stroke("M9 9.5V8H15V12H12V14.5"), fill(rect(11.25, 16, 1.5, 1.5))],
     # A shot start the recording fixed: a squared padlock.
     "ic_lock": [stroke("M8 10.5V6H16V10.5"), fill(rect(5, 10.5, 14, 10))],
+    # A notification: a squared bell, its sides at 45° to a flat foot, the clapper a square.
+    "ic_bell": [stroke("M8 4.75H16V12L19.25 15.25V17.25H4.75V15.25L8 12Z"), fill(rect(10.5, 18.75, 3, 2.5))],
+    # Share: an arrow up out of an open box.
+    "ic_share": [stroke("M12 3.5V14.5"), stroke("M7.5 8L12 3.5L16.5 8"), stroke("M5.25 11.5V20.25H18.75V11.5")],
+    # The gallery: a picture frame, a mountain on 45° in it, the sun a square.
+    "ic_gallery": [stroke(rect(3.75, 4.75, 16.5, 14.5)), stroke("M3.75 17L9 11.75L13 15.75L15.5 13.25L20.25 18"),
+                   fill(rect(14.5, 7.5, 2.5, 2.5))],
 }
 
 

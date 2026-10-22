@@ -1,6 +1,7 @@
 package app.onlyshots
 
 import android.app.Application
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
@@ -20,6 +21,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import app.onlyshots.di.initKoin
+import app.onlyshots.platform.ExportNotifications
+import app.onlyshots.platform.OpenRequests
 import org.koin.android.ext.koin.androidContext
 
 class OnlyShotsApplication : Application() {
@@ -87,6 +90,8 @@ class MainActivity : ComponentActivity() {
             // The system hands its splash over only if it showed one. Whatever happened, the app shows itself.
             main.postDelayed({ if (!splash.released) splash.release() }, SPLASH_FALLBACK_MS)
         }
+        // Started from an export's notification: the editor on that video. Not again after a rotation or a restore.
+        if (savedInstanceState == null) openFrom(intent)
         // Recording survives rotation and posture changes: the activity handles config changes itself.
         setContent {
             // Test tags as resource ids, so the UI Automator smoke tests (:app:uitests) find controls by
@@ -95,5 +100,14 @@ class MainActivity : ComponentActivity() {
                 OnlyShotsApp(splash)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openFrom(intent)
+    }
+
+    private fun openFrom(intent: Intent?) {
+        intent?.getStringExtra(ExportNotifications.EXTRA_OPEN_VIDEO)?.let { OpenRequests.ask(OpenRequests.Video(it)) }
     }
 }

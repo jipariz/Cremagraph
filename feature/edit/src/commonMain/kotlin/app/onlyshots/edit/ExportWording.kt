@@ -9,6 +9,11 @@ import app.onlyshots.core.resources.edit_desktop_saved
 import app.onlyshots.core.resources.edit_desktop_share
 import app.onlyshots.core.resources.edit_desktop_share_where
 import app.onlyshots.core.resources.edit_desktop_shared
+import app.onlyshots.core.resources.edit_export_leave
+import app.onlyshots.core.resources.edit_export_leave_web
+import app.onlyshots.core.resources.edit_export_notify_text
+import app.onlyshots.core.resources.edit_export_notify_text_web
+import app.onlyshots.core.resources.edit_export_open_gallery
 import app.onlyshots.core.resources.edit_open_another
 import app.onlyshots.core.resources.edit_phone_footer
 import app.onlyshots.core.resources.edit_phone_next
@@ -41,6 +46,12 @@ data class ExportWording(
     val footer: StringResource,
     /** Whether this host's export carries sound at all. */
     val sound: Boolean = true,
+    /** Under a running export, where it goes on outside the app: in place of [footer]; null keeps the footer. */
+    val leave: StringResource? = null,
+    /** The first export's offer to say when it is done; null offers nothing. */
+    val notifyText: StringResource? = null,
+    /** The done state's key to the video in the gallery's app; null where there is none. */
+    val openSaved: StringResource? = null,
 ) {
     companion object {
         val Phone =
@@ -53,6 +64,9 @@ data class ExportWording(
                 shared = Res.string.edit_phone_shared,
                 next = Res.string.edit_phone_next,
                 footer = Res.string.edit_phone_footer,
+                leave = Res.string.edit_export_leave,
+                notifyText = Res.string.edit_export_notify_text,
+                openSaved = Res.string.edit_export_open_gallery,
             )
 
         val Desktop =
@@ -77,6 +91,8 @@ data class ExportWording(
                 next = Res.string.edit_open_another,
                 footer = Res.string.edit_web_footer,
                 sound = false,
+                leave = Res.string.edit_export_leave_web,
+                notifyText = Res.string.edit_export_notify_text_web,
             )
     }
 }

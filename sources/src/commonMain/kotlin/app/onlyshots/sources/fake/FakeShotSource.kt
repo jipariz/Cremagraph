@@ -13,8 +13,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Replays recorded shots as if a machine were pulling them, for UI work and auto-start tests without a machine. The
@@ -27,30 +25,30 @@ class FakeShotSource(
     override val kind = shots.first().source
     override val capabilities: Capabilities = Capabilities.of(kind)
 
-    private val _connection = MutableStateFlow<ConnectionState>(ConnectionState.Connected)
-    override val connection: StateFlow<ConnectionState> = _connection.asStateFlow()
+    override val connection: StateFlow<ConnectionState>
+        field = MutableStateFlow<ConnectionState>(ConnectionState.Connected)
 
-    private val _live = MutableSharedFlow<app.onlyshots.core.model.Sample>(extraBufferCapacity = 64)
-    override val live: SharedFlow<app.onlyshots.core.model.Sample> = _live.asSharedFlow()
+    override val live: SharedFlow<app.onlyshots.core.model.Sample>
+        field = MutableSharedFlow<app.onlyshots.core.model.Sample>(extraBufferCapacity = 64)
 
-    private val _brew = MutableSharedFlow<BrewEvent>(extraBufferCapacity = 8)
-    override val brewEvents: SharedFlow<BrewEvent> = _brew.asSharedFlow()
+    override val brewEvents: SharedFlow<BrewEvent>
+        field = MutableSharedFlow<BrewEvent>(extraBufferCapacity = 8)
 
     fun setConnection(state: ConnectionState) {
-        _connection.value = state
+        connection.value = state
     }
 
     /** Pulls [shot] in real time (virtual time under `runTest`): brew start, samples, brew end. */
     suspend fun pull(shot: Shot = shots.first()) {
         var clock = 0L
-        _brew.emit(BrewEvent.Started(clockOffsetUs))
+        brewEvents.emit(BrewEvent.Started(clockOffsetUs))
         for (s in shot.samples) {
             delay((s.tUs - clock) / 1000)
             clock = s.tUs
-            _live.emit(s.copy(tUs = clockOffsetUs + s.tUs))
+            live.emit(s.copy(tUs = clockOffsetUs + s.tUs))
         }
         delay((shot.durationUs - clock).coerceAtLeast(0L) / 1000)
-        _brew.emit(BrewEvent.Ended(clockOffsetUs + shot.durationUs))
+        brewEvents.emit(BrewEvent.Ended(clockOffsetUs + shot.durationUs))
     }
 
     override suspend fun history(limit: Int): List<ShotSummary> = shots.take(limit).map { it.summary() }

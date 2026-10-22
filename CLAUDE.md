@@ -41,8 +41,8 @@ variants. Only CI secret: `VERCEL_TOKEN` (org secret, web deploy on `main`).
 tools/deploy-web.sh                                    # build, publish onlyshots.vercel.app
 ```
 
-iOS: `cd app/iosApp && xcodegen generate`, build scheme `iosApp`. Links static framework `OnlyShotsApp` from
-`:app:shared`.
+iOS: `cd app/iosApp && xcodegen generate`, build scheme `iosApp`. Swift sees `:app:shared` as Swift export module
+`OnlyShotsApp` (built by the pre-build phase, `embedSwiftExportForXcode`). Min iOS 18: Swift export's floor.
 
 Format: ktfmt `kotlinLangStyle`, 4 spaces, width 120. Run `ktfmtFormat` before commit.
 
@@ -68,6 +68,10 @@ Format: ktfmt `kotlinLangStyle`, 4 spaces, width 120. Run `ktfmtFormat` before c
   then record the sample shot and export it) and writes `app/androidApp/src/release/generated/baselineProfiles/`, checked
   in; release builds never regenerate it. Journeys find buttons by their words: reword one, regenerate. ProfileInstaller
   installs it outside the store.
+- **Swift export** (`export { swift { } }` in `app/shared/build.gradle.kts`, Beta): Swift gets native names
+  (`MainViewController()`, `platform.IosBackground.shared`). Swift-facing API = `:app:shared` iosMain only; its `api`
+  dependencies are `HIDDEN` there (exporting them breaks on okio). A Swift class implementing a Kotlin interface
+  subclasses `KotlinBase`. Read the generated `build/SPMPackage/.../OnlyShotsApp.swift` after changing that API.
 - **R8** breaks reflection quietly. Touch keep rules or serialization? Walk README's six release paths by hand.
 
 ## CI

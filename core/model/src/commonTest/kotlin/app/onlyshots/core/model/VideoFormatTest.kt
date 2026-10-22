@@ -18,8 +18,8 @@ class VideoFormatTest {
     fun portraitKeepsTheNumbersItAlwaysHad() {
         assertEquals(NormRect.REF_H, VideoFormat.PORTRAIT_9_16.refH)
         assertEquals(NormRect.Default, NormRect.default(VideoFormat.PORTRAIT_9_16))
-        assertEquals(NormRect.MIN_W, NormRect.minW(VideoFormat.PORTRAIT_9_16))
-        assertEquals(NormRect.MIN_H, NormRect.minH(VideoFormat.PORTRAIT_9_16))
+        assertEquals(NormRect.MIN_W, context(VideoFormat.PORTRAIT_9_16) { NormRect.minW() })
+        assertEquals(NormRect.MIN_H, context(VideoFormat.PORTRAIT_9_16) { NormRect.minH() })
     }
 
     @Test
@@ -80,9 +80,9 @@ class VideoFormatTest {
     @Test
     fun snappingKnowsWhereEachFormatIsCovered() {
         val free = NormRect(0.05f, 0.125f, 0.5f, 0.2f)
-        val portrait = OverlaySnap.snap(free, 0.05f, 0.05f)
+        val portrait = context(VideoFormat.PORTRAIT_9_16) { OverlaySnap.snap(free, 0.05f, 0.05f) }
         assertEquals(OverlaySnap.Place.TOP_BELOW_HEADER, portrait.vertical?.place)
-        val square = OverlaySnap.snap(free.copy(y = 0.04f), 0.05f, 0.05f, VideoFormat.SQUARE_1_1)
+        val square = context(VideoFormat.SQUARE_1_1) { OverlaySnap.snap(free.copy(y = 0.04f), 0.05f, 0.05f) }
         assertEquals(OverlaySnap.Place.TOP, square.vertical?.place)
         assertEquals(14f / 390f, square.rect.y, 1e-5f)
     }

@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.plugin.mpp.export.SwiftExportVisibility
+
 plugins {
     id("onlyshots.kmp.library")
     id("onlyshots.compose")
@@ -6,17 +8,23 @@ plugins {
 
 // The phones' app (Start → Home → Record → Edit), the Koin graph every entry point starts (`initKoin`) and each
 // platform's module. The entry points are their own modules: :app:androidApp, :app:desktopApp, and the Xcode project,
-// which
-// links this module's framework.
+// which imports this module through Swift export (`import OnlyShotsApp`, built by `embedSwiftExportForXcode`).
 kotlin {
     androidLibrary {
         // The export notification's icon (androidMain/res).
         androidResources { enable = true }
     }
-    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
-        target.binaries.framework {
-            baseName = "OnlyShotsApp"
-            isStatic = true
+    export {
+        swift {
+            moduleName = "OnlyShotsApp"
+            rootPackage = "app.onlyshots"
+            // Builds the module for the Xcode project: `embedSwiftExportForXcode`, its pre-build script.
+            xcodeIntegration {
+                // Swift calls only this module's iOS entry points; what it re-exports for the other entry modules
+                // stays out of the Swift API.
+                listOf(projects.core.ui, projects.editor, projects.feature.home, projects.feature.open, libs.koin.core)
+                    .forEach { configure(it, SwiftExportVisibility.HIDDEN) }
+            }
         }
     }
 

@@ -279,7 +279,6 @@ internal fun EditUi(
                 savedToGallery = saved,
                 askExportNotifications = askNotifications,
                 savedVideo = savedVideo,
-                canShareSaved = savedVideo != null,
             ),
         customStyles = emptyList(),
         player = player,
@@ -325,7 +324,7 @@ internal fun EditDataSheet() =
 @Composable
 internal fun EditExportingAsk() = Edit(sheet = EditSheet.EXPORT, exporting = 0.18f, askNotifications = true)
 
-/** Saved, with the gallery's way back to it: open it there, or share it. */
+/** Saved, with the gallery's way back to it: open it there (and share it from there). */
 @ScreenShots
 @Preview
 @Composable

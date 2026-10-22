@@ -104,10 +104,8 @@ data class EditUiState(
     val savedToGallery: Boolean = false,
     /** Saved to the gallery or shared at least once: leaving no longer loses anything. */
     val kept: Boolean = false,
-    /** The video just saved, where the gallery gives a way back to it: the done state offers to open and share it. */
+    /** The video just saved, where the gallery gives a way back to it: the done state offers to open it there. */
     val savedVideo: SavedVideo? = null,
-    /** Whether the gallery can share [savedVideo] from here. */
-    val canShareSaved: Boolean = false,
     /** The export screen asks, once, whether to say outside the app when the export is done. */
     val askExportNotifications: Boolean = false,
 )
@@ -191,7 +189,6 @@ class EditViewModel(
                             if (outcome.destination == ExportManager.Destination.GALLERY) EditSheet.EXPORT
                             else it.sheet,
                         savedVideo = outcome.saved,
-                        canShareSaved = outcome.saved?.let(exports::canShare) == true,
                         kept = true,
                     )
                 is ExportManager.Outcome.Failed ->
@@ -423,10 +420,6 @@ class EditViewModel(
 
     override fun openSavedVideo() {
         _ui.value.savedVideo?.let(exports::open)
-    }
-
-    override fun shareSavedVideo() {
-        _ui.value.savedVideo?.let(exports::share)
     }
 
     /**

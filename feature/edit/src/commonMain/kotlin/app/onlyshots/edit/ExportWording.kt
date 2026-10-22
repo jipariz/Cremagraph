@@ -20,9 +20,6 @@ import app.onlyshots.core.resources.edit_phone_next
 import app.onlyshots.core.resources.edit_phone_save
 import app.onlyshots.core.resources.edit_phone_save_where
 import app.onlyshots.core.resources.edit_phone_saved
-import app.onlyshots.core.resources.edit_phone_share
-import app.onlyshots.core.resources.edit_phone_share_where
-import app.onlyshots.core.resources.edit_phone_shared
 import app.onlyshots.core.resources.edit_web_footer
 import app.onlyshots.core.resources.edit_web_save
 import app.onlyshots.core.resources.edit_web_save_where
@@ -58,10 +55,9 @@ data class ExportWording(
             ExportWording(
                 save = Res.string.edit_phone_save,
                 saveWhere = Res.string.edit_phone_save_where,
-                share = Res.string.edit_phone_share,
-                shareWhere = Res.string.edit_phone_share_where,
+                // Saved to the gallery only: it is shared from there.
+                share = null,
                 saved = Res.string.edit_phone_saved,
-                shared = Res.string.edit_phone_shared,
                 next = Res.string.edit_phone_next,
                 footer = Res.string.edit_phone_footer,
                 leave = Res.string.edit_export_leave,

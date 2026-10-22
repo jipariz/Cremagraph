@@ -20,12 +20,10 @@ class GraphStylesTest {
     }
 
     @Test
-    fun aGaggiuinoGetsGaggiuinoAndEverythingElseMetro() {
-        assertEquals("gaggiuino", GraphStyles.resolve("auto", SourceKind.GAGGIUINO).id)
-        assertEquals("metro", GraphStyles.resolve("auto", SourceKind.GAGGIMATE).id)
-        assertEquals("metro", GraphStyles.resolve("auto", SourceKind.DECENT).id)
-        assertEquals("metro", GraphStyles.resolve("auto", SourceKind.SCALE).id)
-        assertEquals("metro", GraphStyles.resolve("auto", null).id)
+    fun everySourceGetsInstrumentUntilTheUserPicksAnother() {
+        for (source in listOf(SourceKind.GAGGIUINO, SourceKind.GAGGIMATE, SourceKind.DECENT, SourceKind.SCALE, null)) {
+            assertEquals("instrument", GraphStyles.resolve("auto", source).id)
+        }
     }
 
     @Test
@@ -45,7 +43,7 @@ class GraphStylesTest {
 
     @Test
     fun unknownIdFallsBackToTheSourceDefault() {
-        assertEquals("gaggiuino", GraphStyles.resolve("retired-style", SourceKind.GAGGIUINO).id)
+        assertEquals("instrument", GraphStyles.resolve("retired-style", SourceKind.GAGGIUINO).id)
     }
 
     @Test
@@ -57,7 +55,7 @@ class GraphStylesTest {
             GraphStyles.resolve("auto", SourceKind.GAGGIUINO, listOf(mine), mapOf(SourceKind.GAGGIUINO to "u-1")).id,
         )
         // Deleted since: the source default.
-        assertEquals("metro", GraphStyles.resolve("u-1", SourceKind.SCALE).id)
+        assertEquals("instrument", GraphStyles.resolve("u-1", SourceKind.SCALE).id)
     }
 
     @Test

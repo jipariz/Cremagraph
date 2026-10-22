@@ -1050,13 +1050,8 @@ data class ExportAsk(
     val onLater: () -> Unit,
 )
 
-/** The done state's way back to the saved video: [open] it in the gallery's app, [share] it where that works. */
-data class ExportSavedKeys(
-    val open: String,
-    val onOpen: () -> Unit,
-    val share: String? = null,
-    val onShare: () -> Unit = {},
-)
+/** The done state's way back to the saved video: [open] it in the gallery's app, where it can be shared too. */
+data class ExportSavedKeys(val open: String, val onOpen: () -> Unit)
 
 /**
  * Under a running export: the [ask] the first time; else [leave], with a bell, where the export goes on outside the
@@ -1108,23 +1103,13 @@ private fun ExportNote(footer: String, leave: String?, ask: ExportAsk?) {
     }
 }
 
-/** Open in the gallery and share, side by side. */
+/** Open in the gallery. */
 @Composable
 private fun SavedKeys(keys: ExportSavedKeys) {
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
-        CgButton(
-            keys.open,
-            onClick = keys.onOpen,
-            kind = CgButtonKind.Secondary,
-            modifier = Modifier.weight(1f).fillMaxHeight().testTag(TestTags.ExportOpenSaved),
-        )
-        keys.share?.let {
-            CgButton(
-                it,
-                onClick = keys.onShare,
-                kind = CgButtonKind.Secondary,
-                modifier = Modifier.weight(1f).fillMaxHeight().testTag(TestTags.ExportShareSaved),
-            )
-        }
-    }
+    CgButton(
+        keys.open,
+        onClick = keys.onOpen,
+        kind = CgButtonKind.Secondary,
+        modifier = Modifier.fillMaxWidth().testTag(TestTags.ExportOpenSaved),
+    )
 }

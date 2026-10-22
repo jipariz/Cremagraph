@@ -4,10 +4,7 @@
     <!-- Export wording per host (ExportWording) -->
     <string name="edit_phone_save">save to gallery</string>
     <string name="edit_phone_save_where">into the OnlyShots album</string>
-    <string name="edit_phone_share">share…</string>
-    <string name="edit_phone_share_where">Instagram, Messages, anywhere</string>
     <string name="edit_phone_saved">In your gallery, in the OnlyShots album</string>
-    <string name="edit_phone_shared">Handed to the share sheet</string>
     <string name="edit_phone_next">record the next shot</string>
     <string name="edit_phone_footer">Made on this phone.</string>
     <string name="edit_desktop_save">save to Movies</string>
@@ -136,7 +133,6 @@
     <string name="edit_export_notify_later">not now</string>
     <string name="edit_export_open_gallery">open in gallery</string>
     <string name="edit_export_open_photos">open in Photos</string>
-    <string name="edit_export_share_saved">share</string>
     <string name="edit_cancel">cancel</string>
     <string name="edit_no_sound">no sound</string>
     <string name="edit_with_sound">with sound</string>

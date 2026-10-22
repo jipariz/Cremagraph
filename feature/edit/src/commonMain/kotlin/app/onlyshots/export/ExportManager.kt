@@ -251,13 +251,6 @@ class ExportManager(
         gallery.open(saved)
     }
 
-    fun canShare(saved: SavedVideo): Boolean = gallery.canShare(saved)
-
-    /** The share sheet for the [saved] video, from the gallery's copy. */
-    fun share(saved: SavedVideo) {
-        gallery.share(saved)
-    }
-
     private companion object {
         const val REPORT_EVERY_MS = 1_000L
     }

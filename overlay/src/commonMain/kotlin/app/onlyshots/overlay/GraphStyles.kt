@@ -356,8 +356,9 @@ object GraphStyles {
 
     fun byId(id: String): GraphStyle? = byId[id] ?: legacy[id]?.let { byId[it] }
 
-    /** The built-in default for a source: Gaggiuino for a Gaggiuino, Metro for everything else. */
-    fun matching(source: SourceKind?): GraphStyle = if (source == SourceKind.GAGGIUINO) Gaggiuino else Metro
+    /** The built-in default, for every source: Instrument, until the user picks another or makes one their default. */
+    val Default: GraphStyle
+        get() = Instrument
 
     /**
      * The style a video or the record screen draws with.
@@ -388,7 +389,7 @@ object GraphStyles {
         defaults: Map<SourceKind, String> = emptyMap(),
     ): GraphStyle {
         fun find(id: String) = custom.firstOrNull { it.id == id } ?: byId(id)
-        fun sourceDefault() = source?.let { defaults[it] }?.let(::find) ?: matching(source)
+        fun sourceDefault() = source?.let { defaults[it] }?.let(::find) ?: Default
         return if (styleId == OverlaySettings.STYLE_AUTO) sourceDefault() else find(styleId) ?: sourceDefault()
     }
 }

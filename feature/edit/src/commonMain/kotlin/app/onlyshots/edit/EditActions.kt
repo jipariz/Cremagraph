@@ -70,9 +70,6 @@ interface EditActions {
     /** The video just saved, in the gallery's own app. */
     fun openSavedVideo() = Unit
 
-    /** The share sheet for the video just saved. */
-    fun shareSavedVideo() = Unit
-
     /** The quality exports [to] that destination make from now on, remembered for the next videos. */
     fun pickQuality(to: ExportManager.Destination, quality: Quality)
 

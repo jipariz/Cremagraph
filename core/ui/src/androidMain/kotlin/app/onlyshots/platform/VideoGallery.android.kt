@@ -27,7 +27,7 @@ import okio.Path
 
 /**
  * Movies/OnlyShots, through MediaStore on Android 10 and later, as a plain file plus a media scan before that. A saved
- * video is its MediaStore Uri: the gallery's player opens it, the share sheet sends it.
+ * video is its MediaStore Uri: the gallery's player opens it, and the result notification's Share sends it.
  */
 class AndroidGallery(private val context: Context) : VideoGallery {
     override suspend fun save(file: Path) {
@@ -35,10 +35,6 @@ class AndroidGallery(private val context: Context) : VideoGallery {
     }
 
     override fun open(saved: SavedVideo): Boolean = start(viewIntent(saved))
-
-    override fun canShare(saved: SavedVideo): Boolean = true
-
-    override fun share(saved: SavedVideo): Boolean = start(shareIntent(saved, null))
 
     private fun start(intent: Intent): Boolean =
         try {

@@ -134,7 +134,6 @@ import app.onlyshots.core.resources.edit_export
 import app.onlyshots.core.resources.edit_export_notify_allow
 import app.onlyshots.core.resources.edit_export_notify_later
 import app.onlyshots.core.resources.edit_export_notify_title
-import app.onlyshots.core.resources.edit_export_share_saved
 import app.onlyshots.core.resources.edit_find_start
 import app.onlyshots.core.resources.edit_fit
 import app.onlyshots.core.resources.edit_frame
@@ -785,12 +784,7 @@ private fun ExportOver(
             savedKeys =
                 ui.savedVideo?.let {
                     wording.openSaved?.let { open ->
-                        ExportSavedKeys(
-                            open = stringResource(open),
-                            onOpen = actions::openSavedVideo,
-                            share = if (ui.canShareSaved) stringResource(Res.string.edit_export_share_saved) else null,
-                            onShare = actions::shareSavedVideo,
-                        )
+                        ExportSavedKeys(open = stringResource(open), onOpen = actions::openSavedVideo)
                     }
                 },
         )

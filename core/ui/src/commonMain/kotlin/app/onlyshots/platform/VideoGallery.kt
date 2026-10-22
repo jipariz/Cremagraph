@@ -16,12 +16,6 @@ interface VideoGallery {
 
     /** Shows the [saved] video in the gallery's own app; false where that cannot be done. */
     fun open(saved: SavedVideo): Boolean = false
-
-    /** Whether [share] can share the [saved] video from here. */
-    fun canShare(saved: SavedVideo): Boolean = false
-
-    /** The share sheet for the [saved] video; false where the gallery's copy cannot be shared from here. */
-    fun share(saved: SavedVideo): Boolean = false
 }
 
 /** A video in the gallery: its content Uri on Android, its Photos asset id on iOS. */

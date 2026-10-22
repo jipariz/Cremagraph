@@ -12,9 +12,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         if #available(iOS 26.0, *) {
-            IosBackground.shared.continued = ContinuedExport()
+            platform.IosBackground.shared.continued = ContinuedExport()
         }
-        ExportNotificationTaps.shared.install()
+        platform.ExportNotificationTaps.shared.install()
         return true
     }
 
@@ -22,7 +22,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         supportedInterfaceOrientationsFor window: UIWindow?
     ) -> UIInterfaceOrientationMask {
-        UIInterfaceOrientationMask(rawValue: UInt(MainViewControllerKt.supportedOrientations()))
+        UIInterfaceOrientationMask(rawValue: UInt(supportedOrientations()))
     }
 }
 

@@ -27,7 +27,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -53,26 +52,23 @@ class ExportManager(
     /** Puts the keep-alive's title into words; a test hands its own, since resources don't load there. */
     private val words: suspend (UiText) -> String = { it.resolve() },
 ) {
-    private val _progress = MutableStateFlow<Map<String, Float>>(emptyMap())
-
     /** videoId → 0..1 of the trimmed duration rendered. */
-    val progress: StateFlow<Map<String, Float>> = _progress.asStateFlow()
-
-    private val _left = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val progress: StateFlow<Map<String, Float>>
+        field = MutableStateFlow<Map<String, Float>>(emptyMap())
 
     /** videoId → about how many milliseconds are left, once the first few percent give a fair guess. */
-    val left: StateFlow<Map<String, Long>> = _left.asStateFlow()
+    val left: StateFlow<Map<String, Long>>
+        field = MutableStateFlow<Map<String, Long>>(emptyMap())
 
-    private val _message = MutableStateFlow<UiText?>(null)
-    val message: StateFlow<UiText?> = _message.asStateFlow()
-
-    private val _outcomes = MutableStateFlow<Map<String, Outcome>>(emptyMap())
+    val message: StateFlow<UiText?>
+        field = MutableStateFlow<UiText?>(null)
 
     /**
      * videoId → how its last render ended, set before its [progress] entry goes and kept until [consume]d: the edit
      * screen, even one opened afresh from a notification, reads it to show the done state or the failure.
      */
-    val outcomes: StateFlow<Map<String, Outcome>> = _outcomes.asStateFlow()
+    val outcomes: StateFlow<Map<String, Outcome>>
+        field = MutableStateFlow<Map<String, Outcome>>(emptyMap())
 
     private val lock = Mutex()
     private var running: Job? = null
@@ -99,7 +95,7 @@ class ExportManager(
     }
 
     /** The outcome of [id]'s last render, now handled. */
-    fun consume(id: String): Outcome? = _outcomes.value[id].also { _outcomes.update { it - id } }
+    fun consume(id: String): Outcome? = outcomes.value[id].also { outcomes.update { it - id } }
 
     /**
      * Renders [ids] one after another and hands the results to [destination]. Each video's progress entry stays until
@@ -132,7 +128,7 @@ class ExportManager(
                             if (file != null) {
                                 files += item to file
                             } else {
-                                val failed = _outcomes.value[item.id] as? Outcome.Failed
+                                val failed = outcomes.value[item.id] as? Outcome.Failed
                                 if (failed != null)
                                     ends += ExportEnd.Failed(item.id, nameOf(item), words(failed.message))
                             }
@@ -168,11 +164,11 @@ class ExportManager(
                         }
                     }
                 } catch (e: CancellationException) {
-                    ids.filterNot { it in _outcomes.value }.forEach { done(it, Outcome.Cancelled) }
+                    ids.filterNot { it in outcomes.value }.forEach { done(it, Outcome.Cancelled) }
                     throw e
                 } finally {
-                    _progress.update { it - ids.toSet() }
-                    _left.update { it - ids.toSet() }
+                    progress.update { it - ids.toSet() }
+                    left.update { it - ids.toSet() }
                 }
                 // Said after the render's notification has gone, so the result is what stays in the shade.
                 ends.forEach { background.finished(it) }
@@ -189,8 +185,8 @@ class ExportManager(
     ): Path? {
         val id = item.id
         val out = temp.newFile(id, nowMs())
-        _progress.update { it + (id to 0f) }
-        _outcomes.update { it - id }
+        progress.update { it + (id to 0f) }
+        outcomes.update { it - id }
         val startMs = nowMs()
         var reportedMs: Long? = null
         var file: Path? = null
@@ -204,8 +200,8 @@ class ExportManager(
                         val leftMs =
                             if (p.fraction >= 0.05f) ((now - startMs) / p.fraction * (1f - p.fraction)).toLong()
                             else null
-                        _progress.update { it + (id to p.fraction) }
-                        _left.update { if (leftMs != null) it + (id to leftMs) else it - id }
+                        progress.update { it + (id to p.fraction) }
+                        left.update { if (leftMs != null) it + (id to leftMs) else it - id }
                         // Outside the app about once a second: a notification updated faster is dropped anyway.
                         if (reportedMs.let { it == null || now - it >= REPORT_EVERY_MS }) {
                             reportedMs = now
@@ -223,16 +219,16 @@ class ExportManager(
         }
         failed?.let {
             fail(id, Res.string.edit_export_failed.text(it.raw()))
-            _progress.update { all -> all - id }
+            progress.update { all -> all - id }
             return null
         }
         return file
     }
 
-    private fun done(id: String, outcome: Outcome) = _outcomes.update { it + (id to outcome) }
+    private fun done(id: String, outcome: Outcome) = outcomes.update { it + (id to outcome) }
 
     private fun fail(id: String, message: UiText) {
-        _message.value = message
+        this.message.value = message
         done(id, Outcome.Failed(message))
     }
 
@@ -243,7 +239,7 @@ class ExportManager(
             ?: words(Res.string.core_export_unnamed.text())
 
     fun clearMessage() {
-        _message.value = null
+        message.value = null
     }
 
     /** The [saved] video in the gallery's own app. */

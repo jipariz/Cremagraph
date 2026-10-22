@@ -9,7 +9,6 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import platform.AVFoundation.AVAssetWriter
 import platform.AVFoundation.AVAssetWriterInput
@@ -83,8 +82,8 @@ class IosCameraController(
 
     val session = AVCaptureSession()
 
-    private val _state = MutableStateFlow(CameraState())
-    override val state: StateFlow<CameraState> = _state.asStateFlow()
+    override val state: StateFlow<CameraState>
+        field = MutableStateFlow(CameraState())
 
     private val queue = dispatch_queue_create("app.onlyshots.camera", null)
     private val videoOut = AVCaptureVideoDataOutput()
@@ -169,7 +168,7 @@ class IosCameraController(
         if (session.inputs.isNotEmpty()) return
         session.beginConfiguration()
         session.sessionPreset = preset()
-        _state.update {
+        state.update {
             val uhd = AVCaptureSessionPreset3840x2160
             it.copy(supports4k = uhd != null && session.canSetSessionPreset(uhd))
         }
@@ -186,7 +185,7 @@ class IosCameraController(
             )
         val camera = discovery.devices.firstOrNull() as? AVCaptureDevice
         if (camera == null) {
-            _state.update { it.copy(error = CameraError.NoRearCamera) }
+            state.update { it.copy(error = CameraError.NoRearCamera) }
             session.commitConfiguration()
             return
         }
@@ -216,7 +215,7 @@ class IosCameraController(
                 .mapNotNull { (it as? Number)?.toFloat() }
                 .map { it / lensScale.toFloat() }
         val lenses = lensStops(listOf(range.start) + switches, range.start, range.endInclusive)
-        _state.update {
+        state.update {
             it.copy(
                 previewReady = true,
                 minZoom = range.start,
@@ -239,13 +238,13 @@ class IosCameraController(
 
     override fun setZoom(zoom: Float) {
         val camera = device ?: return
-        val s = _state.value
+        val s = state.value
         val ratio = zoom.coerceIn(s.minZoom, s.maxZoom)
         if (camera.lockForConfiguration(null)) {
             camera.videoZoomFactor =
                 (ratio * lensScale).coerceIn(camera.minAvailableVideoZoomFactor, camera.maxAvailableVideoZoomFactor)
             camera.unlockForConfiguration()
-            _state.update { it.copy(zoom = ratio) }
+            state.update { it.copy(zoom = ratio) }
         }
     }
 
@@ -275,7 +274,7 @@ class IosCameraController(
             camera.exposureMode = AVCaptureExposureModeAutoExpose
         }
         camera.unlockForConfiguration()
-        _state.update { it.copy(focusLocked = true) }
+        state.update { it.copy(focusLocked = true) }
     }
 
     override fun unlockFocus() {
@@ -287,11 +286,11 @@ class IosCameraController(
             camera.exposureMode = AVCaptureExposureModeContinuousAutoExposure
         }
         camera.unlockForConfiguration()
-        _state.update { it.copy(focusLocked = false) }
+        state.update { it.copy(focusLocked = false) }
     }
 
     override fun setMic(on: Boolean) {
-        if (on == _state.value.micOn) return
+        if (on == state.value.micOn) return
         session.beginConfiguration()
         if (on) {
             if (!audioInputAdded) {
@@ -310,7 +309,7 @@ class IosCameraController(
             session.removeOutput(audioOut)
         }
         session.commitConfiguration()
-        _state.update { it.copy(micOn = on && audioInputAdded) }
+        state.update { it.copy(micOn = on && audioInputAdded) }
     }
 
     override fun setFourK(on: Boolean) {
@@ -356,7 +355,7 @@ class IosCameraController(
     override suspend fun arm(preRollSeconds: Int) {
         if (armed) return
         if (freeBytes() < lowStorageBytes()) {
-            _state.update { it.copy(error = CameraError.NoSpace) }
+            state.update { it.copy(error = CameraError.NoSpace) }
             return
         }
         prepare()
@@ -365,7 +364,7 @@ class IosCameraController(
         applyRotation()
         armed = true
         triggerUs = null
-        _state.update { it.copy(error = null) }
+        state.update { it.copy(error = null) }
         writer = newWriter()
     }
 
@@ -421,7 +420,7 @@ class IosCameraController(
         return Recording(
             file = w.path,
             durationUs = durationUs,
-            hasAudio = _state.value.micOn,
+            hasAudio = state.value.micOn,
             triggerVideoUs = trigger,
         )
     }

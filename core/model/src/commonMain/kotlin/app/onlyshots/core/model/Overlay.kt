@@ -38,26 +38,22 @@ data class NormRect(val x: Float, val y: Float, val w: Float, val h: Float) {
      * Resize by dragging [corner] by ([dx], [dy]): the opposite corner stays put, the size keeps the format's minimum,
      * and the dragged edges stay inside [within] (the whole frame by default).
      */
-    fun resizedFrom(
-        corner: Corner,
-        dx: Float,
-        dy: Float,
-        format: VideoFormat = VideoFormat.PORTRAIT_9_16,
-        within: NormRect = Frame,
-    ): NormRect {
+    context(_: VideoFormat)
+    fun resizedFrom(corner: Corner, dx: Float, dy: Float, within: NormRect = Frame): NormRect {
         val (l, r) =
-            if (corner.left) (x + dx).coerceIn(within.x, (right - minW(format)).coerceAtLeast(within.x)) to right
-            else x to (right + dx).coerceIn((x + minW(format)).coerceAtMost(within.right), within.right)
+            if (corner.left) (x + dx).coerceIn(within.x, (right - minW()).coerceAtLeast(within.x)) to right
+            else x to (right + dx).coerceIn((x + minW()).coerceAtMost(within.right), within.right)
         val (t, b) =
-            if (corner.top) (y + dy).coerceIn(within.y, (bottom - minH(format)).coerceAtLeast(within.y)) to bottom
-            else y to (bottom + dy).coerceIn((y + minH(format)).coerceAtMost(within.bottom), within.bottom)
+            if (corner.top) (y + dy).coerceIn(within.y, (bottom - minH()).coerceAtLeast(within.y)) to bottom
+            else y to (bottom + dy).coerceIn((y + minH()).coerceAtMost(within.bottom), within.bottom)
         return NormRect(l, t, r - l, b - t)
     }
 
     /** Same size, clamped into the frame and to the minimum size. */
-    fun clamped(format: VideoFormat = VideoFormat.PORTRAIT_9_16): NormRect {
-        val cw = w.coerceIn(minW(format), 1f)
-        val ch = h.coerceIn(minH(format), 1f)
+    context(_: VideoFormat)
+    fun clamped(): NormRect {
+        val cw = w.coerceIn(minW(), 1f)
+        val ch = h.coerceIn(minH(), 1f)
         return NormRect(x.coerceIn(0f, 1f - cw), y.coerceIn(0f, 1f - ch), cw, ch)
     }
 
@@ -71,7 +67,7 @@ data class NormRect(val x: Float, val y: Float, val w: Float, val h: Float) {
         val nh = (h * from.refH / to.refH).coerceAtMost(1f)
         val cx = x + w / 2f
         val cy = y + h / 2f
-        return NormRect(cx - nw / 2f, cy - nh / 2f, nw, nh).clamped(to)
+        return context(to) { NormRect(cx - nw / 2f, cy - nh / 2f, nw, nh).clamped() }
     }
 
     /**
@@ -105,9 +101,11 @@ data class NormRect(val x: Float, val y: Float, val w: Float, val h: Float) {
         /** The side margin, reference px. */
         const val MARGIN_REF = 14f
 
-        fun minW(format: VideoFormat): Float = 120f / format.refW
+        context(format: VideoFormat)
+        fun minW(): Float = 120f / format.refW
 
-        fun minH(format: VideoFormat): Float = 70f / format.refH
+        context(format: VideoFormat)
+        fun minH(): Float = 70f / format.refH
 
         /**
          * Where a new graph goes in [format]: at 9:16 the record screen's bottom placement, clear of a sharing app's

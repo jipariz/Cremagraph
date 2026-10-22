@@ -213,19 +213,22 @@ fun OverlayEditLayer(
                             last = now
                             val limit = inside
                             val next =
-                                when {
-                                    corner != null ->
-                                        current.resizedFrom(corner, dx, dy, format, limit ?: NormRect.Frame)
-                                    else -> {
-                                        free = free.copy(x = free.x + dx, y = free.y + dy)
-                                        val s = OverlaySnap.snap(free.clamped(format), pullX, pullY, format)
-                                        snap = s
-                                        val target = s.vertical?.place to s.horizontal?.place
-                                        if (target != lastTarget && (target.first != null || target.second != null)) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                context(format) {
+                                    when {
+                                        corner != null -> current.resizedFrom(corner, dx, dy, limit ?: NormRect.Frame)
+                                        else -> {
+                                            free = free.copy(x = free.x + dx, y = free.y + dy)
+                                            val s = OverlaySnap.snap(free.clamped(), pullX, pullY)
+                                            snap = s
+                                            val target = s.vertical?.place to s.horizontal?.place
+                                            if (
+                                                target != lastTarget && (target.first != null || target.second != null)
+                                            ) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            }
+                                            lastTarget = target
+                                            limit?.let(s.rect::within) ?: s.rect
                                         }
-                                        lastTarget = target
-                                        limit?.let(s.rect::within) ?: s.rect
                                     }
                                 }
                             change(next, push)

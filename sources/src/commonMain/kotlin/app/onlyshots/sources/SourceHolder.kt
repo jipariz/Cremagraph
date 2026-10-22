@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.shareIn
@@ -42,8 +41,8 @@ class SourceHolder(
     /** How long after a failed build (a scale not found, say) it is tried again. */
     private val retryMs: Long = RETRY_INTERVAL_MS,
 ) : ShotSource {
-    private val _current = MutableStateFlow(initial)
-    val current: StateFlow<ShotSource> = _current.asStateFlow()
+    val current: StateFlow<ShotSource>
+        field = MutableStateFlow(initial)
 
     /** Covers the gap while a source is being built: scanning for a scale can take seconds. */
     private val _override = MutableStateFlow<ConnectionState?>(null)
@@ -53,36 +52,36 @@ class SourceHolder(
     private var building: Job? = null
 
     override val kind: SourceKind
-        get() = _current.value.kind
+        get() = current.value.kind
 
     override val capabilities: Capabilities
-        get() = _current.value.capabilities
+        get() = current.value.capabilities
 
     override val connection: StateFlow<ConnectionState> =
-        combine(_override, _current.flatMapLatest { it.connection }) { override, state -> override ?: state }
+        combine(_override, current.flatMapLatest { it.connection }) { override, state -> override ?: state }
             .stateIn(scope, SharingStarted.Eagerly, initial.connection.value)
 
     // Eagerly, not WhileSubscribed: a sample or a brew event between two subscribers must not be
     // dropped, and RecordSession subscribes from its constructor anyway.
     override val live: SharedFlow<Sample> =
-        _current.flatMapLatest { it.live }.shareIn(scope, SharingStarted.Eagerly, replay = 0)
+        current.flatMapLatest { it.live }.shareIn(scope, SharingStarted.Eagerly, replay = 0)
 
     override val brewEvents: SharedFlow<BrewEvent> =
-        _current.flatMapLatest { it.brewEvents }.shareIn(scope, SharingStarted.Eagerly, replay = 0)
+        current.flatMapLatest { it.brewEvents }.shareIn(scope, SharingStarted.Eagerly, replay = 0)
 
     /**
      * The connected machine's recent shots, for the editor's "from the machine". The replayed sample is no machine, and
      * a machine that is not reached has nothing to list: both give none.
      */
     override suspend fun history(limit: Int): List<ShotSummary> {
-        val source = _current.value
+        val source = current.value
         if (source is FakeShotSource || source.connection.value != ConnectionState.Connected) return emptyList()
         return source.history(limit)
     }
 
-    override suspend fun loadShot(id: String): Shot = _current.value.loadShot(id)
+    override suspend fun loadShot(id: String): Shot = current.value.loadShot(id)
 
-    override suspend fun prepareForShot() = _current.value.prepareForShot()
+    override suspend fun prepareForShot() = current.value.prepareForShot()
 
     /** Remembers how to build the chosen source and connects it now. A chosen source ends the sample. */
     fun use(factory: suspend (CoroutineScope) -> ShotSource?) {
@@ -142,7 +141,7 @@ class SourceHolder(
                         null
                     }
                 if (source != null) {
-                    _current.value = source
+                    current.value = source
                     _override.value = null
                     return@launch
                 }
@@ -160,7 +159,7 @@ class SourceHolder(
         beforeSample = null
         factory = null
         stopConnection()
-        _current.value = initial
+        current.value = initial
         _override.value = null
     }
 

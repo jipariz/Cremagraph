@@ -1,5 +1,6 @@
 import BackgroundTasks
 import Foundation
+import KotlinRuntime
 import OnlyShotsApp
 
 /**
@@ -8,7 +9,7 @@ import OnlyShotsApp
  * lock screen and in the Dynamic Island. Swift's, so the class is only touched on iOS 26.
  */
 @available(iOS 26.0, *)
-final class ContinuedExport: NSObject, ContinuedProcessing {
+final class ContinuedExport: KotlinBase, platform.ContinuedProcessing {
     private var task: BGContinuedProcessingTask?
     private var registered = Set<String>()
     private var expired: (() -> Void)?

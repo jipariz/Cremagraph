@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -30,31 +29,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.constrainHeight
-import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import app.onlyshots.TestTags
 import app.onlyshots.camera.CameraState
@@ -446,8 +439,9 @@ internal fun RecordUiState.buttonState(): RecordButtonState =
  * The full-screen camera's controls, floating over the picture: back, the source and the settings along the top, the
  * status under them, the rules and the record key at the bottom. Where they go follows the window
  * ([LocalWindowLayout]):
- * - a phone held upright: a bar of its own across the bottom (the lenses just over it, the rules as two cells, the
- *   record key in the middle and "simulate shot" to its right), as the camera apps have it;
+ * - a phone held upright: nothing across the picture but a shade at its foot; the lenses over the record key (and
+ *   "simulate shot" to its right) float there. The status and the rules float as cards out of the graph's way: under
+ *   the top row while the graph is low, over the lenses while it is high;
  * - a tablet held upright: the lenses, the key and the rules float at the bottom, centred, the rules as a card;
  * - on its side: the lenses, the key and "simulate shot" down the trailing edge, the rules at the bottom on the start;
  * - an open book foldable: never across the fold. The top row, the status and the rules on the left page; the lenses
@@ -486,8 +480,6 @@ internal fun FloatingControls(
         }
     }
     LaunchedEffect(landscape, fold) { report() }
-    // The upright bottom bar's height, so the status chip can stand just over it: read in layout, not composition.
-    var bottomPx by remember { mutableIntStateOf(0) }
     val status = @Composable { m: Modifier -> if (state.statusWorthShowing) TakeStatus(state, m) }
     // The take's time is the status chip's, one clock: here only "simulate shot", where there is one.
     val simulate =
@@ -518,6 +510,7 @@ internal fun FloatingControls(
             }
         }
     val rulesCard = @Composable { m: Modifier -> RulesBlock(take, m.border(CgStroke.Hairline, CgColors.Line.Hairline)) }
+    val upright = !fold && !landscape && !tablet
     Box(
         modifier.fillMaxSize().onGloballyPositioned {
             rects.window = it.boundsInRoot()
@@ -576,6 +569,13 @@ internal fun FloatingControls(
                     .width(SIDE_SHADE)
                     .background(Brush.horizontalGradient(listOf(Color.Transparent, SHADE)))
             )
+        if (upright)
+            Box(
+                Modifier.align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(FOOT_SHADE)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, SHADE)))
+            )
         Box(Modifier.fillMaxSize().safeDrawingPadding().padding(if (tablet) CgSpace.S24 else CgSpace.S12)) {
             Column(
                 Modifier.align(Alignment.TopStart).fillMaxWidth(),
@@ -593,6 +593,7 @@ internal fun FloatingControls(
                 }
                 Banners(take.camera, take.saveError)
                 if (!graphOnTop || landscape) status(Modifier)
+                if (upright && !graphOnTop) rulesCard(Modifier.fillMaxWidth())
             }
             if (landscape) {
                 // Down the trailing edge: the lenses standing over the key, "simulate shot" under it.
@@ -632,52 +633,28 @@ internal fun FloatingControls(
                     keyRow(Modifier.widthIn(max = RULES_WIDTH).fillMaxWidth())
                     rulesCard(Modifier.widthIn(max = RULES_WIDTH))
                 }
-            } else if (graphOnTop) {
-                status(
-                    Modifier.align(Alignment.BottomStart).layout { m, c ->
-                        val gap = bottomPx
-                        val p = m.measure(c.offset(vertical = -gap))
-                        layout(c.constrainWidth(p.width), c.constrainHeight(p.height + gap)) { p.place(0, 0) }
-                    }
-                )
-            }
-        }
-        if (!landscape && !tablet) {
-            // Held upright, the bottom is a bar of its own across the window, as the camera apps have it: the
-            // lenses just over it, then the rules as two cells, then the record key in the middle and "simulate
-            // shot" to its right.
-            Column(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().onGloballyPositioned {
-                    rects.bottom = it.boundsInRoot()
-                    report()
-                    bottomPx = it.size.height
-                },
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                // Where the camera apps have them: just over the shutter.
-                zoom(Modifier.padding(bottom = CgSpace.S12), false)
+            } else {
+                // Held upright: the lenses over the key at the foot, and over them, while the graph is high, the
+                // status and the rules.
                 Column(
-                    Modifier.fillMaxWidth()
-                        .background(CgColors.Surface.Base)
-                        .drawBehind {
-                            drawRect(CgColors.Line.Hairline, size = Size(size.width, CgStroke.Hairline.toPx()))
-                        }
-                        .padding(top = CgStroke.Hairline)
-                        .navigationBarsPadding()
-                        .padding(bottom = CgSpace.S16),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
                 ) {
-                    RulesBlock(
-                        take,
-                        Modifier.widthIn(max = RULES_WIDTH).drawBehind {
-                            drawRect(
-                                CgColors.Line.Hairline,
-                                Offset(0f, size.height - CgStroke.Hairline.toPx()),
-                                Size(size.width, CgStroke.Hairline.toPx()),
-                            )
+                    if (graphOnTop) {
+                        status(Modifier)
+                        rulesCard(Modifier.fillMaxWidth())
+                    }
+                    Column(
+                        Modifier.fillMaxWidth().padding(top = CgSpace.S4).onGloballyPositioned {
+                            rects.bottom = it.boundsInRoot()
+                            report()
                         },
-                    )
-                    keyRow(Modifier.fillMaxWidth().padding(top = CgSpace.S16, start = CgSpace.S16, end = CgSpace.S16))
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
+                    ) {
+                        zoom(Modifier, false)
+                        keyRow(Modifier.fillMaxWidth().padding(bottom = CgSpace.S8))
+                    }
                 }
             }
         }
@@ -687,6 +664,8 @@ internal fun FloatingControls(
 /** The shade behind the record key on its side, so it reads over a bright picture. */
 private val SHADE = CgColors.Surface.Scrim.copy(alpha = 0.55f)
 private val SIDE_SHADE = 200.dp
+/** Upright, the shade under the lenses and the key. */
+private val FOOT_SHADE = 240.dp
 
 /** "simulate shot" at most: two short lines beside the record key. */
 private val SIMULATE_WIDTH = 120.dp

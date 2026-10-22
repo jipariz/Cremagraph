@@ -48,7 +48,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -129,17 +128,17 @@ class EditViewModel(
     private var state: EditState? = null
     private var saveJob: Job? = null
 
-    private val _ui = MutableStateFlow(EditUiState(hasShotHistory = source !== ShotHistory.None))
-    val ui: StateFlow<EditUiState> = _ui.asStateFlow()
+    val ui: StateFlow<EditUiState>
+        field = MutableStateFlow(EditUiState(hasShotHistory = source !== ShotHistory.None))
 
     val videoPath: Path?
-        get() = _ui.value.item?.let { store.videoPath(it) }
+        get() = ui.value.item?.let { store.videoPath(it) }
 
     init {
         viewModelScope.launch {
             val item = withContext(work) { library.load(id) }
             if (item == null) {
-                _ui.update { it.copy(message = Res.string.edit_video_gone.text()) }
+                ui.update { it.copy(message = Res.string.edit_video_gone.text()) }
                 return@launch
             }
             state = EditState(item)
@@ -147,7 +146,7 @@ class EditViewModel(
             val info = withContext(work) { runCatching { probe.info(store.videoPath(item)) }.getOrNull() }
             sourceAspect = info?.aspect
             val qualities = availableQualities(info?.shortSidePx ?: 0, probe.supports4k())
-            _ui.update { it.copy(qualities = qualities, sourceAspect = info?.aspect).withExportQualities() }
+            ui.update { it.copy(qualities = qualities, sourceAspect = info?.aspect).withExportQualities() }
             analyse(item)
             // A shot handed over with the video but not placed (the phones' "compose a video") is lined up as one
             // picked
@@ -155,7 +154,7 @@ class EditViewModel(
             val unplaced = item.shot
             if (unplaced != null && item.shotStartInVideoUs == null && !item.syncLocked) {
                 attach(unplaced, push = false)
-                _ui.update { it.copy(busy = null) }
+                ui.update { it.copy(busy = null) }
             }
         }
         viewModelScope.launch {
@@ -164,7 +163,7 @@ class EditViewModel(
                 .collect { (p, left) ->
                     if (p != null) {
                         wasExporting = true
-                        _ui.update { it.copy(exporting = p, exportLeftMs = left) }
+                        ui.update { it.copy(exporting = p, exportLeftMs = left) }
                     } else if (wasExporting || id in exports.outcomes.value) {
                         // Over: here, or before this screen was opened (from the export's notification).
                         wasExporting = false
@@ -177,7 +176,7 @@ class EditViewModel(
     /** The export finished, failed or was cancelled; the manager kept which, and where it went. */
     private fun ended(outcome: ExportManager.Outcome) {
         exports.clearMessage()
-        _ui.update {
+        ui.update {
             when (outcome) {
                 is ExportManager.Outcome.Done ->
                     it.copy(
@@ -205,7 +204,7 @@ class EditViewModel(
     override fun unlockShotStart() {
         if (state?.item?.syncLocked != true) return
         edit(push = true) { it.unlocked() }
-        _ui.update { it.copy(message = Res.string.edit_start_unlocked.text()) }
+        ui.update { it.copy(message = Res.string.edit_start_unlocked.text()) }
     }
 
     override fun overlay(push: Boolean, change: (OverlaySettings) -> OverlaySettings) =
@@ -258,7 +257,7 @@ class EditViewModel(
         if (item.syncLocked) return
         val start = item.shotStartByClock()
         if (start == null) {
-            _ui.update { it.copy(message = Res.string.edit_clocks_disagree.text()) }
+            ui.update { it.copy(message = Res.string.edit_clocks_disagree.text()) }
         } else {
             edit(push = true) { it.withShotStart(start) }
         }
@@ -274,7 +273,7 @@ class EditViewModel(
         val placed =
             if (item.syncLocked || item.shotStartInVideoUs != null) null
             else {
-                _ui.update { it.copy(busy = Res.string.edit_lining_up.text()) }
+                ui.update { it.copy(busy = Res.string.edit_lining_up.text()) }
                 pumpOnset(item) ?: item.copy(shot = shot).shotStartByClock()
             }
         val start = if (item.syncLocked || item.shotStartInVideoUs != null) null else placed ?: 0L
@@ -283,13 +282,13 @@ class EditViewModel(
             if (start != null && with.shotStartInVideoUs == null) with.withShotStart(start) else with
         }
         if (start != null && placed == null) {
-            _ui.update { it.copy(message = Res.string.edit_no_pump_at_zero.text()) }
+            ui.update { it.copy(message = Res.string.edit_no_pump_at_zero.text()) }
         }
     }
 
     /** Where the pump starts in the video's sound: from the analysis when it is done, else decoded now. */
     private suspend fun pumpOnset(item: VideoItem): Long? =
-        _ui.value.pumpUs
+        ui.value.pumpUs
             ?: withContext(work) {
                 val pcm = runCatching { probe.decodeMonoPcm(store.videoPath(item)) }.getOrNull()
                 pcm?.let { PumpOnsetDetector().detect(it.samples, it.sampleRate) }
@@ -297,27 +296,27 @@ class EditViewModel(
 
     override fun openSheet(sheet: EditSheet) {
         if (sheet == EditSheet.SHOT) loadShots()
-        _ui.update { it.copy(sheet = sheet) }
+        ui.update { it.copy(sheet = sheet) }
     }
 
-    override fun closeSheet() = _ui.update { it.copy(sheet = null, savedToGallery = false) }
+    override fun closeSheet() = ui.update { it.copy(sheet = null, savedToGallery = false) }
 
-    override fun acknowledgeExport() = _ui.update { it.copy(exported = false, savedToGallery = false) }
+    override fun acknowledgeExport() = ui.update { it.copy(exported = false, savedToGallery = false) }
 
-    fun showMessage(text: UiText) = _ui.update { it.copy(message = text) }
+    fun showMessage(text: UiText) = ui.update { it.copy(message = text) }
 
-    override fun clearMessage() = _ui.update { it.copy(message = null) }
+    override fun clearMessage() = ui.update { it.copy(message = null) }
 
     override fun pickShot(summary: ShotSummary) {
-        _ui.update { it.copy(busy = Res.string.edit_loading_shot.text(), sheet = null) }
+        ui.update { it.copy(busy = Res.string.edit_loading_shot.text(), sheet = null) }
         viewModelScope.launch {
             val shot = withContext(work) { runCatching { source.loadShot(summary.id) }.getOrNull() }
             if (shot == null) {
-                _ui.update { it.copy(busy = null, message = Res.string.edit_shot_load_failed.text()) }
+                ui.update { it.copy(busy = null, message = Res.string.edit_shot_load_failed.text()) }
                 return@launch
             }
             attach(shot)
-            _ui.update { it.copy(busy = null) }
+            ui.update { it.copy(busy = null) }
         }
     }
 
@@ -326,7 +325,7 @@ class EditViewModel(
      * it carries its own clock, so the flag on the timeline still decides where it starts in the video.
      */
     fun importShotFile(path: Path) {
-        _ui.update { it.copy(busy = Res.string.edit_reading_file.text(), sheet = null) }
+        ui.update { it.copy(busy = Res.string.edit_reading_file.text(), sheet = null) }
         viewModelScope.launch {
             val shot =
                 withContext(work) {
@@ -335,11 +334,11 @@ class EditViewModel(
                         .getOrNull()
                 }
             if (shot == null) {
-                _ui.update { it.copy(busy = null, message = Res.string.edit_not_a_shot_file.text()) }
+                ui.update { it.copy(busy = null, message = Res.string.edit_not_a_shot_file.text()) }
                 return@launch
             }
             attach(shot)
-            _ui.update { it.copy(busy = null) }
+            ui.update { it.copy(busy = null) }
         }
     }
 
@@ -349,22 +348,22 @@ class EditViewModel(
     fun attachShot(shot: Shot) {
         viewModelScope.launch {
             attach(shot)
-            _ui.update { it.copy(busy = null) }
+            ui.update { it.copy(busy = null) }
         }
     }
 
     /** Finds the pump in the audio and puts the flag there; the user can still move it. */
     override fun findStart() {
-        val item = _ui.value.item ?: return
+        val item = ui.value.item ?: return
         if (item.syncLocked) return
-        _ui.update { it.copy(busy = Res.string.edit_finding_start.text()) }
+        ui.update { it.copy(busy = Res.string.edit_finding_start.text()) }
         viewModelScope.launch {
             val onset = pumpOnset(item)
             if (onset == null) {
-                _ui.update { it.copy(busy = null, message = Res.string.edit_no_pump_by_hand.text()) }
+                ui.update { it.copy(busy = null, message = Res.string.edit_no_pump_by_hand.text()) }
             } else {
                 edit(push = true) { it.withShotStart(onset) }
-                _ui.update { it.copy(busy = null) }
+                ui.update { it.copy(busy = null) }
             }
         }
     }
@@ -373,7 +372,7 @@ class EditViewModel(
     override fun saveAndExport(quality: Quality, withSound: Boolean, to: ExportManager.Destination) {
         val item = state?.item ?: return
         saveJob?.cancel()
-        _ui.update {
+        ui.update {
             it.copy(
                 exporting = 0f,
                 exportingQuality = quality,
@@ -391,14 +390,14 @@ class EditViewModel(
 
     /** Remembers [quality] for exports [to] that destination, this video's and the next ones'. */
     override fun pickQuality(to: ExportManager.Destination, quality: Quality) {
-        if (quality !in _ui.value.qualities) return
+        if (quality !in ui.value.qualities) return
         settings.update {
             when (to) {
                 ExportManager.Destination.GALLERY -> it.copy(galleryQuality = quality)
                 ExportManager.Destination.SHARE -> it.copy(shareQuality = quality)
             }
         }
-        _ui.update { it.withExportQualities() }
+        ui.update { it.withExportQualities() }
     }
 
     /** Each destination's quality out of what this video allows, from what was picked last. */
@@ -415,11 +414,11 @@ class EditViewModel(
 
     override fun answerExportNotifications(allow: Boolean) {
         settings.update { it.copy(exportNotificationsAsked = true) }
-        _ui.update { it.copy(askExportNotifications = false) }
+        ui.update { it.copy(askExportNotifications = false) }
     }
 
     override fun openSavedVideo() {
-        _ui.value.savedVideo?.let(exports::open)
+        ui.value.savedVideo?.let(exports::open)
     }
 
     /**
@@ -439,13 +438,13 @@ class EditViewModel(
                     withContext(work) {
                         peaks(pcm.samples, WAVE_BUCKETS) to PumpOnsetDetector().detect(pcm.samples, pcm.sampleRate)
                     }
-                _ui.update { it.copy(waveform = wave, pumpUs = pump) }
+                ui.update { it.copy(waveform = wave, pumpUs = pump) }
             }
         }
         viewModelScope.launch {
             val dir = cacheDir / "strip" / item.id
             val frames = mutableListOf<ImageBitmap>()
-            _ui.update { it.copy(stripLoading = true) }
+            ui.update { it.copy(stripLoading = true) }
             for (i in 0 until THUMBNAILS) {
                 val atUs = ((i + 0.5) / THUMBNAILS * item.durationUs).toLong()
                 val bitmap =
@@ -460,21 +459,21 @@ class EditViewModel(
                     }
                 if (bitmap == null) {
                     // A frame that cannot be made leaves a hole: no strip, as before.
-                    _ui.update { it.copy(stripLoading = false) }
+                    ui.update { it.copy(stripLoading = false) }
                     return@launch
                 }
                 frames += bitmap
             }
             // All at once: frames trickling in one by one look unfinished.
-            _ui.update { it.copy(thumbnails = frames.toList(), stripLoading = false) }
+            ui.update { it.copy(thumbnails = frames.toList(), stripLoading = false) }
         }
     }
 
     override fun loadShots() {
-        if (_ui.value.shots.isNotEmpty()) return
+        if (ui.value.shots.isNotEmpty()) return
         viewModelScope.launch {
             val shots = withContext(work) { runCatching { source.history() }.getOrDefault(emptyList()) }
-            _ui.update { it.copy(shots = shots) }
+            ui.update { it.copy(shots = shots) }
         }
     }
 
@@ -488,7 +487,7 @@ class EditViewModel(
     private fun publish() {
         val s = state ?: return
         val style = styles.resolve(s.item.overlay, s.item.shot?.source)
-        _ui.update { it.copy(item = s.item, style = style, canUndo = s.canUndo, canRedo = s.canRedo) }
+        ui.update { it.copy(item = s.item, style = style, canUndo = s.canUndo, canRedo = s.canRedo) }
         if (style.adapt.enabled) measureLuma(s.item) else lumaFor = null
     }
 
@@ -526,7 +525,7 @@ class EditViewModel(
                     }
                         .getOrNull()
                 }
-            _ui.update { it.copy(luma = track) }
+            ui.update { it.copy(luma = track) }
         }
     }
 

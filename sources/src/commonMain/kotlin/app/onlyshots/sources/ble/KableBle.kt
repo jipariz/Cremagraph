@@ -26,8 +26,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
@@ -79,15 +77,15 @@ class KableBleDeviceLink(private val device: FoundBleDevice) : BleDeviceLink {
         get() = device.protocol
 
     private val peripheral = Peripheral(device.advertisement)
-    private val _readings = MutableSharedFlow<BleReading>(extraBufferCapacity = 256)
-    override val readings: SharedFlow<BleReading> = _readings.asSharedFlow()
-    private val _connection = MutableStateFlow<ConnectionState>(ConnectionState.Connecting)
-    override val connection: StateFlow<ConnectionState> = _connection.asStateFlow()
+    override val readings: SharedFlow<BleReading>
+        field = MutableSharedFlow<BleReading>(extraBufferCapacity = 256)
+    override val connection: StateFlow<ConnectionState>
+        field = MutableStateFlow<ConnectionState>(ConnectionState.Connecting)
 
     private var route: GattRoute? = null
 
     fun start(scope: CoroutineScope): Job = scope.launch {
-        keepConnected(_connection, RETRY_INTERVAL_MS) { onConnected -> session(onConnected) }
+        keepConnected(connection, RETRY_INTERVAL_MS) { onConnected -> session(onConnected) }
     }
 
     private suspend fun session(onConnected: () -> Unit) {
@@ -112,7 +110,7 @@ class KableBleDeviceLink(private val device: FoundBleDevice) : BleDeviceLink {
                 val decoder = protocol.newDecoder(name)
                 for (n in r.notify.filter { it in notifying }) launch {
                     peripheral.observe(characteristicOf(Uuid.parse(r.service), Uuid.parse(n))).collect { bytes ->
-                        for (reading in decoder.feed(bytes)) _readings.emit(reading)
+                        for (reading in decoder.feed(bytes)) readings.emit(reading)
                     }
                 }
                 write(r, protocol.onConnect(r))

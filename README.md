@@ -30,7 +30,7 @@ client-server style. Apps live in `app/`. Shared libraries live at root.
 
 | Module | What |
 | --- | --- |
-| `:app:shared` | Phones' app (Start → Home → Record → Edit), Koin (`initKoin`), platform modules, iOS entry (`MainViewController`, framework `OnlyShotsApp`) |
+| `:app:shared` | Phones' app (Start → Home → Record → Edit), Koin (`initKoin`), platform modules, iOS entry (`MainViewController`, Swift export module `OnlyShotsApp`) |
 | `:app:androidApp` | Android app: `MainActivity`, manifest, icons, release build |
 | `app/iosApp` | Xcode project. SwiftUI host. Links `:app:shared` |
 | `:app:desktopApp` | Desktop editor: `main()`, packaging |
@@ -145,7 +145,8 @@ accent, `#3A3A38` hairlines, square corners. IBM Plex Mono SemiBold names and co
   `com.android.application` on built-in Kotlin.
 - **Resources gap:** plugin no package library's Compose resources. `app/androidApp/build.gradle.kts` copies
   `:core:resources` into APK assets. Screenshots get same files on classpath.
-- **iOS:** `app/iosApp/project.yml` makes Xcode project (`xcodegen`). Links static `OnlyShotsApp` from `:app:shared`.
+- **iOS:** `app/iosApp/project.yml` makes Xcode project (`xcodegen`). Imports `:app:shared` as Swift export module
+  `OnlyShotsApp`, built by its pre-build phase (`embedSwiftExportForXcode`).
 - **Secrets:** none in repo. Only CI secret: `VERCEL_TOKEN` (org secret, web deploy).
 
 ## Version and release
@@ -343,8 +344,8 @@ All seven milestones done: spike, foundations, record, editor, share, more sourc
   guess. Scan works either way.
 - **Gaggiuino brewing frames:** what binary firmware sends only while brewing. Can history come over socket.
 - **Gaggiuino icon:** maintainers' OK.
-- **Min iOS:** suggest 16. minSdk 26.
-- **Toolchain:** AGP 9.3.2, Gradle 9.6.1, Kotlin 2.4.21, Compose 1.12.1.
+- **Min iOS:** 18 (Swift export needs it). minSdk 26.
+- **Toolchain:** AGP 9.3.2, Gradle 9.6.1, Kotlin 2.5.0-Beta2, Compose 1.12.1.
 
 Open Sans: SIL Open Font License 1.1 (`core/resources/OPEN_SANS_LICENSE.txt`). IBM Plex Mono and Plex Sans: SIL Open
 Font License 1.1 (`core/resources/IBM_PLEX_LICENSE.txt`).

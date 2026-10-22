@@ -28,19 +28,18 @@ private class TestSource(
     override val kind: SourceKind = SourceKind.GAGGIUINO,
     private val shots: List<ShotSummary> = emptyList(),
 ) : ShotSource {
-    private val _live = MutableSharedFlow<Sample>(extraBufferCapacity = 16)
-    private val _brew = MutableSharedFlow<BrewEvent>(extraBufferCapacity = 16)
-
     override val capabilities = Capabilities.of(kind)
     override val connection = MutableStateFlow<ConnectionState>(ConnectionState.Connected)
-    override val live: SharedFlow<Sample> = _live
-    override val brewEvents: SharedFlow<BrewEvent> = _brew
+    override val live: SharedFlow<Sample>
+        field = MutableSharedFlow<Sample>(extraBufferCapacity = 16)
+    override val brewEvents: SharedFlow<BrewEvent>
+        field = MutableSharedFlow<BrewEvent>(extraBufferCapacity = 16)
 
     override suspend fun history(limit: Int) = shots.take(limit)
 
     override suspend fun loadShot(id: String): Shot = throw NoSuchElementException(id)
 
-    fun emit(tUs: Long) = _live.tryEmit(Sample(tUs = tUs, brewing = true))
+    fun emit(tUs: Long) = live.tryEmit(Sample(tUs = tUs, brewing = true))
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

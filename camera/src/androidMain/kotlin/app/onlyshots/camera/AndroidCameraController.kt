@@ -40,7 +40,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -92,8 +91,8 @@ class AndroidCameraController(
         RecorderCrashGuard.install(this)
     }
 
-    private val _state = MutableStateFlow(CameraState())
-    override val state: StateFlow<CameraState> = _state.asStateFlow()
+    override val state: StateFlow<CameraState>
+        field = MutableStateFlow(CameraState())
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val executor: Executor = ContextCompat.getMainExecutor(context)
@@ -224,7 +223,7 @@ class AndroidCameraController(
     private fun readCamera() {
         val camera = cameraController.cameraInfo
         val range = pinchRange()
-        _state.update {
+        state.update {
             it.copy(
                 previewReady = true,
                 minZoom = range.start,
@@ -246,7 +245,7 @@ class AndroidCameraController(
      * camera, which can be after the record screen asks: [arm] applies it again then, before the first file starts.
      */
     private fun applyQuality() {
-        val on = wantFourK && _state.value.supports4k
+        val on = wantFourK && state.value.supports4k
         if (on == fourK || armed) return
         fourK = on
         val quality = if (on) CxQuality.UHD else CxQuality.FHD
@@ -262,7 +261,7 @@ class AndroidCameraController(
         if (zoom !in range && other != null) return switchTo(other, zoom)
         val z = zoom.coerceIn(range)
         cameraController.setZoomRatio(z / base)
-        _state.update { it.copy(zoom = z) }
+        state.update { it.copy(zoom = z) }
     }
 
     /**
@@ -276,7 +275,7 @@ class AndroidCameraController(
         val closing = finalized
         if (rearm) disarm()
         lens = Lens(if (target.cameraId == null) 1f else target.stop, target.cameraId)
-        _state.update { it.copy(zoom = zoom) }
+        state.update { it.copy(zoom = zoom) }
         switching?.cancel()
         switching = scope.launch {
             closing?.let { withTimeoutOrNull(CLOSE_TIMEOUT_MS) { it.await() } }
@@ -326,16 +325,16 @@ class AndroidCameraController(
             // No auto-cancel: the user asked for this spot and keeps it until they clear it.
             FocusMeteringAction.Builder(point).disableAutoCancel().build(),
         )
-        _state.update { it.copy(focusLocked = true) }
+        state.update { it.copy(focusLocked = true) }
     }
 
     override fun unlockFocus() {
         cameraController.cameraControl?.cancelFocusAndMetering()
-        _state.update { it.copy(focusLocked = false) }
+        state.update { it.copy(focusLocked = false) }
     }
 
     override fun setMic(on: Boolean) {
-        _state.update { it.copy(micOn = on && hasAudioPermission()) }
+        state.update { it.copy(micOn = on && hasAudioPermission()) }
     }
 
     override suspend fun arm(preRollSeconds: Int) {
@@ -343,10 +342,10 @@ class AndroidCameraController(
         // refuses with a crash: the first one arms, the others return.
         if (armed || arming) return
         if (freeBytes() < lowStorageBytes()) {
-            _state.update { it.copy(error = CameraError.NoSpace) }
+            state.update { it.copy(error = CameraError.NoSpace) }
             return
         }
-        _state.update { it.copy(error = null) }
+        state.update { it.copy(error = null) }
         arming = true
         try {
             // Arming is asked for as soon as the permission is granted, which can be before the
@@ -360,7 +359,7 @@ class AndroidCameraController(
         // crash: say so, as iOS does, and stay disarmed.
         // With no camera at all CameraX never initializes, and even asking throws.
         if (runCatching { cameraController.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) }.getOrDefault(false).not()) {
-            _state.update { it.copy(error = CameraError.NoRearCamera) }
+            state.update { it.copy(error = CameraError.NoRearCamera) }
             return
         }
         // The camera is open now, so whether it records 4K is known: the first take gets the quality asked for.
@@ -409,7 +408,7 @@ class AndroidCameraController(
         val durationUs = done.await()
         file = null
         finalized = null
-        val hasAudio = _state.value.micOn
+        val hasAudio = state.value.micOn
         val before = previous
         val beforeDone = previousDone
         previous = null
@@ -480,7 +479,7 @@ class AndroidCameraController(
         statusAtNs = 0
         recording = cameraController.startRecording(
             FileOutputOptions.Builder(out).build(),
-            if (_state.value.micOn && hasAudioPermission()) AudioConfig.create(true) else AudioConfig.AUDIO_DISABLED,
+            if (state.value.micOn && hasAudioPermission()) AudioConfig.create(true) else AudioConfig.AUDIO_DISABLED,
             executor,
         ) { event ->
             when (event) {
@@ -493,7 +492,7 @@ class AndroidCameraController(
                     // Ended by CameraX, not by us: still armed and still the current file.
                     if (armed && file == out) onEndedByCamera()
                     else if (event.hasError() && event.error != VideoRecordEvent.Finalize.ERROR_SOURCE_INACTIVE) {
-                        _state.update { it.copy(error = CameraError.RecordingFailed(event.cause?.message)) }
+                        state.update { it.copy(error = CameraError.RecordingFailed(event.cause?.message)) }
                     }
                 }
             }
@@ -534,7 +533,7 @@ class AndroidCameraController(
         // Nothing will finalize these now: a stop() waiting on the take goes on with what it has.
         finalized?.complete(statusUs)
         previousDone?.complete(0)
-        _state.update { it.copy(error = CameraError.RecordingFailed(null)) }
+        state.update { it.copy(error = CameraError.RecordingFailed(null)) }
         // Setting the quality again builds a new VideoCapture, and with it a new recorder.
         cameraController.videoCaptureQualitySelector = cameraController.videoCaptureQualitySelector
         if (wasArmed && !inTake) {

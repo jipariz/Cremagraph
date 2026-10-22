@@ -49,13 +49,16 @@ fun plexSans(): FontFamily {
  */
 fun String.caps(): String = uppercase()
 
+/** The headline as the link banner and the store art set it: capitals, its two sentences on two lines. */
+fun String.headline(): String = caps().replaceFirst(". ", ".\n")
+
 /**
  * The text styles. Mono SemiBold names and counts things (titles, labels, buttons, values), tracked out a little; Sans
  * Regular says sentences.
  */
 @Immutable
 data class CgTypography(
-    /** The one headline of a screen ("Your shot, with its graph"). */
+    /** The one headline of a screen ("FILM THE SHOT. KEEP THE DATA."). */
     val pivot: TextStyle,
     val screenTitle: TextStyle,
     val sheetTitle: TextStyle,

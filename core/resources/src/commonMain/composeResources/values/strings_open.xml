@@ -55,7 +55,6 @@
     <string name="open_hint_both">needs both a video and a shot</string>
 
     <!-- Mobile web -->
-    <string name="open_mobile_title_banner">Or edit one you filmed</string>
     <string name="open_mobile_intro">Pick the video and the shot. Nothing leaves your phone.</string>
     <string name="open_mobile_video_detail">.mp4 or .mov</string>
     <string name="open_mobile_shot_detail">.shot or .json file</string>

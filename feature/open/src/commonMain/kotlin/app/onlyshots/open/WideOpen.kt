@@ -75,6 +75,7 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
+import app.onlyshots.core.designsystem.headline
 import app.onlyshots.core.model.NormRect
 import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.VideoItem
@@ -318,7 +319,7 @@ private fun Steps(
     val opening = status?.takeIf { it == Opening }?.text()
     Column(modifier, verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Text(
-            stringResource(Res.string.start_title),
+            stringResource(Res.string.start_title).headline(),
             style = CgTheme.type.valueLarge.copy(letterSpacing = (-0.02).em, lineHeight = 48.sp),
             color = CgColors.Text.Primary,
             modifier = Modifier.semantics { heading() },

@@ -49,6 +49,7 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
+import app.onlyshots.core.designsystem.headline
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.UiText
@@ -67,7 +68,6 @@ import app.onlyshots.core.resources.open_mobile_intro
 import app.onlyshots.core.resources.open_mobile_reads
 import app.onlyshots.core.resources.open_mobile_reads_title
 import app.onlyshots.core.resources.open_mobile_shot_detail
-import app.onlyshots.core.resources.open_mobile_title_banner
 import app.onlyshots.core.resources.open_mobile_video_detail
 import app.onlyshots.core.resources.open_phone_shot_title
 import app.onlyshots.core.resources.open_phone_video_title
@@ -76,9 +76,10 @@ import app.onlyshots.core.resources.text
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The web on a phone, from the design's "Mobile web" artboard in the Instrument look: the app's banner on top (it films
- * the shot live, which the page cannot), or, once closed, a header with a small "get the app" key; then the two steps
- * in a hairline frame, what it does and reads behind two folded rows, and "open editor" pinned to the bottom.
+ * The web on a phone, from the design's "Mobile web" artboard in the Instrument look: a header with a small "get the
+ * app" key, the two steps in a hairline frame, what it does and reads behind two folded rows, and "open editor" pinned
+ * to the bottom. Until closed, the app's banner (it films the shot live, which the page cannot) floats over the top of
+ * it all, so closing it moves nothing.
  */
 @Composable
 internal fun MobileOpenBody(
@@ -96,96 +97,104 @@ internal fun MobileOpenBody(
     val store = if (stores.onAppStore != null && stores.onPlay == null) Store.AppStore else Store.Play
     val open = if (store == Store.Play) stores.onPlay else stores.onAppStore
     val banner = open != null && !stores.bannerDismissed
-    Column(modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding()) {
-        if (banner && open != null) {
-            Banner(store, onOpen = open, onDismiss = stores.onDismissBanner)
-        } else {
+    Box(modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding()) {
+        Column(Modifier.fillMaxSize()) {
             MobileHeader(store, open)
-        }
-        Column(
-            Modifier.weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(start = CgSpace.S16, end = CgSpace.S16, top = CgSpace.S24, bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
-                Text(
-                    stringResource(if (banner) Res.string.open_mobile_title_banner else Res.string.start_title),
-                    style = CgTheme.type.pivot,
-                    color = CgColors.Text.Primary,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Text(
-                    stringResource(Res.string.open_mobile_intro),
-                    style = CgTheme.type.body.copy(lineHeight = 22.sp),
-                    color = CgColors.Text.Secondary,
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
-                val opening = status?.takeIf { it == Opening }?.text()
-                StepFrame {
-                    StepRow(
-                        number = 1,
-                        title = stringResource(Res.string.open_phone_video_title),
-                        detail =
-                            opening
-                                ?: picked?.let { videoLine(it, pickedFile) }
-                                ?: stringResource(Res.string.open_mobile_video_detail),
-                        action = stringResource(if (picked == null) Res.string.open_choose else Res.string.open_change),
-                        done = picked != null,
-                        next = picked == null,
-                        onClick = onPickVideo,
-                        modifier = Modifier.testTag(TestTags.OpenPickVideo),
+            Column(
+                Modifier.weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = CgSpace.S16, end = CgSpace.S16, top = CgSpace.S24, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
+                    Text(
+                        stringResource(Res.string.start_title).headline(),
+                        style = CgTheme.type.pivot,
+                        color = CgColors.Text.Primary,
+                        modifier = Modifier.semantics { heading() },
                     )
-                    StepDivider()
-                    StepRow(
-                        number = 2,
-                        title = stringResource(Res.string.open_phone_shot_title),
-                        detail = shot?.let { shotLine(it) } ?: stringResource(Res.string.open_mobile_shot_detail),
-                        action = stringResource(if (shot == null) Res.string.open_choose else Res.string.open_change),
-                        done = shot != null,
-                        next = picked != null && shot == null,
-                        onClick = onPickShot,
-                        modifier = Modifier.testTag(TestTags.OpenPickShot),
+                    Text(
+                        stringResource(Res.string.open_mobile_intro),
+                        style = CgTheme.type.body.copy(lineHeight = 22.sp),
+                        color = CgColors.Text.Secondary,
                     )
                 }
-                status?.takeIf { it != Opening }?.let { StatusLine(it.text()) }
+                Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
+                    val opening = status?.takeIf { it == Opening }?.text()
+                    StepFrame {
+                        StepRow(
+                            number = 1,
+                            title = stringResource(Res.string.open_phone_video_title),
+                            detail =
+                                opening
+                                    ?: picked?.let { videoLine(it, pickedFile) }
+                                    ?: stringResource(Res.string.open_mobile_video_detail),
+                            action =
+                                stringResource(if (picked == null) Res.string.open_choose else Res.string.open_change),
+                            done = picked != null,
+                            next = picked == null,
+                            onClick = onPickVideo,
+                            modifier = Modifier.testTag(TestTags.OpenPickVideo),
+                        )
+                        StepDivider()
+                        StepRow(
+                            number = 2,
+                            title = stringResource(Res.string.open_phone_shot_title),
+                            detail = shot?.let { shotLine(it) } ?: stringResource(Res.string.open_mobile_shot_detail),
+                            action =
+                                stringResource(if (shot == null) Res.string.open_choose else Res.string.open_change),
+                            done = shot != null,
+                            next = picked != null && shot == null,
+                            onClick = onPickShot,
+                            modifier = Modifier.testTag(TestTags.OpenPickShot),
+                        )
+                    }
+                    status?.takeIf { it != Opening }?.let { StatusLine(it.text()) }
+                }
+                Column(Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline)) {
+                    Fold(
+                        stringResource(Res.string.open_details_does_title),
+                        stringResource(Res.string.open_details_does),
+                    )
+                    Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
+                    Fold(
+                        stringResource(Res.string.open_mobile_reads_title),
+                        stringResource(Res.string.open_mobile_reads) + (videosNote?.let { " $it" } ?: ""),
+                    )
+                }
             }
-            Column(Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline)) {
-                Fold(stringResource(Res.string.open_details_does_title), stringResource(Res.string.open_details_does))
+            // "open editor" stays in reach, whatever is scrolled.
+            Column {
                 Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
-                Fold(
-                    stringResource(Res.string.open_mobile_reads_title),
-                    stringResource(Res.string.open_mobile_reads) + (videosNote?.let { " $it" } ?: ""),
-                )
+                Column(
+                    Modifier.fillMaxWidth()
+                        .padding(start = CgSpace.S16, end = CgSpace.S16, top = 14.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        stringResource(ctaHint(picked != null, shot != null)),
+                        style = CgTheme.type.bodySmall,
+                        color = CgColors.Text.Secondary,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OpenEditorKey(ready = picked != null && shot != null, onClick = onOpenEditor, fill = true)
+                }
             }
         }
-        // "open editor" stays in reach, whatever is scrolled.
-        Column {
-            Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Hairline))
-            Column(
-                Modifier.fillMaxWidth().padding(start = CgSpace.S16, end = CgSpace.S16, top = 14.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    stringResource(ctaHint(picked != null, shot != null)),
-                    style = CgTheme.type.bodySmall,
-                    color = CgColors.Text.Secondary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OpenEditorKey(ready = picked != null && shot != null, onClick = onOpenEditor, fill = true)
-            }
+        if (banner && open != null) {
+            Banner(store, onOpen = open, onDismiss = stores.onDismissBanner, Modifier.align(Alignment.TopCenter))
         }
     }
 }
 
 /** The app's banner: the mark, what the app adds, "×", and this phone's store key; a cell under a signal rule. */
 @Composable
-private fun Banner(store: Store, onOpen: () -> Unit, onDismiss: () -> Unit) {
+private fun Banner(store: Store, onOpen: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        Modifier.padding(start = CgSpace.S12, end = CgSpace.S12, top = CgSpace.S12)
+        modifier
+            .padding(start = CgSpace.S12, end = CgSpace.S12, top = CgSpace.S12)
             .fillMaxWidth()
             .background(CgColors.Surface.Bar)
             .border(CgStroke.Hairline, CgColors.Line.Hairline)

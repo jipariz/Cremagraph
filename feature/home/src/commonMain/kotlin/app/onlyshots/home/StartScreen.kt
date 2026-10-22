@@ -50,6 +50,7 @@ import app.onlyshots.core.designsystem.component.IconCircleButton
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
 import app.onlyshots.core.designsystem.component.SheetHeader
 import app.onlyshots.core.designsystem.component.topRule
+import app.onlyshots.core.designsystem.headline
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.app_name
 import app.onlyshots.core.resources.home_about
@@ -236,14 +237,13 @@ private fun HelpKey(onHelp: () -> Unit) {
 }
 
 /**
- * "Your shot, with its graph": the phone's headline, broken after its comma onto two lines as the canvas sets it, or
- * the large Mono one of a wide window on one.
+ * "FILM THE SHOT. KEEP THE DATA.": the headline, one sentence a line as the link banner sets it; the large Mono one in
+ * a wide window.
  */
 @Composable
 private fun Headline(big: Boolean) {
-    val title = stringResource(Res.string.start_title)
     Text(
-        if (big) title else title.replaceFirst(", ", ",\n"),
+        stringResource(Res.string.start_title).headline(),
         style =
             if (big) {
                 CgTheme.type.valueLarge.copy(

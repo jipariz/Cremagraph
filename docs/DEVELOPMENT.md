@@ -132,7 +132,9 @@ accent, `#3A3A38` hairlines, square corners. IBM Plex Mono SemiBold names and co
 
 ## Build notes
 
-- **Android release:** `./gradlew :app:androidApp:assembleRelease`. R8 on. APK unsigned. Sign ad hoc to try:
+- **Android release:** `./gradlew :app:androidApp:assembleRelease`. R8 on. Signed only when `ONLYSHOTS_KEYSTORE_FILE`,
+  `ONLYSHOTS_KEYSTORE_PASSWORD`, `ONLYSHOTS_KEY_ALIAS`, `ONLYSHOTS_KEY_PASSWORD` set (release.yml does). Else unsigned.
+  Sign ad hoc to try:
   ```
   apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android \
     --ks-key-alias androiddebugkey --out /tmp/onlyshots.apk \
@@ -146,7 +148,8 @@ accent, `#3A3A38` hairlines, square corners. IBM Plex Mono SemiBold names and co
   `:core:resources` into APK assets. Screenshots get same files on classpath.
 - **iOS:** `app/iosApp/project.yml` makes Xcode project (`xcodegen`). Imports `:app:shared` as Swift export module
   `OnlyShotsApp`, built by its pre-build phase (`embedSwiftExportForXcode`).
-- **Secrets:** none in repo. Only CI secret: `VERCEL_TOKEN` (org secret, web deploy).
+- **Secrets:** none in repo. CI secrets: `VERCEL_TOKEN` (org secret, web deploy); Play release (repo secrets, see
+  below).
 
 ## Version and release
 
@@ -169,12 +172,17 @@ Release = tag:
 git tag v1.1.0 && git push origin main v1.1.0
 ```
 
-`.github/workflows/release.yml` checks tag = version. Builds desktop DMG, MSI, DEB on each OS. Publishes GitHub
-Release with notes.
+`.github/workflows/release.yml` checks tag = version. Uploads signed Android bundle to Play internal testing. Builds
+desktop DMG, MSI, DEB on each OS. Publishes GitHub Release with notes (desktop only; bundle stays a run artifact).
 
 - **Web:** CI deploys from `main`. Live before tag.
 - **Desktop:** unsigned. macOS: right-click › Open first time. Windows SmartScreen warns.
-- **Android, iOS:** manual for now. Signed bundle to Play. Xcode archive to TestFlight.
+- **Android:** `bundleRelease` signed with upload key → Play internal track (`dev.parez.onlyshots`). Promote in Play
+  Console. Repo secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -i upload.jks`), `ANDROID_KEYSTORE_PASSWORD`,
+  `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `PLAY_SERVICE_ACCOUNT_JSON` (service account with Android Publisher
+  API, invited in Play Console with release rights). Play API rejects app with no bundle yet: first one by hand from
+  run's `android-release` artifact. Same version twice fails: bump.
+- **iOS:** manual for now. Xcode archive to TestFlight.
 
 ## Desktop editor
 

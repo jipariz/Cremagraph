@@ -87,9 +87,21 @@ android {
         versionCode = appVersion.buildNumber
         versionName = appVersion.toString()
     }
+    // The Play upload key, only when the environment provides it (release.yml); otherwise the release build stays
+    // unsigned.
+    val uploadKey =
+        System.getenv("ONLYSHOTS_KEYSTORE_FILE")?.let {
+            signingConfigs.create("upload") {
+                storeFile = file(it)
+                storePassword = System.getenv("ONLYSHOTS_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ONLYSHOTS_KEY_ALIAS")
+                keyPassword = System.getenv("ONLYSHOTS_KEY_PASSWORD")
+            }
+        }
     buildFeatures { buildConfig = true }
     buildTypes {
         release {
+            signingConfig = uploadKey
             // On by the project's choice, which is why proguard-rules.pro exists and why the
             // release build gets its own smoke test: R8 breaks reflective paths silently.
             isMinifyEnabled = true

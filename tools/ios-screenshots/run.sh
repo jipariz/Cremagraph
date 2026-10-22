@@ -72,10 +72,21 @@ xcrun simctl privacy "$udid" grant microphone dev.parez.onlyshots 2>/dev/null ||
 xcodebuild build-for-testing -project "$ios/iosApp.xcodeproj" -scheme iosApp -destination "id=$udid" \
     -derivedDataPath "$derived" -quiet
 
+# Folding goes through mobilecli's agent, a UI test runner on the simulator: the first start can outlast its wait, so
+# try a few times.
+fold() {
+    for attempt in 1 2 3; do
+        "$mobilecli" device fold "$1" --device "$udid" >/dev/null && return 0
+        echo "fold $1: attempt $attempt failed, retrying" >&2
+        sleep 10
+    done
+    return 1
+}
+
 failed=0
 for pose in closed open half-open; do
     echo "· $pose"
-    "$mobilecli" device fold "$([[ "$pose" == closed ]] && echo folded || echo "$pose")" --device "$udid" >/dev/null
+    fold "$([[ "$pose" == closed ]] && echo folded || echo "$pose")"
     sleep 2
     rm -rf "$out/$pose.xcresult"
     TEST_RUNNER_DUO_POSE="$pose" \
@@ -87,7 +98,7 @@ for pose in closed open half-open; do
         -resultBundlePath "$out/$pose.xcresult" -quiet || failed=1
 done
 
-"$mobilecli" device fold open --device "$udid" >/dev/null
+fold open || true
 xcrun simctl status_bar "$udid" clear
 
 if [[ "$mode" == record ]]; then

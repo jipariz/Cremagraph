@@ -23,6 +23,7 @@ variants. Only CI secret: `VERCEL_TOKEN` (org secret, web deploy on `main`).
 ./gradlew :video:desktopTest                           # FFmpeg export, probe, player, JVM
 ./gradlew :screenshots:verifyMugshot                   # screenshots, JVM, no device
 ./gradlew :screenshots:recordMugshot                   # re-record after wanted visual change
+tools/ios-screenshots/run.sh                           # iPhone Duo goldens, every pose, simulator (record: re-record)
 ./gradlew ktfmtCheck                                   # format gate. Fix: ktfmtFormat
 ./gradlew :uitests:desktopTest                         # UI flows, phone app + editor, every layout (PR gate)
 ./gradlew :app:desktopApp:test                         # desktop app starts on Open
@@ -251,6 +252,10 @@ module in `app/webApp/.../Main.kt`. Platform features = `expect`/`actual` in `:c
   and tablet (`@ScreenShots` = `@MugshotDevices(PHONE, TABLET)`; `@Preview(widthDp)` ignored).
 - **Goldens:** WebP in `screenshots/src/androidHostTest/snapshots/images/`. Fail → diff report
   `screenshots/build/reports/tests/mugshotTestAndroidMain/index.html`.
+- **iPhone Duo goldens** (`app/iosApp/screenshots/duo`, PNG, half size): whole screen as the system shows it (side
+  column, status, island), closed / open / half-open, in the way up the simulator is turned (turn it by hand for the other). XCUITest `DuoScreenshotTests`, run per pose by
+  `tools/ios-screenshots/run.sh` (folds simulator with mobilecli; XCTest can't move the hinge). Skipped without
+  `DUO_POSE`, so smoke tests unaffected. Record after a wanted change on iOS: `run.sh record`.
 - **Can't capture:** infinite animation (`RecordButton(Armed)`), `ModalBottomSheet`, screens that default
   `koinViewModel()` or call `expect` composables. Extract stateless body first.
 

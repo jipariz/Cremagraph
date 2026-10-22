@@ -107,6 +107,7 @@ accent, `#3A3A38` hairlines, square corners. IBM Plex Mono SemiBold names and co
 ./gradlew testAndroidHostTest                    # shared tests, JVM (CI runs this)
 ./gradlew :screenshots:verifyMugshot             # screenshots, JVM, no device
 ./gradlew :screenshots:recordMugshot             # re-record after wanted visual change
+tools/ios-screenshots/run.sh                     # iPhone Duo goldens per pose (run.sh record to re-record)
 ./gradlew iosSimulatorArm64Test                  # shared tests + AVFoundation export, simulator
 ./gradlew :video:connectedAndroidDeviceTest      # Media3 export alignment, needs device
 ./gradlew :video:desktopTest                     # FFmpeg export alignment, JVM
@@ -127,6 +128,12 @@ accent, `#3A3A38` hairlines, square corners. IBM Plex Mono SemiBold names and co
 - **Screenshots:** `@Preview` + `@Mugshot` in `screenshots/`. Layoutlib renders on JVM. Goldens are WebP in
   `screenshots/src/androidHostTest/snapshots/images/`. Fail = HTML diff report in
   `screenshots/build/reports/tests/mugshotTestAndroidMain/`.
+- **iPhone Duo screenshots:** XCUITest `DuoScreenshotTests` takes the whole screen (system side column, status,
+  island) on the iPhone Duo simulator, closed / open / half-open (the inner display the way the simulator is turned;
+  turn it by hand and run again for the other), and compares it with the PNG goldens in
+  `app/iosApp/screenshots/duo` (half size; fails above 0.2 % differing pixels). `tools/ios-screenshots/run.sh` pins
+  the status bar to 9:41, folds the simulator with mobilecli (pinned in the script) and runs it once per pose; a
+  failure leaves the new picture and a `-diff.png` in `app/iosApp/build/duo-screenshots`.
 - **Can't capture:** infinite animation (`RecordButton(Armed)`), `ModalBottomSheet`, screen wrappers with
   `koinViewModel()`. Preview stateless body instead (`HomeBody`, `RecordBody`, `EditBody`, …). Haze blur not drawn by
   layoutlib; device test checks it.

@@ -4,7 +4,10 @@
     "target": {
       "namespace": "android_app",
       "package_name": "dev.parez.onlyshots",
-      "sha256_cert_fingerprints": ["REPLACE_WITH_RELEASE_SIGNING_SHA256 (keytool -list -v -keystore <release keystore>, or Play Console > App integrity)"]
+      "sha256_cert_fingerprints": [
+        "C2:3F:9F:BC:6E:BF:B3:E4:9B:FD:3A:D2:00:3C:28:A2:73:FD:21:7C:D5:18:B9:9C:F4:8B:35:06:5E:4F:D6:AF",
+        "F1:79:CE:E0:F6:F5:44:60:2D:70:9B:94:66:F6:3B:E6:AB:02:94:F9:20:13:D7:78:27:FF:CB:CD:61:A5:64:4E"
+      ]
     }
   }
 ]

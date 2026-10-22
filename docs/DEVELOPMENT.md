@@ -222,7 +222,9 @@ shows store badge (`app/webApp/.../AppStores.kt`). Apps not published yet, so pl
 - **App Store id:** `AppStores.APP_STORE_ID`, `APP_STORE_ID` in `open/index.html`, `apple-itunes-app` tag in
   `index.html`.
 - **Apple Team ID:** `appIDs` in `.well-known/apple-app-site-association`.
-- **Release signing SHA-256:** `.well-known/assetlinks.json`.
+
+`.well-known/assetlinks.json` holds two SHA-256s: Play's app signing key (store installs) and the upload key (CI's
+bundle, sideloaded). Rotate either key? Update it there.
 
 Check after deploy: `adb shell pm get-app-links dev.parez.onlyshots`, Apple's AASA validator.
 

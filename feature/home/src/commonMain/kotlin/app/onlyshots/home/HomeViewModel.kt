@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -85,6 +86,22 @@ class HomeViewModel(
                 }
             }
         }
+        // The saved machine or scale turned back on: the search sees it before the connection's next try would, so
+        // connect now rather than leave its row offline beside "1 found". Once per sighting: a source the search sees
+        // but that still cannot be reached is left to the holder's own retries, not hammered.
+        viewModelScope.launch {
+            state.map(::savedSourceSeen).distinctUntilChanged().collect { seen ->
+                if (seen && holder.connection.value is ConnectionState.Unreachable && !holder.sampling) {
+                    holder.resume()
+                }
+            }
+        }
+    }
+
+    private fun savedSourceSeen(s: HomeUiState): Boolean {
+        val scale = s.savedScale
+        return if (scale != null) s.scales.any { it.id == scale.scaleId }
+        else machineRows(s).firstOrNull { it.selected }?.found != null
     }
 
     /** Home is in front: search until [stopSearching]. */

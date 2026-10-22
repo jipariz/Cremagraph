@@ -15,7 +15,10 @@ sealed interface StopRule {
         }
     }
 
-    /** Stop once the weight changed by less than [SETTLE_DELTA_G] for [seconds] after the first drops. */
+    /**
+     * Stop once the weight changed by less than [SETTLE_DELTA_G] for [seconds] after the first drops, or at once when
+     * the shot has ended (the cup lifted off the scale).
+     */
     @Serializable
     @SerialName("weight_settles")
     data class WeightSettles(val seconds: Int = 3) : StopRule {
@@ -61,9 +64,9 @@ fun StopRule.stepped(delta: Int): StopRule =
 val StopRule.stepLabel: String?
     get() =
         when (this) {
-            is StopRule.ShotEndPlusTail -> "$tailSeconds s"
-            is StopRule.WeightSettles -> "$seconds s"
-            is StopRule.Fixed -> "$seconds s"
+            is StopRule.ShotEndPlusTail -> "${tailSeconds}s"
+            is StopRule.WeightSettles -> "${seconds}s"
+            is StopRule.Fixed -> "${seconds}s"
             StopRule.Manual -> null
         }
 
@@ -151,7 +154,11 @@ object StopRules {
                 val ended = shot.endedAtUs
                 now != null && ended != null && now >= ended + rule.tailSeconds * 1_000_000L
             }
-            is StopRule.WeightSettles -> now != null && weightSettled(shot.samples, now, rule.seconds * 1_000_000L)
+            // An ended shot has nothing left to settle: the cup came off, or the scale was tared.
+            is StopRule.WeightSettles ->
+                now != null &&
+                    (shot.endedAtUs?.let { now >= it } == true ||
+                        weightSettled(shot.samples, now, rule.seconds * 1_000_000L))
         }
     }
 

@@ -1,5 +1,6 @@
 package app.onlyshots
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.dp
@@ -42,16 +43,22 @@ fun main() {
             icon = windowIcon,
             state = rememberWindowState(width = 1280.dp, height = 860.dp),
         ) {
-            // The desktop reaches machines on the network, so a shot can come straight from one.
-            EditorApp(
-                machineShots = { onPicked, onBack -> MachineShotsScreen(onPicked, onBack) },
-                host =
-                    OpenHost(
-                        headerNote = stringResource(Res.string.core_desktop_header_note),
-                        videosNote = stringResource(Res.string.core_desktop_videos_note),
-                    ),
-                splash = splash,
-            )
+            DesktopEditor(splash)
         }
     }
+}
+
+/** The window's contents: the editor, with what only the desktop has. */
+@Composable
+fun DesktopEditor(splash: SplashState) {
+    // The desktop reaches machines on the network, so a shot can come straight from one.
+    EditorApp(
+        machineShots = { onPicked, onBack -> MachineShotsScreen(onPicked, onBack) },
+        host =
+            OpenHost(
+                headerNote = stringResource(Res.string.core_desktop_header_note),
+                videosNote = stringResource(Res.string.core_desktop_videos_note),
+            ),
+        splash = splash,
+    )
 }

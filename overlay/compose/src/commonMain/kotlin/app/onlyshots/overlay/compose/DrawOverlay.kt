@@ -94,9 +94,9 @@ private fun TextMeasurer.line(text: String, style: TextStyle): TextLayoutResult 
     measure(text, style, overflow = TextOverflow.Clip, softWrap = false, maxLines = 1, density = PixelDensity)
 
 /**
- * [TextMetrics] backed by the Compose text measurer, so layout uses the real Open Sans metrics. Keep one across frames:
- * a scene asks for the same few dozen widths every frame, and the vertical metrics of a size never change, so both are
- * cached here rather than measured again (the measurer's own cache holds only a handful of layouts).
+ * [TextMetrics] backed by the Compose text measurer, so layout uses the style's real font metrics. Keep one across
+ * frames: a scene asks for the same few dozen widths every frame, and the vertical metrics of a size never change, so
+ * both are cached here rather than measured again (the measurer's own cache holds only a handful of layouts).
  */
 class ComposeTextMetrics(private val measurer: TextMeasurer, private val fontFamily: FontFamily) : TextMetrics {
     private val widths = HashMap<WidthKey, Float>()
@@ -145,10 +145,10 @@ fun DrawScope.drawOverlay(
     style: GraphStyle,
     title: String,
     textMeasurer: TextMeasurer,
-    fontFamily: FontFamily,
+    fonts: OverlayFonts,
     labels: OverlayLabels,
     recipe: String? = null,
-    metrics: ComposeTextMetrics = ComposeTextMetrics(textMeasurer, fontFamily),
+    metrics: ComposeTextMetrics = ComposeTextMetrics(textMeasurer, fonts.of(style.text.font)),
 ) {
     val scene =
         buildOverlayScene(
@@ -164,7 +164,7 @@ fun DrawScope.drawOverlay(
             labels = labels,
             recipe = recipe,
         )
-    drawScene(scene, textMeasurer, fontFamily)
+    drawScene(scene, textMeasurer, fonts.of(style.text.font))
 }
 
 fun DrawScope.drawScene(scene: OverlayScene, textMeasurer: TextMeasurer, fontFamily: FontFamily) {
@@ -262,7 +262,7 @@ fun ShotOverlay(
     settings: OverlaySettings,
     style: GraphStyle,
     title: String,
-    fontFamily: FontFamily,
+    fonts: OverlayFonts,
     modifier: Modifier = Modifier,
     recipe: String? = null,
     hazeState: HazeState? = null,
@@ -276,7 +276,7 @@ fun ShotOverlay(
         settings,
         style,
         title,
-        fontFamily,
+        fonts,
         modifier,
         recipe,
         hazeState,
@@ -297,7 +297,7 @@ fun ShotOverlay(
     settings: OverlaySettings,
     style: GraphStyle,
     title: String,
-    fontFamily: FontFamily,
+    fonts: OverlayFonts,
     modifier: Modifier = Modifier,
     recipe: String? = null,
     hazeState: HazeState? = null,
@@ -305,6 +305,7 @@ fun ShotOverlay(
     labels: OverlayLabels = rememberOverlayLabels(),
 ) {
     val measurer = rememberTextMeasurer(cacheSize = OVERLAY_TEXT_CACHE)
+    val fontFamily = fonts.of(style.text.font)
     val metrics = remember(measurer, fontFamily) { ComposeTextMetrics(measurer, fontFamily) }
     val time by rememberUpdatedState(videoTimeUs)
     val luma by rememberUpdatedState(backdropLuma)

@@ -52,16 +52,28 @@ data class VideoItem(
     val shotEndInVideoUs: Long?
         get() = shotStartInVideoUs?.let { start -> shot?.let { start + it.durationUs } }
 
-    /** Moves the trim handles; keeps at least [MIN_TRIM_US] between them. */
+    /**
+     * Moves the trim handles; keeps at least [MIN_TRIM_US] between them. The shot's start stays inside the trim: a
+     * handle moved past it carries it along, as it does the playhead; a locked start ([syncLocked]) is not carried, the
+     * handles stop at it instead.
+     */
     fun trimmed(inUs: Long, outUs: Long): VideoItem {
-        val i = inUs.coerceIn(0L, (durationUs - MIN_TRIM_US).coerceAtLeast(0L))
-        val o = outUs.coerceIn((i + MIN_TRIM_US).coerceAtMost(durationUs), durationUs)
+        var i = inUs.coerceIn(0L, (durationUs - MIN_TRIM_US).coerceAtLeast(0L))
+        var o = outUs.coerceIn((i + MIN_TRIM_US).coerceAtMost(durationUs), durationUs)
+        val start = shotStartInVideoUs
+        if (start == null) return copy(trimInUs = i, trimOutUs = o)
+        if (!syncLocked) return copy(trimInUs = i, trimOutUs = o, shotStartInVideoUs = start.coerceIn(i, o))
+        // Locked: neither handle passes the start; widening the other one keeps the minimum length.
+        i = minOf(i, start)
+        o = maxOf(o, start)
+        o = maxOf(o, (i + MIN_TRIM_US).coerceAtMost(durationUs))
+        i = minOf(i, (o - MIN_TRIM_US).coerceAtLeast(0L))
         return copy(trimInUs = i, trimOutUs = o)
     }
 
-    /** Moves the shot-start flag. Ignored for synced in-app recordings. */
+    /** Moves the shot-start flag, inside the trim, as the playhead. Ignored for synced in-app recordings. */
     fun withShotStart(videoUs: Long): VideoItem =
-        if (syncLocked) this else copy(shotStartInVideoUs = videoUs.coerceIn(0L, durationUs))
+        if (syncLocked) this else copy(shotStartInVideoUs = videoUs.coerceIn(trimInUs, trimOutUs))
 
     /** A recording's shot start, freed to be moved by hand; it stays where it was recorded until it is moved. */
     fun unlocked(): VideoItem = copy(syncLocked = false)

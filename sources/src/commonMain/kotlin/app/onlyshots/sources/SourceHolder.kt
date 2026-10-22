@@ -6,11 +6,13 @@ import app.onlyshots.core.model.Shot
 import app.onlyshots.core.model.ShotSummary
 import app.onlyshots.core.model.SourceKind
 import app.onlyshots.sources.fake.FakeShotSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,14 +29,19 @@ import kotlinx.coroutines.launch
  * keep the same instance while the user connects, disconnects or switches machines underneath.
  *
  * It also owns the connection: [use] remembers how to build a source, and each connection runs in a child scope that
- * [pause] cancels. Cancelling that scope is the only way to stop [keepConnected]'s retry loop, so the holder and the
- * lifetime belong together.
+ * [pause] cancels. Cancelling that scope is the only way to stop [keepConnected]'s retry loop (and the holder's own,
+ * building a source that could not be built), so the holder and the lifetime belong together.
  *
  * ponytail: [use], [pause] and [resume] are called from the UI thread only; add a mutex if something off-main ever
  * drives them.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class SourceHolder(private val scope: CoroutineScope, private val initial: ShotSource) : ShotSource {
+class SourceHolder(
+    private val scope: CoroutineScope,
+    private val initial: ShotSource,
+    /** How long after a failed build (a scale not found, say) it is tried again. */
+    private val retryMs: Long = RETRY_INTERVAL_MS,
+) : ShotSource {
     private val _current = MutableStateFlow(initial)
     val current: StateFlow<ShotSource> = _current.asStateFlow()
 
@@ -77,38 +84,80 @@ class SourceHolder(private val scope: CoroutineScope, private val initial: ShotS
 
     override suspend fun prepareForShot() = _current.value.prepareForShot()
 
-    /** Remembers how to build the chosen source and connects it now. */
+    /** Remembers how to build the chosen source and connects it now. A chosen source ends the sample. */
     fun use(factory: suspend (CoroutineScope) -> ShotSource?) {
+        sampling = false
+        beforeSample = null
         this.factory = factory
         resume()
+    }
+
+    /** Whether the sample shot is the source ("try a sample shot"), until [endSample]. */
+    var sampling = false
+        private set
+
+    /** What the sample stood in for: put back when it ends. */
+    private var beforeSample: (suspend (CoroutineScope) -> ShotSource?)? = null
+
+    /**
+     * The replayed sample shot ([sample]) as the source, for one take: the only way to a simulated shot. The source it
+     * replaces comes back with [endSample].
+     */
+    fun useSample(sample: suspend (CoroutineScope) -> ShotSource?) {
+        val before = if (sampling) beforeSample else factory
+        use(sample)
+        sampling = true
+        beforeSample = before
+    }
+
+    /**
+     * The sample is over: the source it stood in for is set up again, or none. Until (unless) that one connects, the
+     * app is on the disconnected source it starts on, never on the sample.
+     */
+    fun endSample() {
+        if (!sampling) return
+        val back = beforeSample
+        useInitial()
+        back?.let(::use)
     }
 
     /** Reconnects whatever [use] last set up; nothing happens if no machine is configured. */
     fun resume() {
         val factory = factory ?: return
         stopConnection()
-        val child = CoroutineScope(scope.coroutineContext + SupervisorJob())
+        val child = CoroutineScope(scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job]))
         connectionScope = child
         _override.value = ConnectionState.Connecting
+        // Built again every [retryMs] until it is: a scale that was off when the app came up is found once it is on,
+        // as a machine's own loop reconnects it. Stops with the connection scope (pause, another source).
         building = child.launch {
-            val source = runCatching {
-                factory(child)
-            }
-                .getOrElse { e ->
-                    _override.value = ConnectionState.Unreachable(e.message ?: "could not connect")
+            while (true) {
+                val source =
+                    try {
+                        factory(child)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        _override.value = ConnectionState.Unreachable(e.message ?: "could not connect")
+                        null
+                    }
+                if (source != null) {
+                    _current.value = source
+                    _override.value = null
                     return@launch
                 }
-            if (source == null) {
-                _override.value = ConnectionState.Unreachable("could not find it")
-                return@launch
+                if (_override.value !is ConnectionState.Unreachable) {
+                    _override.value = ConnectionState.Unreachable("could not find it")
+                }
+                delay(retryMs)
             }
-            _current.value = source
-            _override.value = null
         }
     }
 
     /** Back to the source the app starts on with nothing set up, forgetting whatever [use] was given. */
     fun useInitial() {
+        sampling = false
+        beforeSample = null
         factory = null
         stopConnection()
         _current.value = initial

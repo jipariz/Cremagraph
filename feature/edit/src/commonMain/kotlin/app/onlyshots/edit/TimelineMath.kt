@@ -62,17 +62,25 @@ object TimelineMath {
 
     /**
      * What a press at [xPx] grabs: the nearest trim handle, or the shot flag when there is one to move, within
-     * [grabPx]. Anything else scrubs the playhead.
+     * [grabPx]. Anything else scrubs the playhead. A press [onFlagTab] (the flag's tab, above the strip) takes the flag
+     * over a trim handle under it, so a flag at a clip's end can always be moved.
      */
-    fun hitHandle(xPx: Float, item: VideoItem, view: TimelineView, grabPx: Float): TimelineHandle {
+    fun hitHandle(
+        xPx: Float,
+        item: VideoItem,
+        view: TimelineView,
+        grabPx: Float,
+        onFlagTab: Boolean = false,
+    ): TimelineHandle {
+        val flag = item.shotStartInVideoUs?.takeIf { item.shot != null && !item.syncLocked }?.let { view.x(it) }
+        if (onFlagTab && flag != null && abs(flag - xPx) <= grabPx) return TimelineHandle.SHOT_FLAG
         val candidates = buildList {
-            add(TimelineHandle.TRIM_IN to item.trimInUs)
-            add(TimelineHandle.TRIM_OUT to item.trimOutUs)
-            if (item.shot != null && !item.syncLocked)
-                item.shotStartInVideoUs?.let { add(TimelineHandle.SHOT_FLAG to it) }
+            add(TimelineHandle.TRIM_IN to view.x(item.trimInUs))
+            add(TimelineHandle.TRIM_OUT to view.x(item.trimOutUs))
+            flag?.let { add(TimelineHandle.SHOT_FLAG to it) }
         }
         return candidates
-            .map { (handle, us) -> handle to abs(view.x(us) - xPx) }
+            .map { (handle, x) -> handle to abs(x - xPx) }
             .filter { (_, d) -> d <= grabPx }
             .minByOrNull { (_, d) -> d }
             ?.first ?: TimelineHandle.PLAYHEAD
@@ -96,6 +104,13 @@ object TimelineMath {
             else -> null
         }
     }
+
+    /**
+     * Where the playhead goes when the trim becomes [item]'s: nowhere while it is inside, else to the nearer edge, so a
+     * handle dragged past it carries it along.
+     */
+    fun pushedPlayhead(item: VideoItem, playheadUs: Long): Long? =
+        playheadUs.takeIf { it !in item.trimInUs..item.trimOutUs }?.coerceIn(item.trimInUs, item.trimOutUs)
 
     /** Applies a drag of [handle] to [atUs]; the item's own rules clamp the result. */
     fun drag(item: VideoItem, handle: TimelineHandle, atUs: Long): VideoItem =

@@ -5,9 +5,13 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
-import app.onlyshots.core.designsystem.loadOpenSans
+import app.onlyshots.core.designsystem.loadOverlayFonts
 import app.onlyshots.core.model.ShotHistory
 import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.core_export_notify_failed
+import app.onlyshots.core.resources.core_export_notify_failed_text
+import app.onlyshots.core.resources.core_export_notify_ready
+import app.onlyshots.core.resources.core_export_notify_ready_text
 import app.onlyshots.core.resources.core_web_file_gone
 import app.onlyshots.core.resources.core_web_header_note
 import app.onlyshots.core.resources.core_web_videos_note
@@ -18,6 +22,7 @@ import app.onlyshots.editor.LIBRARY_DIR
 import app.onlyshots.editor.editorModule
 import app.onlyshots.open.OpenHost
 import app.onlyshots.platform.BackgroundWork
+import app.onlyshots.platform.ExportEnd
 import app.onlyshots.platform.PlatformShare
 import app.onlyshots.platform.VideoGallery
 import app.onlyshots.platform.WebBackgroundWork
@@ -38,6 +43,7 @@ import kotlinx.browser.window
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.context.startKoin
 import org.koin.core.qualifier.named
@@ -54,7 +60,9 @@ fun main() {
     // media.js is a module, so it runs after this script; nothing asks it for anything until the first tap, but the
     // first screen waits for it anyway so a quick tap cannot find it missing.
     whenMediaReady {
-        ComposeViewport(document.body!!) {
+        // Its own element (index.html's #app), not the body: Compose takes over what it is given, and the page's
+        // splash beside it has to stay until it has handed over.
+        ComposeViewport(document.getElementById("app")!!) {
             val fileGone = stringResource(Res.string.core_web_file_gone)
             SideEffect { WebWords.fileGone = fileGone }
             // The page's own splash (index.html) has been drawing until now: the editor is on screen, it can go.
@@ -103,13 +111,25 @@ private val webModule = module {
     }
     single<VideoExporter> {
         val store = get<LibraryStore>()
-        WebVideoExporter(videoPath = { store.videoPath(it) }, fonts = { loadOpenSans() })
+        WebVideoExporter(videoPath = { store.videoPath(it) }, fonts = { loadOverlayFonts() })
     }
     single<VideoProbe> { WebVideoProbe(get()) }
     single<FrameSampler> { WebFrameSampler() }
     single<PlatformShare> { WebShare() }
     single<VideoGallery> { WebGallery() }
-    single<BackgroundWork> { WebBackgroundWork() }
+    single<BackgroundWork> {
+        WebBackgroundWork { end ->
+            when (end) {
+                is ExportEnd.Saved ->
+                    getString(Res.string.core_export_notify_ready) to
+                        getString(Res.string.core_export_notify_ready_text, end.name)
+                is ExportEnd.Failed ->
+                    getString(Res.string.core_export_notify_failed) to
+                        getString(Res.string.core_export_notify_failed_text, end.name, end.reason)
+                is ExportEnd.Paused -> null
+            }
+        }
+    }
 }
 
 /**

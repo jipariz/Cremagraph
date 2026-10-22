@@ -3,6 +3,7 @@
 <resources>
     <!-- Start -->
     <string name="home_start_question">What do you want to do?</string>
+    <string name="home_start_graph_series">P · F · W</string>
     <string name="home_start_record_title">Record a shot</string>
     <string name="home_start_record_detail">Film it with the graph drawn live from your machine or scale.</string>
     <string name="home_start_edit_title">Compose a video</string>
@@ -74,19 +75,22 @@
     <string name="home_status_connecting">connecting…</string>
     <string name="home_rule_start">Start with the shot</string>
     <string name="home_rule_start_now">starts the moment the pump starts</string>
-    <string name="home_rule_start_pre_roll">keep the %1$s s before the pump starts</string>
+    <string name="home_rule_start_pre_roll">keep the %1$ss before the pump starts</string>
     <string name="home_rule_start_now_scale">starts the moment the first drops land</string>
-    <string name="home_rule_start_pre_roll_scale">keep the %1$s s before the first drops land</string>
+    <string name="home_rule_start_pre_roll_scale">keep the %1$ss before the first drops land</string>
     <string name="home_rule_pre_roll">Pre-roll</string>
     <string name="home_rule_stop">Stop after the shot</string>
-    <string name="home_rule_stop_tail">%1$s s after the pump stops</string>
-    <string name="home_rule_stop_settles">when the weight settles for %1$s s</string>
-    <string name="home_rule_stop_fixed">after %1$s s</string>
+    <string name="home_rule_stop_tail">%1$ss after the pump stops</string>
+    <string name="home_rule_stop_settles">when the weight settles for %1$ss</string>
+    <string name="home_rule_stop_fixed">after %1$ss</string>
     <string name="home_rule_stop_manual">you stop it by hand</string>
 
     <!-- Shot from the machine -->
     <string name="home_shots_title">shot from the machine</string>
+    <string name="home_shots_step_machine">machine</string>
+    <string name="home_shots_step_shot">shot</string>
     <string name="home_shots_same_wifi">The machine and this phone need to be on the same Wi‑Fi.</string>
+    <string name="home_shots_pick_machine">pick a machine to see its recent shots</string>
     <string name="home_shots_recent">recent shots · %1$s</string>
     <string name="home_shots_loading">loading…</string>
     <string name="home_shots_none">No shots found. Older firmware cannot share its shots: download the shot file from the machine's web page and pick it from a file.</string>

@@ -13,8 +13,8 @@ import kotlin.math.abs
  *
  * A jump of more than [stepG] between two readings is a cup or a pour. Before a shot it is a cup if the weight settles
  * (a new zero) and a pour if it is still climbing a second later (the shot starts at the jump, from the old zero).
- * During a shot only a drop counts: the cup came off or the scale was tared, which ends the shot and re-arms the
- * trigger; weight shooting up is just a fast pour.
+ * During a shot only a drop counts: the cup came off or the scale was tared, which ends the shot there ([Result.ended])
+ * and re-arms the trigger; weight shooting up is just a fast pour.
  *
  * Weights come back relative to the zero (frozen while a shot runs), so the graph starts at 0 g, not at the cup.
  */
@@ -24,8 +24,11 @@ class FirstDropsDetector(
     private val settleG: Float = SETTLE_G,
     private val settleUs: Long = SETTLE_US,
 ) {
-    /** One reading as the shot sees it: its weight above the zero, and the start when this reading is it. */
-    data class Result(val weight: Float, val started: BrewEvent.Started?)
+    /**
+     * One reading as the shot sees it: its weight above the zero, the start when this reading is it, and the end when
+     * this reading is the cup coming off.
+     */
+    data class Result(val weight: Float, val started: BrewEvent.Started?, val ended: BrewEvent.Ended? = null)
 
     /** The weight the shot is measured from, once the scale has settled; null while it moves. */
     var zero: Float? = null
@@ -41,11 +44,15 @@ class FirstDropsDetector(
     fun onReading(tUs: Long, weight: Float): Result {
         val previous = last
         last = weight
+        var ended: BrewEvent.Ended? = null
         if (previous != null && abs(weight - previous) > stepG) {
             if (started) {
                 // During a shot the weight only grows: a fast pour is part of it. A drop is the cup coming off or a
-                // tare, which ends the shot and re-arms the trigger.
-                if (weight < previous) startOver()
+                // tare, which ends the shot here and re-arms the trigger.
+                if (weight < previous) {
+                    ended = BrewEvent.Ended(tUs)
+                    startOver()
+                }
             } else {
                 // A cup put down, or a pour that starts fast: a cup settles, a pour keeps climbing.
                 pour = if (weight > previous) pour ?: zero?.let { Pour(tUs, it) } else null
@@ -88,7 +95,7 @@ class FirstDropsDetector(
                 startAt = null
             }
         }
-        return Result(zero?.let { weight - it } ?: 0f, null)
+        return Result(zero?.let { weight - it } ?: 0f, null, ended)
     }
 
     /** A jump up from a settled [zero] at [atUs], not yet known to be a cup (it settles) or a pour (it climbs on). */

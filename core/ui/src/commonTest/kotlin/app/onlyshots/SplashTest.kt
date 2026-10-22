@@ -1,49 +1,70 @@
 package app.onlyshots
 
+import androidx.compose.ui.geometry.Offset
 import app.onlyshots.core.designsystem.component.Splash
 import app.onlyshots.core.designsystem.component.SplashTimeline
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** The splash's timeline, as design/splash/SPEC.md and its prototype have it. */
+/** The splash's timeline, as design/splash/SPEC.md and motion.py have it. */
 class SplashTest {
     private val app = SplashTimeline.app
 
     @Test
-    fun theCornersComeInFromTheirDiagonalAndLock() {
-        val start = Splash.pose(0f)
-        start.cornerOffset.forEach { assertEquals(26f, it, 0.001f) }
-        start.cornerAlpha.forEach { assertEquals(0f, it, 0.001f) }
-        // Each corner 40 ms after the last, all at rest when the last has had its 320 ms.
-        val locked = Splash.pose(app.focus.endInclusive + 3 * app.stagger)
-        locked.cornerOffset.forEach { assertEquals(0f, it, 0.001f) }
-        locked.cornerAlpha.forEach { assertEquals(1f, it, 0.001f) }
-        // Out-back: the corner overshoots its rest on the way in, like focus locking.
-        assertTrue((0..320).any { Splash.pose(it.toFloat()).cornerOffset[0] < 0f })
+    fun theTileWipesInFromItsLeftEdge() {
+        assertEquals(0f, Splash.pose(0f).wipe, 0.001f)
+        assertTrue(Splash.pose(130f).wipe in 0.5f..0.99f)
+        assertEquals(1f, Splash.pose(app.wipe.endInclusive).wipe, 0.001f)
     }
 
     @Test
-    fun theShotIsDrawnBehindThePlayheadAndTheDotPulsesOnce() {
-        assertEquals(0f, Splash.pose(app.draw.start).progress, 0.0001f)
-        val drawn = Splash.pose(app.draw.endInclusive)
-        assertEquals(1f, drawn.progress, 0.0001f)
-        assertEquals(52f, drawn.headHalf, 0.001f)
-        assertEquals(Splash.DOT, drawn.dotRadius, 0.001f)
-        // The pulse swells the dot and lets a ring go, and is over by its end: the finished mark again.
-        val swell = (1100..1400 step 10).maxOf { Splash.pose(it.toFloat()).dotRadius }
-        assertEquals(Splash.DOT * 1.28f, swell, 0.05f)
-        assertTrue(Splash.pose(1200f).ringAlpha > 0f)
+    fun thePlayheadStandsUpAtTheTilesEdge() {
+        assertEquals(0f, Splash.pose(app.land.start).headScale, 0.001f)
+        // Out-back: the head swells past its size on the way in, then settles; the stem stands under it.
+        assertTrue((220..380).any { Splash.pose(it.toFloat()).headScale > 1.02f })
+        val up = Splash.pose(app.land.endInclusive)
+        assertEquals(1f, up.headScale, 0.001f)
+        assertEquals(1f, up.stem, 0.001f)
+        assertTrue(up.head.x < Splash.T0 + Splash.HEAD)
+        assertEquals(Splash.FLAT_Y, up.head.y, 0.5f)
+    }
+
+    @Test
+    fun theSweepPlaysTheTraceToThePen() {
+        assertEquals(0f, Splash.pose(app.draw.start).draw, 0.0001f)
+        // Half way the head rides the rise, the trace drawn behind it.
+        val mid = Splash.pose((app.draw.start + app.draw.endInclusive) / 2f)
+        assertTrue(mid.head.y < Splash.FLAT_Y && mid.head.y > Splash.PEN_Y)
+        val swept = Splash.pose(app.draw.endInclusive)
+        assertEquals(1f, swept.draw, 0.0001f)
+        assertEquals(Offset(Splash.PEN_X, Splash.PEN_Y), swept.head.round())
+    }
+
+    @Test
+    fun theHeadPulsesOnceWithARingAndTheMarkIsTheLogoAgain() {
+        val swell = (1100..1400 step 5).maxOf { Splash.pose(it.toFloat()).headScale }
+        assertEquals(1f + Splash.BUMP, swell, 0.01f)
+        val ringing = Splash.pose(1200f)
+        assertTrue(ringing.ringAlpha > 0f && ringing.ring > Splash.HEAD)
         val after = Splash.pose(app.pulse.endInclusive)
-        assertEquals(Splash.DOT, after.dotRadius, 0.001f)
         assertEquals(0f, after.ringAlpha, 0.0001f)
-        assertEquals(Splash.finished, after.copy(ringRadius = Splash.DOT))
+        assertEquals(Splash.finished, after.copy(head = after.head.round(), ring = Splash.HEAD))
     }
 
     @Test
-    fun androidsSystemSplashDrawsWithinItsSecond() {
+    fun androidsSystemSplashSweepsWithinItsSecond() {
         val android = SplashTimeline.android
-        assertTrue(android.draw.endInclusive <= 1000f)
-        assertEquals(1f, Splash.pose(android.draw.endInclusive, android).progress, 0.0001f)
+        assertTrue(android.drawn <= 1000f)
+        val swept = Splash.pose(android.drawn, android)
+        assertEquals(1f, swept.draw, 0.0001f)
+        assertEquals(1f, swept.stem, 0.0001f)
     }
+
+    private fun Offset.round() =
+        Offset(
+            if (abs(x - Splash.PEN_X) < 0.05f) Splash.PEN_X else x,
+            if (abs(y - Splash.PEN_Y) < 0.05f) Splash.PEN_Y else y,
+        )
 }

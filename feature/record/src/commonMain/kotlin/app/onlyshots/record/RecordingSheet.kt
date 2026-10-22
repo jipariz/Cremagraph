@@ -1,16 +1,19 @@
 package app.onlyshots.record
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import app.onlyshots.StopRuleChoice
+import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.CgStepper
 import app.onlyshots.core.designsystem.component.CgToggle
@@ -26,8 +29,8 @@ import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.record_auto_start
 import app.onlyshots.core.resources.record_auto_start_hint
 import app.onlyshots.core.resources.record_pre_roll
-import app.onlyshots.core.resources.record_pre_roll_hint
 import app.onlyshots.core.resources.record_pre_roll_hint_scale
+import app.onlyshots.core.resources.record_pre_roll_keep
 import app.onlyshots.core.resources.record_seconds
 import app.onlyshots.core.resources.record_settings_title
 import app.onlyshots.core.resources.record_stops_header
@@ -61,18 +64,22 @@ fun RecordingSettingsContent(
     val effective = settings.effectiveFor(sourceKind)
     val choices = StopRuleChoice.entries.filter { it.rule().availableFor(sourceKind) }
     val scale = sourceKind == SourceKind.SCALE
-    Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S16)) {
+    // One list: each row padded and parted from the next by a hairline.
+    Column {
         SettingRow(
             stringResource(Res.string.record_auto_start),
+            Modifier.padding(vertical = CgSpace.S16),
             hint = stringResource(Res.string.record_auto_start_hint, RecordSession.triggerText(sourceKind).text()),
         ) {
             CgToggle(settings.autoStart, onCheckedChange = { on -> onChange { it.copy(autoStart = on) } })
         }
-
+        RowRule()
         SettingRow(
             stringResource(Res.string.record_pre_roll),
+            Modifier.padding(vertical = CgSpace.S16),
             hint =
-                stringResource(if (scale) Res.string.record_pre_roll_hint_scale else Res.string.record_pre_roll_hint),
+                if (scale) stringResource(Res.string.record_pre_roll_hint_scale)
+                else stringResource(Res.string.record_pre_roll_keep, settings.preRollSeconds.toString()),
         ) {
             CgStepper(
                 value = stringResource(Res.string.record_seconds, settings.preRollSeconds.toString()),
@@ -91,7 +98,11 @@ fun RecordingSettingsContent(
             )
         }
 
-        SectionHeader(stringResource(Res.string.record_stops_header))
+        RowRule()
+        SectionHeader(
+            stringResource(Res.string.record_stops_header),
+            Modifier.padding(top = CgSpace.S16, bottom = CgSpace.S8),
+        )
         SegmentedControl(
             fill = true,
             options = choices.map { stringResource(it.label) },
@@ -101,12 +112,13 @@ fun RecordingSettingsContent(
         // The rule's amount opens under the picker for the rules that have one, and folds away for those that do not.
         AnimatedVisibility(
             effective.stopRule.stepLabel != null,
-            enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
-            exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+            enter = CgMotion.reveal,
+            exit = CgMotion.conceal,
         ) {
             effective.stopRule.stepLabel?.let { label ->
                 SettingRow(
                     StopRuleChoice.of(effective.stopRule).parameter?.let { stringResource(it) }.orEmpty(),
+                    Modifier.padding(vertical = CgSpace.S16),
                     hint = RecordSession.stopRuleText(effective.stopRule).text(),
                 ) {
                     // Stepped from what is shown, so a scale's stand-in "weight settles" becomes the saved rule.
@@ -123,4 +135,10 @@ fun RecordingSettingsContent(
             }
         }
     }
+}
+
+/** The hairline between two settings. */
+@Composable
+private fun RowRule() {
+    Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Divider))
 }

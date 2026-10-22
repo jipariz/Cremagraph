@@ -9,102 +9,118 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#120D0B" />
+    <meta name="theme-color" content="#0B0B0B" />
     <!-- Safari's own "Open / View" banner for the iPhone app; switch on with the App Store id (see AppStores.kt). -->
     <!-- <meta name="apple-itunes-app" content="app-id=REPLACE_WITH_APP_STORE_ID" /> -->
     <style>
-      html, body { margin: 0; height: 100%; background: #120d0b; overflow: hidden; }
+      html, body { margin: 0; height: 100%; background: #0b0b0b; overflow: hidden; }
+      /* The editor's own place: Compose takes over the element it is given, and the splash must outlive that. */
+      #app { position: fixed; inset: 0; }
       #splash { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
-                background: #120d0b; pointer-events: none; }
-      /* 154 px, as the apps draw it. */
-      #splash svg { width: 154px; height: 154px; overflow: visible; }
+                background: #0b0b0b; pointer-events: none; }
+      /* 146 px, as the apps draw it (design/splash/avd.py). */
+      #splash svg { width: 146px; height: 146px; overflow: visible; }
     </style>
     <script type="module" src="media.js"></script>
     <script type="application/javascript" src="onlyshots.js"></script>
   </head>
   <body>
-    <!-- The splash (design/splash/SPEC.md): drawn by the page itself, long before the app's code has loaded. The shot is
-         drawn and drawn again until the app says it has drawn its first frame (onlyshotsReady), then the dot pulses
-         once and the splash fades into the editor. Reduced motion: the finished mark, still. -->
+    <div id="app"></div>
+    <!-- The splash (design/splash/SPEC.md): drawn by the page itself, long before the app's code has loaded. The signal
+         tile wipes in; the pen, the head on its stem, stands up at its edge as a playhead and sweeps through the shot,
+         the trace drawn behind it. Until the app says it has drawn its first frame (onlyshotsReady) the playhead runs
+         back and sweeps again. Then the head pulses once, a ring going out from it, and the splash fades into the
+         editor. Reduced motion: the finished mark, still. -->
     <div id="splash" aria-hidden="true">
       <svg viewBox="0 0 256 256">
         <g id="mark">
-          <path class="b" fill="#F4EEEA" d="M30.0 88.0L30.0 60.0A30.0 30.0 0 0 1 60.0 30.0L88.0 30.0A10.0 10.0 0 0 1 88.0 50.0L60.0 50.0A10.0 10.0 0 0 0 50.0 60.0L50.0 88.0A10.0 10.0 0 0 1 30.0 88.0Z"/>
-          <path class="b" fill="#F4EEEA" d="M168.0 30.0L196.0 30.0A30.0 30.0 0 0 1 226.0 60.0L226.0 88.0A10.0 10.0 0 0 1 206.0 88.0L206.0 60.0A10.0 10.0 0 0 0 196.0 50.0L168.0 50.0A10.0 10.0 0 0 1 168.0 30.0Z"/>
-          <path class="b" fill="#F4EEEA" d="M226.0 168.0L226.0 196.0A30.0 30.0 0 0 1 196.0 226.0L168.0 226.0A10.0 10.0 0 0 1 168.0 206.0L196.0 206.0A10.0 10.0 0 0 0 206.0 196.0L206.0 168.0A10.0 10.0 0 0 1 226.0 168.0Z"/>
-          <path class="b" fill="#F4EEEA" d="M88.0 226.0L60.0 226.0A30.0 30.0 0 0 1 30.0 196.0L30.0 168.0A10.0 10.0 0 0 1 50.0 168.0L50.0 196.0A10.0 10.0 0 0 0 60.0 206.0L88.0 206.0A10.0 10.0 0 0 1 88.0 226.0Z"/>
-          <line id="head" x1="72" x2="72" y1="130" y2="130" stroke="#F4EEEA" stroke-width="14" stroke-linecap="round"/>
-          <path id="curve" d="M72 168 H88 C106 168 112 110 134 110 H178" fill="none" stroke="#EF4E2B" stroke-width="20"
-                stroke-linecap="round" stroke-linejoin="round"/>
-          <circle id="ring" cx="178" cy="110" r="18" fill="none" stroke="#EF4E2B" stroke-width="4" opacity="0"/>
-          <circle id="dot" cx="72" cy="168" r="0" fill="#EF4E2B"/>
+          <rect id="tile" x="32" y="32" width="0" height="192" fill="#FF5A1F"/>
+          <path id="trace" d="M32 166 H80 C110 166 110 100 140 100 H156" fill="none" stroke="#0B0B0B" stroke-width="20"
+                stroke-linecap="butt" stroke-linejoin="round"/>
+          <path id="rail" d="M32 166 H80 C110 166 110 100 140 100 H172" fill="none" stroke="none"/>
+          <rect id="stem" x="166" y="116" width="12" height="0" fill="#0B0B0B"/>
+          <rect id="head" x="156" y="84" width="0" height="0" fill="#0B0B0B"/>
+          <rect id="ring" x="156" y="84" width="32" height="32" fill="none" stroke="#0B0B0B" stroke-width="5" opacity="0"/>
         </g>
       </svg>
     </div>
     <script>
       (function () {
         var el = document.getElementById('splash'), mark = document.getElementById('mark');
-        var bs = el.querySelectorAll('.b'), head = document.getElementById('head'), curve = document.getElementById('curve');
-        var dot = document.getElementById('dot'), ring = document.getElementById('ring');
-        var L = curve.getTotalLength();
-        curve.style.strokeDasharray = L;
-        // The prototype's timeline (ms) and easing, as in the app (SplashMark.kt).
-        var P = { focus: [0, 320], stagger: 40, head: [260, 420], draw: [380, 1100], pulse: [1100, 1400], exit: [1400, 1750], loop: 1500 };
-        var D = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
-        function clamp(x) { return Math.min(1, Math.max(0, x)); }
-        function seg(t, a, b) { return clamp((t - a) / (b - a)); }
-        function outCubic(x) { return 1 - Math.pow(1 - x, 3); }
-        function inOutSine(x) { return -(Math.cos(Math.PI * x) - 1) / 2; }
-        function outBack(x, s) { return 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2); }
-        function inOutCubic(x) { return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
+        var tile = document.getElementById('tile'), trace = document.getElementById('trace');
+        var rail = document.getElementById('rail'), stem = document.getElementById('stem');
+        var head = document.getElementById('head'), ring = document.getElementById('ring');
+        var L = trace.getTotalLength(), R = rail.getTotalLength();
+        trace.style.strokeDasharray = L;
+        // The timeline (ms) and easings of design/splash/motion.py, as in the app (SplashMark.kt).
+        var P = { wipe: [0, 260], land: [220, 380], draw: [380, 1100], pulse: 300, exit: 350 };
+        var LOOP = { hold: 200, back: 250, draw: 720 };
+        function bezier(x1, y1, x2, y2) {
+          function at(t, a, b) { var u = 1 - t; return 3 * u * u * t * a + 3 * u * t * t * b + t * t * t; }
+          return function (x) {
+            if (x <= 0) return 0;
+            if (x >= 1) return 1;
+            var lo = 0, hi = 1;
+            for (var i = 0; i < 30; i++) { var m = (lo + hi) / 2; if (at(m, x1, x2) < x) lo = m; else hi = m; }
+            return at((lo + hi) / 2, y1, y2);
+          };
+        }
+        var E = { wipe: bezier(.33, 1, .68, 1), land: bezier(.34, 1.6, .64, 1), draw: bezier(.37, 0, .63, 1),
+                  ring: bezier(.33, 1, .68, 1), exit: bezier(.65, 0, .35, 1) };
+        function seg(t, a, b) { return Math.min(1, Math.max(0, (t - a) / (b - a))); }
         var still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var loaded = false, offset = 0, start = performance.now();
+        // The splash's own clock: it moves at most a frame at a time, so while the browser is busy starting the app
+        // (compiling and running the wasm blocks this page for a moment) the animation waits instead of jumping ahead.
+        var clock = 0, last = -1, loaded = false, doneAt = -1;
+        // How far the playhead has swept at t. The first sweep follows P; after it, while the app loads, each cycle
+        // holds the swept mark, runs the playhead back (the trace trims back behind it) and sweeps again.
+        function sweep(t) {
+          if (t < P.draw[1]) return E.draw(seg(t, P.draw[0], P.draw[1]));
+          if (loaded && doneAt >= 0) return 1;
+          var c = (t - P.draw[1]) % (LOOP.hold + LOOP.back + LOOP.draw);
+          if (c < LOOP.hold) return 1;
+          c -= LOOP.hold;
+          if (c < LOOP.back) return 1 - E.draw(c / LOOP.back);
+          return E.draw(seg(c - LOOP.back, 0, LOOP.draw));
+        }
         function render(t) {
-          for (var i = 0; i < 4; i++) {
-            var k = seg(t, P.focus[0] + i * P.stagger, P.focus[1] + i * P.stagger), off = (1 - outBack(k, 1.4)) * 26;
-            bs[i].setAttribute('transform', 'translate(' + D[i][0] * off + ' ' + D[i][1] * off + ')');
-            bs[i].style.opacity = outCubic(seg(t, P.focus[0] + i * P.stagger, P.focus[0] + i * P.stagger + 140));
-          }
-          var len = P.draw[1] - P.draw[0], p = inOutSine(seg(t, P.draw[0], P.draw[1])), fade = 1;
-          if (!loaded && t > P.draw[0]) {
-            // Loading: draw, hold, let the shot fade, sweep again.
-            var cyc = (t - P.draw[0]) % P.loop;
-            p = cyc > len + 450 ? 0 : inOutSine(clamp(cyc / len));
-            fade = 1 - seg(cyc, len + 200, len + 450);
-          }
-          var h = outCubic(seg(t, P.head[0], P.head[1]));
-          var tip = p > 0 ? curve.getPointAtLength(L * p) : { x: 72, y: 168 };
-          head.setAttribute('x1', tip.x); head.setAttribute('x2', tip.x);
-          head.setAttribute('y1', 130 - 52 * h); head.setAttribute('y2', 130 + 52 * h);
-          head.style.opacity = h > 0 ? 1 : 0;
-          curve.style.strokeDashoffset = L * (1 - p);
-          curve.style.opacity = p > 0.004 ? fade : 0;
-          dot.setAttribute('cx', tip.x); dot.setAttribute('cy', tip.y);
-          var pk = loaded ? seg(t, P.pulse[0], P.pulse[1]) : 0, rk = outCubic(pk);
-          var bump = Math.sin(Math.PI * Math.min(1, pk * 1.6)) * 0.28;
-          dot.setAttribute('r', 18 * outBack(seg(t, P.draw[0], P.draw[0] + 160), 1.8) * (1 + bump));
-          ring.setAttribute('r', 18 + 26 * rk);
-          ring.setAttribute('opacity', pk > 0 && pk < 1 ? 0.6 * (1 - rk) : 0);
+          tile.setAttribute('width', 192 * E.wipe(seg(t, P.wipe[0], P.wipe[1])));
+          var d = sweep(t);
+          // The app has drawn: the first time the playhead is at the pen from then on, the pulse and the fade start.
+          if (loaded && doneAt < 0 && d >= 1) doneAt = t;
+          trace.style.strokeDashoffset = L * (1 - d);
+          trace.style.opacity = d > 0.002 ? 1 : 0;
+          var land = E.land(seg(t, P.land[0], P.land[1]));
+          var k = doneAt >= 0 ? seg(t, doneAt, doneAt + P.pulse) : 0, pulsing = k > 0 && k < 1;
+          var bump = pulsing ? Math.sin(Math.PI * Math.min(1, k * 1.6)) * 0.25 : 0;
+          var s = 32 * land * (1 + bump);
+          var at = rail.getPointAtLength(Math.min(R, (R - 16) * d + 16));
+          var x = Math.max(at.x, 32 + s / 2);
+          head.setAttribute('x', x - s / 2); head.setAttribute('y', at.y - s / 2);
+          head.setAttribute('width', s); head.setAttribute('height', s);
+          // The playhead's stem stands under the head wherever it is, down to the stem's foot.
+          stem.setAttribute('x', at.x - 6); stem.setAttribute('y', at.y + 16);
+          stem.setAttribute('height', Math.max(0, 196 - (at.y + 16)) * Math.min(1, land));
+          var r = 32 + 40 * E.ring(k);
+          ring.setAttribute('x', at.x - r / 2); ring.setAttribute('y', at.y - r / 2);
+          ring.setAttribute('width', r); ring.setAttribute('height', r);
+          ring.setAttribute('opacity', pulsing ? 0.85 * (1 - E.ring(k)) : 0);
           // The editor's first screen has its mark in a header the page cannot see: the splash eases back and fades.
-          var e = loaded ? inOutCubic(seg(t, P.exit[0], P.exit[1])) : 0;
+          var e = doneAt >= 0 ? E.exit(seg(t, doneAt + P.pulse, doneAt + P.pulse + P.exit)) : 0;
           mark.setAttribute('transform', 'translate(128 128) scale(' + (1 - 0.08 * e) + ') translate(-128 -128)');
           el.style.opacity = 1 - e;
+          return doneAt >= 0 && e >= 1;
         }
         function frame(now) {
-          var t = now - start - offset;
-          render(t);
-          if (loaded && t >= P.exit[1]) { el.remove(); return; }
+          clock += last < 0 ? 0 : Math.min(now - last, 34);
+          last = now;
+          if (render(clock)) { el.remove(); return; }
           requestAnimationFrame(frame);
         }
         window.onlyshotsReady = function () {
           if (loaded) return;
-          if (still) { el.style.transition = 'opacity 300ms'; el.style.opacity = 0; setTimeout(function () { el.remove(); }, 300); loaded = true; return; }
-          // Mid-sweep, the sweep goes on; between sweeps, a new one starts. Then the pulse and the fade, as everywhere.
-          var t = performance.now() - start, len = P.draw[1] - P.draw[0];
-          var cyc = Math.max(0, t - P.draw[0]) % P.loop;
-          var resume = t < P.draw[0] ? t : (cyc < len ? P.draw[0] + cyc : P.draw[0]);
-          offset = t - resume;
           loaded = true;
+          if (still) { el.style.transition = 'opacity 300ms'; el.style.opacity = 0; setTimeout(function () { el.remove(); }, 300); }
         };
         if (still) render(P.draw[1]); else requestAnimationFrame(frame);
       })();

@@ -32,6 +32,7 @@ import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CgToggle
 import app.onlyshots.core.designsystem.component.ColorChip
 import app.onlyshots.core.designsystem.component.ConnectScaleCard
+import app.onlyshots.core.designsystem.component.DialogRisk
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.designsystem.component.HeaderPivot
@@ -186,13 +187,13 @@ internal fun HomeRows() = Sheet {
     MachineRow(
         "Gaggiuino",
         "192.168.1.42",
-        CgColors.Machine.Gaggiuino,
+        CgIcons.Machine,
         "connected",
         CgColors.Status.Live,
         selected = true,
         onClick = {},
     )
-    MachineRow("Gaggiuino", "192.168.1.77", CgColors.Machine.Gaggiuino, "ready", CgColors.Status.Live, false, {})
+    MachineRow("Gaggiuino", "192.168.1.77", CgIcons.Machine, "ready", CgColors.Status.Live, false, {})
     SkeletonRow()
     AddRow("add by address", onClick = {}, subtitle = "IP or name, for machines the search can’t see")
     SectionHeader("Bluetooth scales", trailing = "2 found")
@@ -267,16 +268,15 @@ internal fun EditorControls() = Sheet {
         TopChip("export", onClick = {}, primary = true)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
-        Pill("⚑ start here", onClick = {}, color = CgColors.Brand.Orange)
+        Pill("start here", onClick = {}, color = CgColors.Brand.Signal, icon = CgIcons.Flag)
         Pill("find start", onClick = {}, color = CgColors.Status.Live, enabled = false)
         Pill("fit", onClick = {})
         Pill("graph start", onClick = {}, icon = CgIcons.Lock)
     }
     CardBar {
-        CardBarButton("style ▾", onClick = {})
-        CardBarButton("data ▾", onClick = {})
-        CardBarButton("◐ 80 %", onClick = {})
-        CardBarButton("↺", onClick = {})
+        CardBarButton("style", onClick = {}, caret = true)
+        CardBarButton("data", onClick = {}, caret = true)
+        CardBarButton("80 %", onClick = {}, icon = CgIcons.Contrast)
     }
     EditorSheet(title = "Making your video", onDone = null) {
         ProgressLine(0.42f)
@@ -323,5 +323,6 @@ internal fun FormsAndDialogs() = Sheet {
         text = "It is not in your gallery yet. Once you leave, you cannot come back to it here.",
         confirm = "keep editing" to {},
         dismiss = "leave" to {},
+        risk = DialogRisk.Dismiss,
     )
 }

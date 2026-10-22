@@ -5,6 +5,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import app.onlyshots.video.WebFiles
 import app.onlyshots.video.WebMedia
+import kotlinx.browser.document
 import kotlinx.coroutines.launch
 import okio.Path
 import okio.Path.Companion.toPath
@@ -61,7 +62,19 @@ private var shotFiles = 0
 @Composable
 actual fun rememberBluetoothPermission(onResult: (granted: Boolean) -> Unit): () -> Unit = { onResult(false) }
 
-@Composable actual fun rememberNotificationPermission(): () -> Unit = {}
+actual val exportsNotify: Boolean = true
+
+/** The browser's own prompt; a browser without notifications answers no. */
+@Composable
+actual fun rememberNotificationPermission(onAnswer: (granted: Boolean) -> Unit): () -> Unit = {
+    askToNotify { onAnswer(it) }
+}
+
+private fun askToNotify(done: (Boolean) -> Unit): Unit =
+    js(
+        "(function(){ if (typeof Notification === 'undefined') { done(false); return; } " +
+            "Notification.requestPermission().then(function(p){ done(p === 'granted'); }, function(){ done(false); }); })()"
+    )
 
 @Composable
 actual fun rememberMediaPermission(onResult: (camera: Boolean, mic: Boolean) -> Unit): () -> Unit = {
@@ -93,7 +106,45 @@ class WebGallery : VideoGallery {
     }
 }
 
-/** A tab keeps running while it is open; there is nothing to hold on to. */
-class WebBackgroundWork : BackgroundWork {
+/**
+ * A tab keeps running while it is open; there is nothing to hold on to, only things to say. While a video is made the
+ * tab's title shows how far it is and leaving the page asks first; when it ends in a tab the user is not looking at, a
+ * desktop notification says so, and clicking it brings the tab back.
+ */
+class WebBackgroundWork(
+    /** The notification's title and line for how [ExportEnd] went, in words; null says nothing. */
+    private val words: suspend (ExportEnd) -> Pair<String, String>? = { null }
+) : BackgroundWork {
     override suspend fun <T> keepAlive(title: String, block: suspend () -> T): T = block()
+
+    override suspend fun <T> keepAlive(task: ExportTask, block: suspend (report: (ExportStatus) -> Unit) -> T): T {
+        val title = document.title
+        guardLeaving(true)
+        return try {
+            block { status -> document.title = "${(status.fraction * 100).toInt()}% · $title" }
+        } finally {
+            guardLeaving(false)
+            document.title = title
+        }
+    }
+
+    override suspend fun finished(end: ExportEnd) {
+        val (title, body) = words(end) ?: return
+        notifyIfAway(title, body)
+    }
 }
+
+private fun guardLeaving(on: Boolean): Unit =
+    js(
+        "(function(){ if (on) { globalThis.onlyshotsLeave = function(e){ e.preventDefault(); e.returnValue = ''; }; " +
+            "window.addEventListener('beforeunload', globalThis.onlyshotsLeave); } " +
+            "else if (globalThis.onlyshotsLeave) { window.removeEventListener('beforeunload', globalThis.onlyshotsLeave); " +
+            "globalThis.onlyshotsLeave = null; } })()"
+    )
+
+private fun notifyIfAway(title: String, body: String): Unit =
+    js(
+        "(function(){ if (typeof Notification === 'undefined' || Notification.permission !== 'granted' || " +
+            "!document.hidden) return; try { var n = new Notification(title, { body: body, icon: 'icon-192.png' }); " +
+            "n.onclick = function(){ window.focus(); n.close(); }; } catch (e) {} })()"
+    )

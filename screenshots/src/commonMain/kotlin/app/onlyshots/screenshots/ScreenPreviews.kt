@@ -34,6 +34,7 @@ import app.onlyshots.home.HomeBody
 import app.onlyshots.home.HomeUiState
 import app.onlyshots.home.MachineShotsBody
 import app.onlyshots.home.MachineShotsUiState
+import app.onlyshots.home.StartBody
 import app.onlyshots.layout.ProvideWindowLayout
 import app.onlyshots.open.ChosenShot
 import app.onlyshots.open.OpenBody
@@ -41,6 +42,7 @@ import app.onlyshots.open.OpenHost
 import app.onlyshots.open.PickedFile
 import app.onlyshots.open.StoreLinks
 import app.onlyshots.overlay.GraphStyles
+import app.onlyshots.platform.SavedVideo
 import app.onlyshots.privacy.PrivacyScreen
 import app.onlyshots.record.RecordActions
 import app.onlyshots.record.RecordBody
@@ -86,6 +88,10 @@ internal val sampleVideo =
     )
 
 internal val picture: @Composable (Modifier) -> Unit = { CoffeeScene(it, progress = 0.6f) }
+
+// Start -----------------------------------------------------------------------------------
+
+@ScreenShots @Preview @Composable internal fun Start() = Screen { StartBody(onRecord = {}, onEdit = {}) }
 
 // Home ------------------------------------------------------------------------------------
 
@@ -232,6 +238,8 @@ internal fun Edit(
     exporting: Float? = null,
     saved: Boolean = false,
     selected: Boolean = !reframing,
+    askNotifications: Boolean = false,
+    savedVideo: SavedVideo? = null,
 ) = Screen {
     EditUi(
         sheet = sheet,
@@ -240,6 +248,8 @@ internal fun Edit(
         exporting = exporting,
         saved = saved,
         selected = selected,
+        askNotifications = askNotifications,
+        savedVideo = savedVideo,
     )
 }
 
@@ -252,6 +262,8 @@ internal fun EditUi(
     exporting: Float? = null,
     saved: Boolean = false,
     selected: Boolean = !reframing,
+    askNotifications: Boolean = false,
+    savedVideo: SavedVideo? = null,
 ) {
     val player = remember { PlayerState().apply { seek(18_000_000) } }
     EditBody(
@@ -265,6 +277,8 @@ internal fun EditUi(
                 exporting = exporting,
                 exportLeftMs = exporting?.let { 31_000L },
                 savedToGallery = saved,
+                askExportNotifications = askNotifications,
+                savedVideo = savedVideo,
             ),
         customStyles = emptyList(),
         player = player,
@@ -287,14 +301,13 @@ internal fun EditUi(
 
 @ScreenShots @Preview @Composable internal fun EditStyleSheet() = Edit(sheet = EditSheet.STYLE)
 
-@ScreenShots @Preview @Composable internal fun EditDataSheet() = Edit(sheet = EditSheet.DATA)
-
+/** The data sheet: what the graph shows, then what it says. */
 @ScreenShots
 @Preview
 @Composable
-internal fun EditTextSheet() =
+internal fun EditDataSheet() =
     Edit(
-        sheet = EditSheet.TEXT,
+        sheet = EditSheet.DATA,
         video =
             sampleVideo.copy(overlay = OverlaySettings(title = "Sunday shot", recipe = "18 g in · 36 g out · 28 s")),
     )
@@ -304,6 +317,19 @@ internal fun EditTextSheet() =
 
 /** Saved: a banner on a wide window; the export sheet says so on a phone. */
 @ScreenShots @Preview @Composable internal fun EditSaved() = Edit(sheet = EditSheet.EXPORT, saved = true)
+
+/** The first export: it offers to say outside the app when the video is done. */
+@ScreenShots
+@Preview
+@Composable
+internal fun EditExportingAsk() = Edit(sheet = EditSheet.EXPORT, exporting = 0.18f, askNotifications = true)
+
+/** Saved, with the gallery's way back to it: open it there (and share it from there). */
+@ScreenShots
+@Preview
+@Composable
+internal fun EditSavedOpen() =
+    Edit(sheet = EditSheet.EXPORT, saved = true, savedVideo = SavedVideo("content://media/external/video/media/1"))
 
 /** The editor at 1:1 and at 16:9: the picture in the video's shape, the graph refitted into it. */
 @ScreenShots
@@ -406,10 +432,10 @@ private val desktopHost =
         videosNote = "Exports at the video's full quality, with sound, into Movies/OnlyShots.",
     )
 
-private val pickedVideo =
+internal val pickedVideo =
     sampleVideo.copy(shot = null, recordedAt = Instant.parse("2026-10-20T08:14:00Z"), durationUs = 42_000_000)
 
-private val pickedFile = PickedFile("morning-shot-zer0.mov", 1080, 1920)
+internal val pickedFile = PickedFile("morning-shot-zer0.mov", 1080, 1920)
 
 /** A computer's browser: both stores. */
 private val computerStores = StoreLinks(onPlay = {}, onAppStore = {}, phone = false)

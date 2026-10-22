@@ -13,7 +13,9 @@
     <string name="style_rename">rename</string>
     <string name="style_delete">delete</string>
     <string name="style_cancel">cancel</string>
-    <string name="style_long_press_hint">long-press: edit a copy · rename · delete</string>
+    <string name="style_copy">copy</string>
+    <string name="style_remove">remove</string>
+    <string name="style_long_press_hint">long-press a style to copy, edit or remove it</string>
     <string name="style_rename_style">rename style</string>
     <string name="style_name">style name</string>
     <string name="style_delete_title">delete %1$s?</string>
@@ -145,6 +147,9 @@
     <string name="style_cell_border">cell border</string>
     <string name="style_border">border</string>
     <string name="style_text">text</string>
+    <string name="style_font">typeface</string>
+    <string name="style_font_sans">Open Sans</string>
+    <string name="style_font_mono">Plex Mono</string>
     <string name="style_text_over_bright_video">text over bright video</string>
     <string name="style_x_over_bright_video">%1$s over bright video</string>
     <string name="style_text_halo_over_bright_video">text halo over bright video</string>
@@ -181,4 +186,8 @@
     <string name="style_swatch_cobalt">cobalt</string>
     <string name="style_swatch_forest">forest</string>
     <string name="style_swatch_clear">clear</string>
+    <string name="style_panels">panels</string>
+    <string name="style_lettering">lettering</string>
+    <string name="style_lettering_words">words</string>
+    <string name="style_lettering_readout">readout</string>
 </resources>

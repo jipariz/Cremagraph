@@ -111,4 +111,18 @@ class FirstDropsTest {
         assertNull(placing.start())
         assertFalse(d.brewing)
     }
+
+    @Test
+    fun liftingTheCupEndsTheShotAtThatReading() {
+        hold(182f)
+        assertNotNull(feed(182.5f, 182.9f).start())
+        // Still dripping when the cup comes off: the reading that drops is the end, and no other is.
+        val shot = feed(200f, 220f, 236.1f, 236.2f)
+        assertTrue(shot.none { it.ended != null })
+        val offAt = t
+        val off = feed(-118f, -118f)
+        assertEquals(BrewEvent.Ended(offAt), off.first().ended)
+        assertNull(off.last().ended)
+        assertFalse(d.brewing)
+    }
 }

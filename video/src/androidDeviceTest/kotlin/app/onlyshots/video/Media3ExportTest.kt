@@ -1,5 +1,6 @@
 package app.onlyshots.video
 
+import app.onlyshots.overlay.compose.OverlayFonts
 import android.util.Log
 import androidx.compose.ui.text.font.FontFamily
 import androidx.media3.common.util.UnstableApi
@@ -29,7 +30,7 @@ class Media3ExportTest {
             f.outputStream().use { input.copyTo(it) }
         }
     }
-    private val exporter = Media3VideoExporter(target, videoPath = { it.file.toPath() }, fonts = { FontFamily.Default })
+    private val exporter = Media3VideoExporter(target, videoPath = { it.file.toPath() }, fonts = { OverlayFonts.Default })
 
     private fun export(trimInUs: Long, trimOutUs: Long, checkAtUs: List<Long>) = runBlocking {
         val out = File(target.cacheDir, "export-$trimInUs.mp4").toOkioPath()

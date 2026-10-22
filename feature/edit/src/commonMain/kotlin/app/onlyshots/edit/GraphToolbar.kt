@@ -4,18 +4,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import app.onlyshots.TestTags
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.component.CardBar
 import app.onlyshots.core.designsystem.component.CardBarButton
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.edit_toolbar_data
 import app.onlyshots.core.resources.edit_toolbar_style
-import app.onlyshots.core.resources.edit_toolbar_text
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The toolbar over a selected graph, the same on the record and edit screens: its style, its data, its words (only
- * where [onText] is given), how much of its background shows, and a reset to the default place and size.
+ * The toolbar over a selected graph, the same on the record and edit screens: its style, its data (and words), and how
+ * much of its background shows. As wide as its keys, centred over the graph ([OverlayEditLayer] places it).
  */
 @Composable
 fun GraphToolbar(
@@ -23,33 +23,30 @@ fun GraphToolbar(
     onStyle: () -> Unit,
     onData: () -> Unit,
     onOpacity: (Float) -> Unit,
-    onReset: () -> Unit,
-    onText: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
-    CardBar {
+    CardBar(modifier) {
         CardBarButton(
             stringResource(Res.string.edit_toolbar_style),
             onClick = onStyle,
             modifier = Modifier.testTag(TestTags.ToolbarStyle),
+            caret = true,
         )
         CardBarButton(
             stringResource(Res.string.edit_toolbar_data),
             onClick = onData,
             modifier = Modifier.testTag(TestTags.ToolbarData),
+            caret = true,
         )
-        onText?.let {
-            CardBarButton(
-                stringResource(Res.string.edit_toolbar_text),
-                onClick = it,
-                modifier = Modifier.testTag(TestTags.ToolbarText),
-            )
-        }
-        CardBarButton("◐ ${(opacity * 100).roundToInt()} %", onClick = { onOpacity(nextOpacity(opacity)) })
-        CardBarButton("↺", onClick = onReset)
+        CardBarButton(
+            "${(opacity * 100).roundToInt()}%",
+            onClick = { onOpacity(nextOpacity(opacity)) },
+            icon = CgIcons.Contrast,
+        )
     }
 }
 
-/** The ◐ button's steps for the background: 100 → 75 → 50 → 25 → 0, then round again. */
+/** The opacity key's steps for the background: 100 → 75 → 50 → 25 → 0, then round again. */
 fun nextOpacity(current: Float): Float =
     when {
         current > 0.875f -> 0.75f

@@ -9,7 +9,7 @@ from motion import APP, frame_svg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FRAMES = os.path.join(HERE, 'frames')
-TIMES = [120, 300, 520, 760, 1000, 1080, 1220, 1400]
+TIMES = [120, 300, 520, 760, 1000, 1100, 1200, 1300]
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 

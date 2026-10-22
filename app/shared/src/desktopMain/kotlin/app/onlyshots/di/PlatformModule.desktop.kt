@@ -2,7 +2,7 @@ package app.onlyshots.di
 
 import app.onlyshots.camera.CameraController
 import app.onlyshots.camera.DesktopCameraController
-import app.onlyshots.core.designsystem.loadOpenSans
+import app.onlyshots.core.designsystem.loadOverlayFonts
 import app.onlyshots.editor.CACHE_DIR
 import app.onlyshots.editor.LIBRARY_DIR
 import app.onlyshots.platform.BackgroundWork
@@ -47,7 +47,7 @@ actual val platformModule: Module = module {
         val videosDir = get<LibraryStore>().videosDir
         FfmpegVideoExporter(
             videoPath = { item -> if (item.file.startsWith("/")) item.file.toPath() else videosDir / item.file },
-            fonts = { loadOpenSans() },
+            fonts = { loadOverlayFonts() },
         )
     }
     single<FrameSampler> { FfmpegFrameSampler() }

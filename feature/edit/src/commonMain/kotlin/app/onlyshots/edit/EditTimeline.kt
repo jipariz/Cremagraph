@@ -3,7 +3,6 @@ package app.onlyshots.edit
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -21,7 +20,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -30,9 +29,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -44,25 +45,19 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.CgTypography
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
-import app.onlyshots.core.resources.edit_snap_playhead
-import app.onlyshots.core.resources.edit_snap_pump_start
-import app.onlyshots.core.resources.edit_snap_shot_end
-import app.onlyshots.core.resources.edit_snap_shot_start
-import app.onlyshots.core.resources.edit_snapped_to
 import app.onlyshots.core.resources.edit_timeline_description
 import app.onlyshots.core.resources.edit_timeline_seconds
 import app.onlyshots.core.resources.edit_timeline_trim
 import app.onlyshots.core.resources.edit_timeline_zoom
 import kotlin.math.abs
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** What the timeline asks the screen to do; trims and the flag carry `push`, so one drag is one undo step. */
@@ -81,6 +76,8 @@ class TimelineActions(
  * Drag a trim handle or the flag to move it (a handle snaps to the playhead and the shot's start and end, the flag to
  * the playhead and the pump start); the header says when the trim cuts into the shot. Drag anywhere else to scrub; tap
  * the overview line to jump; pinch to zoom, which keeps the playhead in the middle.
+ *
+ * [compact]: only the filmstrip with its handles, flag and playhead, 60 dp (the phone, while the graph is picked).
  */
 @Composable
 fun EditTimeline(
@@ -94,6 +91,7 @@ fun EditTimeline(
     actions: TimelineActions,
     modifier: Modifier = Modifier,
     loading: Boolean = false,
+    compact: Boolean = false,
 ) {
     // While the frames are being made, a light sweeps across the empty strip. Only then: an endless animation would
     // keep the canvas drawing, and the screenshots from settling.
@@ -107,18 +105,10 @@ fun EditTimeline(
                     label = "sweep",
                 )
         else null
-    // Every label of a frame (header, ruler ticks, snap label) fits, so none is laid out again on the next.
+    // Every label of a frame (header, ruler ticks) fits, so none is laid out again on the next.
     val text = rememberTextMeasurer(cacheSize = TEXT_CACHE)
     val haptic = LocalHapticFeedback.current
-    val font = CgTheme.type.caption.fontFamily
-    var snapLabel by remember { mutableStateOf<StringResource?>(null) }
-    var snapNonce by remember { mutableStateOf(0) }
-    LaunchedEffect(snapNonce) {
-        if (snapLabel != null) {
-            delay(SNAP_LABEL_MS)
-            snapLabel = null
-        }
-    }
+    val type = CgTheme.type
     // What is drawn eases to a jump (a tap on the overview, "start here", a zoom key) and follows playback and the
     // finger exactly: a drag or a pinch sets [moving] for as long as it lasts.
     var moving by remember { mutableStateOf(false) }
@@ -131,7 +121,7 @@ fun EditTimeline(
             .collectLatest {
                 val target = it.toFloat()
                 if (moving || abs(target - shownPlayhead.value) < JUMP_US) shownPlayhead.snapTo(target)
-                else shownPlayhead.animateTo(target, tween(CgMotion.MEDIUM, easing = CgMotion.Emphasized))
+                else shownPlayhead.animateTo(target, tween(CgMotion.MEDIUM, easing = CgMotion.Mechanical))
             }
     }
     val shownZoom = remember { Animatable(zoomFactor ?: 1f) }
@@ -139,34 +129,47 @@ fun EditTimeline(
         val target = zoomFactor ?: 1f
         if (moving) shownZoom.snapTo(target) else shownZoom.animateTo(target, CgMotion.settle())
     }
-    // The snap label fades out rather than vanishing, still saying what it said.
-    var lastSnapLabel by remember { mutableStateOf<StringResource?>(null) }
-    if (snapLabel != null) lastSnapLabel = snapLabel
-    val labelAlpha by animateFloatAsState(if (snapLabel != null) 1f else 0f, CgMotion.medium(), label = "snap")
     val current by rememberUpdatedState(item)
     val zoom by rememberUpdatedState(zoomFactor)
     val act by rememberUpdatedState(actions)
+    // Compact, the strip is drawn [COMPACT_SHIFT] higher: gestures read where they would land on the full timeline.
+    val shift by rememberUpdatedState(if (compact) COMPACT_SHIFT else 0)
+    // The pump start arrives once the sound is read (and goes when the start is locked): snap to the one there now.
+    val pump by rememberUpdatedState(pumpUs)
+    // Drawn every frame of playback: the header's styles made once, the playhead's triangle refilled in place.
+    val headerStyles = remember(type) { HeaderStyles(type) }
+    // The shimmer's light, made once per density and moved where it is drawn, rather than made again every frame.
+    val density = LocalDensity.current
+    val sweepBrush =
+        remember(density) {
+            Brush.horizontalGradient(
+                listOf(Color.Transparent, CgColors.Text.Primary.copy(alpha = 0.12f), Color.Transparent),
+                startX = 0f,
+                endX = with(density) { SHIMMER_BAND.dp.toPx() },
+            )
+        }
+    val playheadTri = remember { Path() }
     val description = stringResource(Res.string.edit_timeline_description)
-    val snapText = lastSnapLabel?.let { stringResource(Res.string.edit_snapped_to, stringResource(it)) }
     val words =
         HeaderWords(
-            trim = stringResource(Res.string.edit_timeline_trim, clock(item.trimInUs), clock(item.trimOutUs)),
-            zoom = stringResource(Res.string.edit_timeline_zoom),
+            trim = stringResource(Res.string.edit_timeline_trim, clock(item.trimInUs), clock(item.trimOutUs)).caps(),
+            zoom = stringResource(Res.string.edit_timeline_zoom).caps(),
             length = stringResource(Res.string.edit_timeline_seconds, seconds(item.trimmedDurationUs)),
-            cut = TimelineMath.shotCut(item)?.let { stringResource(it) },
+            cut = TimelineMath.shotCut(item)?.let { stringResource(it).caps() },
         )
 
     Canvas(
         modifier
             .fillMaxWidth()
-            .height(HEIGHT.dp)
+            .height(if (compact) COMPACT_HEIGHT.dp else HEIGHT.dp)
+            .clipToBounds()
             .semantics { contentDescription = description }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     val pad = PAD.dp.toPx()
                     fun view() = timelineView(size.width.toFloat(), current.durationUs, playheadNow(), pad, zoom)
-                    val y = down.position.y
+                    val y = down.position.y + shift.dp.toPx()
                     val inOverview = y < RULER_TOP.dp.toPx()
                     if (inOverview && y < (OVERVIEW - 8).dp.toPx()) return@awaitEachGesture
                     fun overviewUs(x: Float): Long =
@@ -177,17 +180,26 @@ fun EditTimeline(
 
                     val grip =
                         if (inOverview) TimelineHandle.PLAYHEAD
-                        else TimelineMath.hitHandle(down.position.x, current, view(), GRAB.dp.toPx())
+                        else
+                            TimelineMath.hitHandle(
+                                down.position.x,
+                                current,
+                                view(),
+                                GRAB.dp.toPx(),
+                                onFlagTab = y in RULER_TOP.dp.toPx()..STRIP.dp.toPx() + 8.dp.toPx(),
+                            )
+                    // A handle's drag keeps the strip as it was at the press: zoomed, the strip follows the playhead,
+                    // and the playhead it pushes must not slide the strip under the finger.
+                    val pressView = view()
                     var push = true
                     var lastX = down.position.x
-                    var lastSnap: StringResource? = null
-                    fun snapped(label: StringResource?) {
-                        if (label != null && label != lastSnap) {
+                    // A snap is felt, not shown: a tick as the handle catches a target.
+                    var lastSnap: SnapTarget? = null
+                    fun snapped(target: SnapTarget?) {
+                        if (target != null && target != lastSnap) {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            snapLabel = label
-                            snapNonce++
                         }
-                        lastSnap = label
+                        lastSnap = target
                     }
                     fun apply(x: Float) {
                         val v = view()
@@ -205,25 +217,35 @@ fun EditTimeline(
                                 )
                             TimelineHandle.TRIM_IN,
                             TimelineHandle.TRIM_OUT -> {
+                                // Not the playhead: the handle pushes it, and catching on it made the handle stick.
                                 val targets =
                                     listOf(
-                                        Res.string.edit_snap_playhead to playheadNow(),
-                                        Res.string.edit_snap_shot_start to current.shotStartInVideoUs,
-                                        Res.string.edit_snap_shot_end to current.shotEndInVideoUs,
+                                        SnapTarget.SHOT_START to current.shotStartInVideoUs,
+                                        SnapTarget.SHOT_END to current.shotEndInVideoUs,
                                     )
-                                val (us, label) = TimelineMath.snap(v.us(x), targets, pull)
-                                snapped(label)
-                                if (grip == TimelineHandle.TRIM_IN) act.trim(us, current.trimOutUs, push)
-                                else act.trim(current.trimInUs, us, push)
+                                val (us, label) = TimelineMath.snap(pressView.us(x), targets, pull)
+                                val inUs = if (grip == TimelineHandle.TRIM_IN) us else current.trimInUs
+                                val outUs = if (grip == TimelineHandle.TRIM_OUT) us else current.trimOutUs
+                                val next = current.trimmed(inUs, outUs)
+                                // A locked start stops the handle: felt as it is reached.
+                                val stopped =
+                                    current.syncLocked &&
+                                        (next.trimInUs != inUs.coerceAtLeast(0) && grip == TimelineHandle.TRIM_IN ||
+                                            next.trimOutUs != outUs.coerceAtMost(current.durationUs) &&
+                                                grip == TimelineHandle.TRIM_OUT)
+                                snapped(if (stopped) SnapTarget.SHOT_START else label)
+                                act.trim(inUs, outUs, push)
+                                // The playhead rides the handle in the same frame, not after the trim comes back.
+                                TimelineMath.pushedPlayhead(next, playheadNow())?.let(act.seek)
                                 push = false
                             }
                             TimelineHandle.SHOT_FLAG -> {
                                 val (us, label) =
                                     TimelineMath.snap(
-                                        v.us(x),
+                                        pressView.us(x),
                                         listOf(
-                                            Res.string.edit_snap_pump_start to pumpUs,
-                                            Res.string.edit_snap_playhead to playheadNow(),
+                                            SnapTarget.PUMP_START to pump,
+                                            SnapTarget.PLAYHEAD to playheadNow(),
                                         ),
                                         pull,
                                     )
@@ -275,27 +297,46 @@ fun EditTimeline(
                 pad,
                 shownZoom.value.takeIf { it > 1.001f },
             )
-        header(text, font, words, v)
-        overview(item, v, pad)
-        ruler(text, font, v, pad)
-        strip(item, v, pad, thumbnails, sweep?.value)
-        wave(v, pad, waveform, pumpUs, item.durationUs)
-        flag(item, v)
-        playheadMark(v)
-        if (labelAlpha > 0f) snapText?.let { label(text, font, it, v, labelAlpha) }
+        if (compact) {
+            translate(top = -COMPACT_SHIFT.dp.toPx()) {
+                strip(item, v, pad, thumbnails, sweep?.value, sweepBrush)
+                flag(item, v)
+                playheadMark(v, playheadTri)
+            }
+        } else {
+            header(text, headerStyles, words, v)
+            overview(item, v, pad)
+            ruler(text, headerStyles.ruler, v, pad)
+            strip(item, v, pad, thumbnails, sweep?.value, sweepBrush)
+            wave(v, pad, waveform, pumpUs, item.durationUs)
+            flag(item, v)
+            playheadMark(v, playheadTri)
+        }
     }
 }
 
 /** The header's words, put into words in composition for the canvas to draw. */
 private class HeaderWords(val trim: String, val zoom: String, val length: String, val cut: String?)
 
+/** The header's text styles, made once per typography rather than on every frame it is drawn. */
+private class HeaderStyles(type: CgTypography) {
+    val style = type.data.copy(color = CgColors.Text.Primary)
+    val dim = style.copy(color = CgColors.Text.Dim)
+    val warning = style.copy(color = CgColors.Status.Warning)
+    val clock = style.copy(color = CgColors.Text.Primary, fontWeight = FontWeight.SemiBold)
+    /** The ruler's labels: 10 sp, the smallest the app sets. */
+    val ruler = type.micro.copy(color = CgColors.Text.Dim)
+}
+
 private fun DrawScope.header(
     text: TextMeasurer,
-    font: androidx.compose.ui.text.font.FontFamily?,
+    styles: HeaderStyles,
     words: HeaderWords,
     v: TimelineView,
 ) {
-    val style = TextStyle(fontFamily = font, fontSize = 12.sp, color = CgColors.Text.Dim)
+    // The trim in Mono capitals, in full; the length beside it dimmer.
+    val style = styles.style
+    val dim = styles.dim
     val left =
         if (v.zoomed) "${clock(v.us(PAD.dp.toPx()))} – ${clock(v.us(size.width - PAD.dp.toPx()))}" else words.trim
     // A trim that cuts into the shot cuts the graph too: said in place of the length, where it is seen while dragging.
@@ -308,27 +349,26 @@ private fun DrawScope.header(
         }
     val top = (HEADER_BASELINE - 13).dp.toPx()
     drawText(text, left, Offset(PAD.dp.toPx(), top), style)
-    val r = text.measure(right, if (cut != null) style.copy(color = CgColors.Status.Highlight) else style)
+    val r = text.measure(right, if (cut != null) styles.warning else dim)
     drawText(r, topLeft = Offset(size.width - PAD.dp.toPx() - r.size.width, top))
-    val c =
-        text.measure(clock(v.playheadUs), style.copy(color = CgColors.Text.Primary, fontWeight = FontWeight.SemiBold))
+    val c = text.measure(clock(v.playheadUs), styles.clock)
     drawText(c, topLeft = Offset((size.width - c.size.width) / 2f, top))
 }
 
-/** The whole clip in one 6 dp line: the trim lighter, the shot's span in orange. */
+/** The whole clip in one 4 dp line: the trim a hairline lighter, the shot's span in orange. */
 private fun DrawScope.overview(item: VideoItem, v: TimelineView, pad: Float) {
     val y = OVERVIEW.dp.toPx()
-    val h = 6.dp.toPx()
+    val h = 4.dp.toPx()
     val w = size.width - 2 * pad
     fun x(us: Long) = pad + us.toFloat() / item.durationUs.coerceAtLeast(1) * w
     drawRect(CgColors.Line.Divider, Offset(pad, y), Size(w, h))
-    drawRect(CgColors.Text.Dim, Offset(x(item.trimInUs), y), Size(x(item.trimOutUs) - x(item.trimInUs), h))
+    drawRect(CgColors.Line.Hairline, Offset(x(item.trimInUs), y), Size(x(item.trimOutUs) - x(item.trimInUs), h))
     val start = item.shotStartInVideoUs
     val shot = item.shot
     if (start != null && shot != null) {
         val a = x(start.coerceIn(0, item.durationUs))
         val b = x((start + shot.durationUs).coerceIn(0, item.durationUs))
-        if (b > a) drawRect(CgColors.Brand.Orange, Offset(a, y), Size(b - a, h))
+        if (b > a) drawRect(CgColors.Text.Secondary, Offset(a, y), Size(b - a, h))
     }
     if (v.zoomed) {
         val a = x(v.us(pad))
@@ -344,14 +384,13 @@ private fun DrawScope.overview(item: VideoItem, v: TimelineView, pad: Float) {
 
 private fun DrawScope.ruler(
     text: TextMeasurer,
-    font: androidx.compose.ui.text.font.FontFamily?,
+    style: TextStyle,
     v: TimelineView,
     pad: Float,
 ) {
     val step = TimelineMath.rulerStep(v.scale, 60.dp.toPx())
     val top = RULER_TOP.dp.toPx()
-    // 10 sp, the smallest the app sets; marks are at least 60 dp apart, so the labels never touch.
-    val style = TextStyle(fontFamily = font, fontSize = 10.sp, color = CgColors.Text.Dim)
+    // Marks are at least 60 dp apart, so the labels never touch.
     val stepUs = (step * 1e6f).toLong()
     var t = (v.us(pad) / stepUs) * stepUs
     val end = v.us(size.width - pad)
@@ -373,7 +412,7 @@ private fun DrawScope.ruler(
 
 /**
  * The filmstrip, dimmed outside the trim, with a handle at each end of it. While its frames are being made it shimmers,
- * a light at [sweep] (0 to 1) of its way across.
+ * a light at [sweep] (0 to 1) of its way across, like a shine over metal.
  */
 private fun DrawScope.strip(
     item: VideoItem,
@@ -381,6 +420,8 @@ private fun DrawScope.strip(
     pad: Float,
     thumbnails: List<ImageBitmap>,
     sweep: Float?,
+    /** The light, from 0 to its band's width: moved to where the sweep is. */
+    sweepBrush: Brush,
 ) {
     val top = STRIP.dp.toPx()
     val h = STRIP_H.dp.toPx()
@@ -395,15 +436,7 @@ private fun DrawScope.strip(
             if (to > from) {
                 val band = SHIMMER_BAND.dp.toPx()
                 val at = pad - band + sweep * (size.width - 2 * pad + band)
-                drawRect(
-                    Brush.horizontalGradient(
-                        listOf(Color.Transparent, CgColors.Text.Primary.copy(alpha = 0.12f), Color.Transparent),
-                        startX = at,
-                        endX = at + band,
-                    ),
-                    Offset(from, top),
-                    Size(to - from, h),
-                )
+                translate(left = at) { drawRect(sweepBrush, Offset(from - at, top), Size(to - from, h)) }
             }
         }
         if (thumbnails.isNotEmpty()) {
@@ -424,9 +457,10 @@ private fun DrawScope.strip(
         drawRect(scrim, Offset(pad, top), Size((v.x(item.trimInUs) - pad).coerceAtLeast(0f), h))
         val out = v.x(item.trimOutUs)
         drawRect(scrim, Offset(out, top), Size((size.width - pad - out).coerceAtLeast(0f), h))
-        for (us in listOf(item.trimInUs, item.trimOutUs)) {
+        // The two handles, the in one inside its edge and the out one inside its own (no list made per frame).
+        fun handle(us: Long, inSide: Boolean) {
             val w = HANDLE_W.dp.toPx()
-            val x = v.x(us) - if (us == item.trimInUs) 0f else w
+            val x = v.x(us) - if (inSide) 0f else w
             drawRect(CgColors.Text.Primary, Offset(x, top), Size(w, h))
             drawRect(
                 CgColors.Text.Dim,
@@ -434,6 +468,8 @@ private fun DrawScope.strip(
                 Size(2.dp.toPx(), 18.dp.toPx()),
             )
         }
+        handle(item.trimInUs, inSide = true)
+        handle(item.trimOutUs, inSide = item.trimOutUs == item.trimInUs)
     }
 }
 
@@ -464,40 +500,29 @@ private fun DrawScope.flag(item: VideoItem, v: TimelineView) {
     val start = item.shotStartInVideoUs ?: return
     if (item.shot == null) return
     val x = v.x(start)
-    val color = if (item.syncLocked) CgColors.Text.Dim else CgColors.Brand.Orange
+    val color = if (item.syncLocked) CgColors.Text.Dim else CgColors.Brand.Signal
     drawRect(color, Offset(x - 1.dp.toPx(), 46.dp.toPx()), Size(2.dp.toPx(), 82.dp.toPx()))
     drawRect(color, Offset(x, 44.dp.toPx()), Size(16.dp.toPx(), 12.dp.toPx()))
 }
 
-private fun DrawScope.playheadMark(v: TimelineView) {
+/** The playhead: a line and a triangle on top, the triangle refilled into [tri] (kept by the caller) each frame. */
+private fun DrawScope.playheadMark(v: TimelineView, tri: Path) {
     val x = v.x(v.playheadUs)
     drawRect(CgColors.Text.Primary, Offset(x - 1.dp.toPx(), 44.dp.toPx()), Size(2.dp.toPx(), 84.dp.toPx()))
-    val tri =
-        Path().apply {
-            moveTo(x - 5.dp.toPx(), 44.dp.toPx())
-            lineTo(x + 5.dp.toPx(), 44.dp.toPx())
-            lineTo(x, 51.dp.toPx())
-            close()
-        }
+    tri.rewind()
+    tri.moveTo(x - 5.dp.toPx(), 44.dp.toPx())
+    tri.lineTo(x + 5.dp.toPx(), 44.dp.toPx())
+    tri.lineTo(x, 51.dp.toPx())
+    tri.close()
     drawPath(tri, CgColors.Text.Primary)
 }
 
-/** "snapped to playhead", in an orange box over the overview, centred on the playhead. */
-private fun DrawScope.label(
-    text: TextMeasurer,
-    font: androidx.compose.ui.text.font.FontFamily?,
-    label: String,
-    v: TimelineView,
-    alpha: Float,
-) {
-    val measured = text.measure(label, TextStyle(fontFamily = font, fontSize = 12.sp, color = CgColors.Text.Primary))
-    val w = measured.size.width + 20.dp.toPx()
-    val h = 20.dp.toPx()
-    val pad = PAD.dp.toPx()
-    val left = (v.x(v.playheadUs) - w / 2f).coerceIn(pad, (size.width - pad - w).coerceAtLeast(pad))
-    val top = OVERVIEW.dp.toPx() - 7.dp.toPx()
-    drawRoundRect(CgColors.Brand.Orange, Offset(left, top), Size(w, h), CornerRadius(4.dp.toPx()), alpha = alpha)
-    drawText(measured, topLeft = Offset(left + 10.dp.toPx(), top + (h - measured.size.height) / 2f), alpha = alpha)
+/** What a dragged handle catches on. */
+private enum class SnapTarget {
+    PLAYHEAD,
+    SHOT_START,
+    SHOT_END,
+    PUMP_START,
 }
 
 /** The view for a zoom given as a multiple of the fitted scale, capped at [TimelineMath.MAX_PX_PER_SECOND]. */
@@ -522,6 +547,9 @@ private fun rulerClock(us: Long): String {
 private fun seconds(us: Long): String = ((us / 100_000) / 10f).toString()
 
 private const val HEIGHT = 128
+/** Compact: the strip from the flag's top (44) to its bottom (104), at the top of the canvas. */
+private const val COMPACT_SHIFT = 44
+private const val COMPACT_HEIGHT = 60
 private const val PAD = 16
 private const val HEADER_BASELINE = 18
 private const val OVERVIEW = 28
@@ -533,7 +561,6 @@ private const val WAVE_H = 16
 private const val HANDLE_W = 10
 private const val GRAB = 22
 private const val SNAP = 8
-private const val SNAP_LABEL_MS = 1_400L
 
 /** Text layouts kept between frames: more than a wide timeline's labels in one frame. */
 private const val TEXT_CACHE = 32

@@ -61,7 +61,7 @@ class ScaleShotSource(
 
     internal suspend fun onScale(r: BleReading) {
         val w = r.weightG ?: return
-        val (sample, startEvent) =
+        val (sample, seen) =
             lock.withLock {
                 val at = nowUs()
                 val seen = firstDrops.onReading(at, w)
@@ -70,9 +70,11 @@ class ScaleShotSource(
                         "brewing=${firstDrops.brewing}${if (seen.started != null) " START" else ""}"
                 )
                 Sample(tUs = at, weight = seen.weight, weightFlow = r.weightFlowGps, brewing = firstDrops.brewing) to
-                    seen.started
+                    seen
             }
-        startEvent?.let { _brew.emit(it) }
+        seen.started?.let { _brew.emit(it) }
+        // The cup came off (or the scale was tared): the shot ends at that reading.
+        seen.ended?.let { _brew.emit(it) }
         _live.emit(sample)
     }
 

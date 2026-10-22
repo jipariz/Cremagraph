@@ -7,8 +7,6 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextClearance
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import app.onlyshots.TestTags
 import app.onlyshots.editor.EditorApp
@@ -19,7 +17,8 @@ import kotlin.test.Test
 
 /**
  * The style editor from the editor's style picker: make a new style, change it, save it, find it among "your styles",
- * rename it and delete it from its long-press menu.
+ * copy it from its long-press menu, remove the copy with the selected style's REMOVE key and the style itself from its
+ * menu, which has no rename (the editor renames).
  */
 @OptIn(ExperimentalTestApi::class)
 class StyleEditorTest {
@@ -30,7 +29,7 @@ class StyleEditorTest {
     @AfterTest fun stop() = app.stop()
 
     @Test
-    fun makesRenamesAndDeletesAStyle() =
+    fun makesCopiesAndRemovesAStyle() =
         onDevice(Device.TabletLandscape, app.pickers, { EditorApp() }) {
             openTheEditor()
             tap(TestTags.Graph)
@@ -52,16 +51,25 @@ class StyleEditorTest {
             }
             tap(TestTags.ToolbarStyle)
             openMenu()
-            tap(TestTags.StyleMenuRename)
-            await(TestTags.StyleNameField).run {
-                performTextClearance()
-                performTextInput("Bench")
+            tap(TestTags.StyleMenuCopy)
+            await(TestTags.ScreenStyleEditor)
+            tap(TestTags.StyleEditorSave)
+            tap(TestTags.StyleSaveConfirm)
+            await(TestTags.ScreenEdit)
+            if (
+                onAllNodes(androidx.compose.ui.test.hasTestTag(TestTags.ToolbarStyle)).fetchSemanticsNodes().isEmpty()
+            ) {
+                tap(TestTags.Graph)
             }
-            // The field keeps focus inside the dialog window, and the desktop test window spends the first tap on
-            // taking
-            // it back; the button's own click action is what a second tap would do.
+            tap(TestTags.ToolbarStyle)
+            waitUntil("the copy is in your styles", TIMEOUT) { customTiles().size == 2 }
+
+            // Both go from their long-press menus: the copy, then the style itself.
+            openMenu()
+            tap(TestTags.StyleMenuDelete)
             await(TestTags.DialogConfirm).performSemanticsAction(SemanticsActions.OnClick)
             awaitGone(TestTags.DialogConfirm)
+            waitUntil("one style left", TIMEOUT) { customTiles().size == 1 }
             openMenu()
             tap(TestTags.StyleMenuDelete)
             await(TestTags.DialogConfirm).performSemanticsAction(SemanticsActions.OnClick)
@@ -98,7 +106,7 @@ class StyleEditorTest {
     private fun ComposeUiTest.customTiles() = onAllNodes(isCustomTile, useUnmergedTree = true).fetchSemanticsNodes()
 
     private fun ComposeUiTest.customTile(): androidx.compose.ui.test.SemanticsNodeInteraction {
-        waitUntil("one custom style", TIMEOUT) { customTiles().size == 1 }
+        waitUntil("a custom style", TIMEOUT) { customTiles().isNotEmpty() }
         return onAllNodes(isCustomTile, useUnmergedTree = true)[0]
     }
 }

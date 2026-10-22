@@ -14,33 +14,35 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.testTag
@@ -51,19 +53,30 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
-import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
+import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.core_less
+import app.onlyshots.core.resources.core_more
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.collectLatest
+import org.jetbrains.compose.resources.stringResource
 
-/** A switch: a pill track, white when on, with a round knob; 44 dp tall to touch. */
+/**
+ * A switch: a 56 × 32 square track with a square knob. On, track and edge are the signal and the knob ink; off, a
+ * hairline track with a hairline knob. 44 dp tall to touch.
+ */
 @Composable
 fun CgToggle(
     checked: Boolean,
@@ -72,30 +85,45 @@ fun CgToggle(
     enabled: Boolean = true,
 ) {
     // The knob slides and the colours follow it; both start where they belong, so a still frame shows them settled.
-    // As an alignment's bias, so the settled knob sits on exactly the pixels Start and End put it on.
+    // Placed as an alignment's bias would (BiasAlignment's own sum), so the settled knob sits on exactly the pixels
+    // Start and End put it on; read while placing, so a slide only moves it rather than recomposing the switch.
     val knobAt by animateFloatAsState(if (checked) 1f else -1f, CgMotion.settle(), label = "knob")
-    val track by animateColorAsState(if (checked) CgColors.Text.Primary else CgColors.Surface.Raised, CgMotion.short())
-    val knob by animateColorAsState(if (checked) CgColors.Text.OnLight else CgColors.Text.Primary, CgMotion.short())
+    val track by animateColorAsState(if (checked) CgColors.Brand.Bone else Color.Transparent, CgMotion.short())
+    val edge by animateColorAsState(if (checked) CgColors.Brand.Bone else CgColors.Line.Hairline, CgMotion.short())
+    val knob by animateColorAsState(if (checked) CgColors.Text.OnLight else CgColors.Line.Hairline, CgMotion.short())
     val alpha by animateFloatAsState(if (enabled) 1f else 0.4f, CgMotion.short())
     Box(
         modifier
-            .size(width = 52.dp, height = CgSize.Touch)
+            .size(width = 56.dp, height = CgSize.Touch)
             .graphicsLayer { this.alpha = alpha }
             .toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange),
         contentAlignment = Alignment.Center,
     ) {
         Box(
-            Modifier.size(width = 46.dp, height = 26.dp).clip(CgShape.Pill).background(track).padding(3.dp),
-            contentAlignment = BiasAlignment(knobAt, 0f),
+            Modifier.size(width = 56.dp, height = 32.dp).background(track).border(CgStroke.Hairline, edge).padding(4.dp)
         ) {
-            Box(Modifier.size(20.dp).clip(CircleShape).background(knob))
+            Box(
+                Modifier.layout { measurable, constraints ->
+                        val knobBox = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+                        layout(constraints.maxWidth, constraints.maxHeight) {
+                            val bias = if (layoutDirection == LayoutDirection.Ltr) knobAt else -knobAt
+                            val centerX = (constraints.maxWidth - knobBox.width).toFloat() / 2f
+                            val centerY = (constraints.maxHeight - knobBox.height).toFloat() / 2f
+                            knobBox.place((centerX * (1 + bias)).roundToInt(), centerY.roundToInt())
+                        }
+                    }
+                    .size(24.dp)
+                    .background(knob)
+            )
         }
     }
 }
 
 /**
- * Figma "Series chip". A series the source cannot provide stays visible but disabled, so the reason can be explained
- * next to it.
+ * Figma "Series chip": a cell with the series' colour as a short bar and its name in Mono capitals. Chosen, the cell is
+ * raised; a series the source cannot provide stays visible but greyed, so the reason can be explained next to it.
+ * [dashed]: the bar is drawn dashed, as the targets' lines are. [framed] false inside a [HairlineGrid], which draws the
+ * lines between cells.
  */
 @Composable
 fun SeriesChip(
@@ -105,29 +133,53 @@ fun SeriesChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    dashed: Boolean = false,
+    framed: Boolean = true,
 ) {
-    val alpha by animateFloatAsState(if (enabled) 1f else 0.35f, CgMotion.short())
-    val bg by animateColorAsState(if (selected) CgColors.Surface.Raised else Color.Transparent, CgMotion.short())
-    val edge by animateColorAsState(if (selected) color else CgColors.Surface.Raised, CgMotion.short())
+    val bg by
+        animateColorAsState(
+            if (selected && enabled) CgColors.Surface.Raised else CgColors.Surface.Base,
+            CgMotion.short(),
+        )
+    val ink =
+        when {
+            !enabled -> CgColors.Text.Disabled
+            selected -> CgColors.Text.Primary
+            else -> CgColors.Text.Secondary
+        }
     Row(
         modifier
-            .defaultMinSize(minHeight = CgSize.Touch)
-            .clip(CgShape.Chip)
+            .defaultMinSize(minHeight = 48.dp)
             .background(bg)
-            .border(2.dp, edge.copy(alpha = alpha), CgShape.Chip)
+            .then(if (framed) Modifier.border(CgStroke.Hairline, CgColors.Line.Hairline) else Modifier)
             .toggleable(selected, enabled = enabled, role = Role.Checkbox, onValueChange = { onClick() })
             .padding(horizontal = CgSpace.S12),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
     ) {
-        Box(Modifier.size(width = 12.dp, height = 3.dp).clip(CgShape.Pill).background(color.copy(alpha = alpha)))
-        Text(label, style = CgTheme.type.label, color = CgColors.Text.Primary.copy(alpha = alpha))
+        val bar = if (enabled) color else CgColors.Line.Hairline
+        Box(
+            Modifier.size(width = 12.dp, height = 3.dp).drawBehind {
+                if (!dashed) drawRect(bar)
+                else {
+                    val dash = size.width / 3
+                    drawRect(bar, size = Size(dash, 2.dp.toPx()))
+                    drawRect(bar, Offset(dash * 2, 0f), Size(dash, 2.dp.toPx()))
+                }
+            }
+        )
+        Text(
+            label.caps(),
+            style = CgTheme.type.labelStrong.copy(letterSpacing = CgTheme.type.data.letterSpacing),
+            color = ink,
+        )
     }
 }
 
 /**
- * The one segmented choice: a rounded track on the raised surface, the chosen option a white pill. [fill] stretches the
- * segments over the whole width; otherwise each is as wide as its label. 44 dp tall to touch.
+ * The one segmented choice: a row of cells inside a hairline frame, with hairlines between them; the chosen cell is
+ * filled bone with ink letters. [fill] stretches the cells over the whole width; otherwise each is as wide as its
+ * label. 48 dp tall, never less than 44.
  */
 @Composable
 fun SegmentedControl(
@@ -139,13 +191,13 @@ fun SegmentedControl(
     /** A test tag per option ([app.onlyshots.TestTags]), for the segments UI tests pick. */
     tags: List<String>? = null,
 ) {
-    // The white pill slides from the old choice to the new one: its edges are read from where the segments were placed
+    // The bone fill slides from the old choice to the new one: its edges are read from where the cells were placed
     // (layout, the same frame), and only drawing follows the animated index, so a still frame shows it settled.
     val edges = remember(options.size) { FloatArray(options.size * 2) }
     val at = remember { Animatable(selectedIndex.toFloat()) }
     LaunchedEffect(selectedIndex) { at.animateTo(selectedIndex.toFloat(), CgMotion.settle()) }
     Row(
-        modifier.clip(CgShape.Pill).background(CgColors.Surface.Raised).padding(3.dp).drawBehind {
+        modifier.border(CgStroke.Hairline, CgColors.Line.Hairline).drawBehind {
             if (options.isEmpty()) return@drawBehind
             val v = at.value.coerceIn(0f, options.lastIndex.toFloat())
             val a = floor(v).toInt()
@@ -153,25 +205,21 @@ fun SegmentedControl(
             val t = v - a
             val left = lerp(edges[a * 2], edges[b * 2], t)
             val right = lerp(edges[a * 2 + 1], edges[b * 2 + 1], t)
-            // Only while it slides: settled, the chosen segment wears the pill itself.
+            // Only while it slides: settled, the chosen cell wears the fill itself.
             if (!at.isRunning || right <= left) return@drawBehind
-            drawRoundRect(
-                CgColors.Text.Primary,
-                Offset(left, 0f),
-                Size(right - left, size.height),
-                CornerRadius(size.height / 2),
-            )
+            drawRect(CgColors.Brand.Bone, Offset(left, 0f), Size(right - left, size.height))
         },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         options.forEachIndexed { i, label ->
             val on = i == selectedIndex
             val ink by animateColorAsState(if (on) CgColors.Text.OnLight else CgColors.Text.Primary, CgMotion.short())
+            if (i > 0) Box(Modifier.width(CgStroke.Hairline).heightIn(min = 48.dp).background(CgColors.Line.Hairline))
             Box(
                 // Stretched, each takes room by its label's length, so "weight settles" fits beside "fixed".
                 (if (fill) Modifier.weight(label.length.coerceAtLeast(MIN_SEGMENT_CHARS).toFloat()) else Modifier)
                     // A minimum, not a height: at 200 % font the label must still fit.
-                    .heightIn(min = CgSize.Touch - 6.dp)
+                    .heightIn(min = 48.dp)
                     .then(tags?.getOrNull(i)?.let { Modifier.testTag(it) } ?: Modifier)
                     .onPlaced {
                         val x = it.positionInParent().x
@@ -180,24 +228,18 @@ fun SegmentedControl(
                             edges[i * 2 + 1] = x + it.size.width
                         }
                     }
-                    .clip(CgShape.Pill)
-                    .background(if (on && !at.isRunning) CgColors.Text.Primary else Color.Transparent)
+                    .background(if (on && !at.isRunning) CgColors.Brand.Bone else Color.Transparent)
                     .selectable(on, role = Role.RadioButton, onClick = { onSelect(i) })
                     .padding(horizontal = if (fill) 4.dp else 12.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    label,
-                    style = CgTheme.type.label,
-                    color = ink,
-                    textAlign = TextAlign.Center,
-                )
+                Text(label.caps(), style = CgTheme.type.labelStrong, color = ink, textAlign = TextAlign.Center)
             }
         }
     }
 }
 
-/** Figma "Stepper": − value + on one rounded track, with 44 dp round keys. */
+/** Figma "Stepper": − value + as three cells in a hairline frame, the keys 44 dp square. */
 @Composable
 fun CgStepper(
     value: String,
@@ -208,35 +250,40 @@ fun CgStepper(
     plusEnabled: Boolean = true,
 ) {
     Row(
-        modifier.clip(CgShape.Pill).background(CgColors.Surface.Raised),
+        modifier.height(CgSize.Touch).border(CgStroke.Hairline, CgColors.Line.Hairline),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StepperKey("−", minusEnabled, onMinus)
+        StepperKey(CgIcons.Minus, stringResource(Res.string.core_less), minusEnabled, onMinus)
+        Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Line.Hairline))
         Text(
-            value,
-            style = CgTheme.type.body,
+            value.caps(),
+            style = CgTheme.type.label,
             modifier = Modifier.widthIn(min = 56.dp).padding(horizontal = CgSpace.S4),
             textAlign = TextAlign.Center,
         )
-        StepperKey("+", plusEnabled, onPlus)
+        Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Line.Hairline))
+        StepperKey(CgIcons.Plus, stringResource(Res.string.core_more), plusEnabled, onPlus)
     }
 }
 
 @Composable
-private fun StepperKey(symbol: String, enabled: Boolean, onClick: () -> Unit) {
+private fun StepperKey(icon: ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
-        Modifier.size(CgSize.Touch)
-            .clip(CircleShape)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        Modifier.size(CgSize.Touch).clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(symbol, style = CgTheme.type.cardTitle, color = if (enabled) CgColors.Text.Primary else CgColors.Text.Dim)
+        CgIcon(
+            icon,
+            tint = if (enabled) CgColors.Text.Primary else CgColors.Text.Disabled,
+            size = 18.dp,
+            contentDescription = description,
+        )
     }
 }
 
 /**
- * Figma's slider: a 4 dp rounded track, the filled part white, an 18 dp round thumb; 44 dp tall to touch. Tap or drag
- * anywhere on it. With [steps], the value snaps to that many points between the ends, as Material's slider does.
+ * Figma's slider: a 2 dp hairline track, the filled part the signal, a 12 × 16 bone thumb; 44 dp tall to touch. Tap or
+ * drag anywhere on it. With [steps], the value snaps to that many points between the ends, as Material's slider does.
  */
 @Composable
 fun CgSlider(
@@ -258,8 +305,15 @@ fun CgSlider(
     // A drag follows the finger exactly; a tap (or a value set from elsewhere) glides the thumb there.
     var dragging by remember { mutableStateOf(false) }
     val shown = remember { Animatable(f) }
-    LaunchedEffect(f) { if (dragging) shown.snapTo(f) else shown.animateTo(f, CgMotion.settle()) }
+    // One collector follows the value, rather than an effect relaunched on every frame of a drag.
+    val target by rememberUpdatedState(f)
+    LaunchedEffect(shown) {
+        snapshotFlow { target }
+            .collectLatest { to -> if (dragging) shown.snapTo(to) else shown.animateTo(to, CgMotion.settle()) }
+    }
     fun at(x: Float, width: Float) = snapped(range.start + (x / width).coerceIn(0f, 1f) * span)
+    // The gestures outlive a recomposition: they call whatever callback the caller passes now, not the first one.
+    val change by rememberUpdatedState(onValueChange)
     Canvas(
         // As wide as it is allowed, like Material's slider: a width or weight from the caller still decides.
         modifier
@@ -273,35 +327,31 @@ fun CgSlider(
                     true
                 }
             }
-            .pointerInput(range, steps) { detectTapGestures { onValueChange(at(it.x, size.width.toFloat())) } }
+            .pointerInput(range, steps) { detectTapGestures { change(at(it.x, size.width.toFloat())) } }
             .pointerInput(range, steps) {
                 detectHorizontalDragGestures(
                     onDragStart = { dragging = true },
                     onDragEnd = { dragging = false },
                     onDragCancel = { dragging = false },
                 ) { c, _ ->
-                    onValueChange(at(c.position.x, size.width.toFloat()))
+                    change(at(c.position.x, size.width.toFloat()))
                 }
             }
     ) {
         val y = size.height / 2f
-        val track = 4.dp.toPx()
-        val r = 9.dp.toPx()
-        val x = r + (size.width - 2 * r) * shown.value
-        drawRoundRect(
-            CgColors.Surface.Raised,
-            Offset(r, y - track / 2),
-            Size(size.width - 2 * r, track),
-            CornerRadius(track / 2),
-        )
-        drawRoundRect(CgColors.Text.Primary, Offset(r, y - track / 2), Size(x - r, track), CornerRadius(track / 2))
-        drawCircle(CgColors.Text.Primary, r, Offset(x, y))
+        val track = CgStroke.Rule.toPx()
+        val half = 6.dp.toPx()
+        val thumbH = 16.dp.toPx()
+        val x = half + (size.width - 2 * half) * shown.value
+        drawRect(CgColors.Line.Hairline, Offset(half, y - track / 2), Size(size.width - 2 * half, track))
+        drawRect(CgColors.Text.Secondary, Offset(half, y - track / 2), Size(x - half, track))
+        drawRect(CgColors.Brand.Bone, Offset(x - half, y - thumbH / 2), Size(2 * half, thumbH))
     }
 }
 
 /**
- * A setting: its name (and a line about it, if [hint]) on the left, its control on the right; 44 dp tall at least.
- * Every settings list in the app is built from these.
+ * A setting: its name in Mono capitals (and a sentence about it, if [hint]) on the left, its control on the right; 44
+ * dp tall at least. Every settings list in the app is built from these.
  */
 @Composable
 fun SettingRow(
@@ -315,11 +365,25 @@ fun SettingRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = CgTheme.type.body)
-            if (hint != null) Text(hint, style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(CgSpace.S4)) {
+            Text(title.caps(), style = CgTheme.type.label)
+            if (hint != null) Text(hint, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
         }
         control()
+    }
+}
+
+/**
+ * A settings list in one hairline frame: each of [rows] (a [SettingRow], say) padded 12 across and 8 down, with a
+ * divider between them, as the canvas's sheets list their switches.
+ */
+@Composable
+fun SettingsList(rows: List<@Composable () -> Unit>, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline)) {
+        rows.forEachIndexed { i, row ->
+            if (i > 0) Box(Modifier.fillMaxWidth().height(CgStroke.Hairline).background(CgColors.Line.Divider))
+            Box(Modifier.padding(horizontal = CgSpace.S12, vertical = CgSpace.S8)) { row() }
+        }
     }
 }
 

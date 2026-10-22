@@ -1,13 +1,7 @@
 package app.onlyshots.core.designsystem.component
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,14 +9,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -32,11 +25,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
+import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.core_back
 import app.onlyshots.core.resources.core_record
@@ -44,11 +40,18 @@ import app.onlyshots.core.resources.core_stop
 import org.jetbrains.compose.resources.stringResource
 
 enum class CgButtonKind {
+    /** A light bone key: the usual way forward. */
     Primary,
+    /** A hairline outline: the other way. */
     Secondary,
+    /** The signal: the one action a screen is for (export, save, open the camera, open the editor). */
+    Signal,
 }
 
-/** Figma "Button": a flat pill, lower-case label (callers pass lower-case copy). [Pill] is its compact sibling. */
+/**
+ * Figma "Button": a square key with a Mono label in capitals (callers pass the sentence-case string; the key sets it in
+ * capitals). [Pill] is its compact sibling.
+ */
 @Composable
 fun CgButton(
     text: String,
@@ -59,32 +62,33 @@ fun CgButton(
 ) {
     val bg =
         when {
-            kind == CgButtonKind.Secondary -> CgColors.Surface.Raised
-            enabled -> CgColors.Text.Primary
-            else -> CgColors.Surface.Raised
+            !enabled || kind == CgButtonKind.Secondary -> Color.Transparent
+            kind == CgButtonKind.Signal -> CgColors.Brand.Signal
+            else -> CgColors.Brand.Bone
         }
     val fg =
         when {
-            !enabled -> CgColors.Text.Dim
-            kind == CgButtonKind.Primary -> CgColors.Text.OnLight
-            else -> CgColors.Text.Primary
+            !enabled -> CgColors.Text.Disabled
+            kind == CgButtonKind.Secondary -> CgColors.Text.Primary
+            else -> CgColors.Text.OnLight
         }
+    val edge = if (!enabled || kind == CgButtonKind.Secondary) CgColors.Line.Hairline else Color.Transparent
     val bgColor by animateColorAsState(bg, CgMotion.short(), label = "bg")
     val fgColor by animateColorAsState(fg, CgMotion.short(), label = "fg")
     Box(
         modifier
-            .defaultMinSize(minHeight = CgSize.Touch, minWidth = CgSize.Touch)
-            .clip(CgShape.Pill)
-            .background(bgColor)
+            .defaultMinSize(minHeight = 52.dp, minWidth = CgSize.Touch)
+            .background(bgColor, CgShape.Pill)
+            .border(CgStroke.Hairline, edge, CgShape.Pill)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = CgTheme.type.body, color = fgColor, textAlign = TextAlign.Center)
+        Text(text.caps(), style = CgTheme.type.label, color = fgColor, textAlign = TextAlign.Center)
     }
 }
 
-/** Figma "Round button": 44 dp icon button on the camera rail and headers. */
+/** Figma "Round button": the 44 dp square key over the camera and in headers. */
 @Composable
 fun CgRoundButton(
     contentDescription: String,
@@ -96,8 +100,8 @@ fun CgRoundButton(
     Box(
         modifier
             .size(CgSize.Touch)
-            .clip(CircleShape)
-            .background(if (selected) CgColors.Text.Primary else CgColors.Surface.Scrim.copy(alpha = 0.55f))
+            .background(if (selected) CgColors.Brand.Bone else CgColors.Surface.Base.copy(alpha = 0.85f))
+            .border(CgStroke.Hairline, if (selected) CgColors.Brand.Bone else CgColors.Line.Hairline)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
@@ -106,21 +110,26 @@ fun CgRoundButton(
     }
 }
 
-/** The one back button: a 44 dp round key on the raised surface, on every screen that has a way back. */
+/** The one back button: a 44 dp square key with a hairline edge, on every screen that has a way back. */
 @Composable
-fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val back = stringResource(Res.string.core_back)
     Box(
         modifier
             .testTag(TestTags.Back)
             .size(CgSize.Touch)
-            .clip(CircleShape)
-            .background(CgColors.Surface.Raised)
-            .clickable(role = Role.Button, onClick = onClick)
+            .background(CgColors.Surface.Base.copy(alpha = 0.85f))
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = back },
         contentAlignment = Alignment.Center,
     ) {
-        Text("‹", style = CgTheme.type.cardTitle, color = CgColors.Text.Primary)
+        // Inert (mid-take), the chevron goes grey: still there, not to be pressed.
+        CgIcon(
+            CgIcons.ChevronLeft,
+            size = 20.dp,
+            tint = if (enabled) CgColors.Text.Primary else CgColors.Text.Secondary,
+        )
     }
 }
 
@@ -131,7 +140,11 @@ enum class RecordButtonState {
     Disabled,
 }
 
-/** Figma "Record button": 70 dp; armed pulses its ring 0.92 → 1.12 over 1.6 s. */
+/**
+ * Figma "Record button": an 80 dp square frame around the red dot, which squares off into the stop key while recording.
+ * Armed, the frame is the signal and blinks once a second, like a standby light; idle and recording it is bone;
+ * disabled, a hairline with a grey dot.
+ */
 @Composable
 fun RecordButton(
     state: RecordButtonState,
@@ -140,49 +153,45 @@ fun RecordButton(
 ) {
     val label =
         stringResource(if (state == RecordButtonState.Recording) Res.string.core_stop else Res.string.core_record)
-    // Read while drawing, so the pulse redraws the ring without recomposing the button.
-    val ringScale: () -> Float =
+    // Read while drawing, so the blinking redraws the frame without recomposing the button.
+    val frameAlpha: () -> Float =
         if (state == RecordButtonState.Armed) {
-            val t = rememberInfiniteTransition(label = "armed")
-            val pulse =
-                t.animateFloat(
-                    initialValue = 0.92f,
-                    targetValue = 1.12f,
-                    animationSpec = infiniteRepeatable(tween(800, easing = LinearEasing), RepeatMode.Reverse),
-                    label = "ring",
-                )
+            val pulse = CgMotion.rememberBlink(1000, dim = 0.2f)
             pulse::value
         } else {
             NoPulse
         }
     val enabled = state != RecordButtonState.Disabled
     val recording = state == RecordButtonState.Recording
-    // Record ↔ stop morphs: the red disc shrinks and squares off into the stop key, and back.
-    val innerSize by animateDpAsState(if (recording) 28.dp else 54.dp, CgMotion.springy(), label = "inner")
-    val corner by animateDpAsState(if (recording) 4.dp else 27.dp, CgMotion.springy(), label = "corner")
+    // Record and stop morph: the red dot squares off into the stop key, and back, and stops dead.
+    val innerSize by animateDpAsState(if (recording) 30.dp else 32.dp, CgMotion.short(), label = "inner")
+    val corner by animateDpAsState(if (recording) 0.dp else 16.dp, CgMotion.short(), label = "corner")
     val fill by
         animateColorAsState(
-            if (enabled) CgColors.Status.Record else CgColors.Surface.Raised,
+            if (enabled) CgColors.Status.Record else CgColors.Line.Hairline,
             CgMotion.short(),
             label = "fill",
         )
-    val ring by
-        animateColorAsState(if (enabled) CgColors.Text.Primary else CgColors.Text.Dim, CgMotion.short(), label = "ring")
+    val frame by
+        animateColorAsState(
+            when (state) {
+                RecordButtonState.Armed -> CgColors.Brand.Signal
+                RecordButtonState.Disabled -> CgColors.Line.Hairline
+                else -> CgColors.Brand.Bone
+            },
+            CgMotion.short(),
+            label = "frame",
+        )
     Box(
-        modifier.size(CgSize.Record).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics {
-            contentDescription = label
-        },
+        modifier
+            .size(CgSize.Record)
+            .background(CgColors.Surface.Base.copy(alpha = 0.6f))
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            Modifier.size(CgSize.Record)
-                .graphicsLayer {
-                    scaleX = ringScale()
-                    scaleY = ringScale()
-                }
-                .border(4.dp, ring, CircleShape)
-        )
-        Box(Modifier.size(innerSize).background(fill, RoundedCornerShape(corner)))
+        Box(Modifier.size(CgSize.Record).graphicsLayer { alpha = frameAlpha() }.border(CgStroke.Rule, frame))
+        Box(Modifier.size(innerSize).background(fill, RoundedCornerShape(corner.coerceAtLeast(0.dp))))
     }
 }
 

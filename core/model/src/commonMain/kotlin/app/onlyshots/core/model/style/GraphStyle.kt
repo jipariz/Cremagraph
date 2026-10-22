@@ -137,7 +137,34 @@ data class TextColors(
     val target: Int,
     /** A halo or a drop shadow under every text, for reading over bright video. */
     val effect: Shadow? = null,
+    /** The graph's typeface. Open Sans unless a style says otherwise, so older styles and videos keep theirs. */
+    val font: OverlayFont = OverlayFont.SANS,
+    /** How the graph letters its words: plain words unless a style says otherwise (Instrument reads like a readout). */
+    val lettering: Lettering = Lettering.WORDS,
 )
+
+/** How a graph letters its title, legend, phases and readings. */
+@Serializable
+enum class Lettering {
+    /** As they are written: "pressure", "9.0 bar". */
+    WORDS,
+
+    /**
+     * As an instrument's readout: every word in capitals, a hairline under the title row, and each reading named by its
+     * unit ("BAR" over "9.0"), time by its word.
+     */
+    READOUT,
+}
+
+/** The overlay's typefaces: every text of a graph is set in one of them. */
+@Serializable
+enum class OverlayFont {
+    /** Open Sans. */
+    SANS,
+
+    /** IBM Plex Mono. */
+    MONO,
+}
 
 /** The cells of the readings row, in display order. */
 @Serializable

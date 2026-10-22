@@ -38,3 +38,28 @@ targets:
         script: |
           cd "$SRCROOT/../.."
           ./gradlew :app:shared:embedAndSignAppleFrameworkForXcode
+  # End-to-end smoke tests of the installed app (XCUITest), finding controls by their Compose test tags, which iOS
+  # shows as accessibility identifiers (app.onlyshots.TestTags):
+  #   xcodebuild test -project iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 16'
+  iosAppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: iosAppUITests
+    dependencies:
+      - target: iosApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.parez.onlyshots.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        TEST_TARGET_NAME: iosApp
+schemes:
+  iosApp:
+    build:
+      targets:
+        iosApp: all
+        iosAppUITests: [test]
+    test:
+      targets:
+        - iosAppUITests

@@ -1,7 +1,6 @@
 package app.onlyshots.video
 
 import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
@@ -13,6 +12,7 @@ import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.core_export_no_webgl
 import app.onlyshots.overlay.GraphStyles
 import app.onlyshots.overlay.compose.OVERLAY_TEXT_CACHE
+import app.onlyshots.overlay.compose.OverlayFonts
 import app.onlyshots.overlay.compose.OverlayFrameRenderer
 import app.onlyshots.overlay.compose.overlayLabels
 import kotlin.math.roundToInt
@@ -39,7 +39,7 @@ import org.jetbrains.skia.ImageInfo
  */
 class WebVideoExporter(
     private val videoPath: (VideoItem) -> Path,
-    private val fonts: suspend () -> FontFamily,
+    private val fonts: suspend () -> OverlayFonts,
 ) : VideoExporter {
 
     override fun export(
@@ -49,10 +49,10 @@ class WebVideoExporter(
         out: Path,
         alignmentBarcode: Boolean,
     ): Flow<ExportProgress> = channelFlow {
-        val fontFamily = fonts()
+        val overlayFonts = fonts()
         send(ExportProgress.Rendering(0f))
         val result = runCatching {
-            render(item, Quality.HD_1080, out, alignmentBarcode, fontFamily) { f ->
+            render(item, Quality.HD_1080, out, alignmentBarcode, overlayFonts) { f ->
                 trySend(ExportProgress.Rendering(f))
             }
         }
@@ -72,7 +72,7 @@ class WebVideoExporter(
         quality: Quality,
         out: Path,
         alignmentBarcode: Boolean,
-        fontFamily: FontFamily,
+        overlayFonts: OverlayFonts,
         progress: (Float) -> Unit,
     ) {
         val labels = overlayLabels()
@@ -133,7 +133,7 @@ class WebVideoExporter(
                                 LayoutDirection.Ltr,
                                 OVERLAY_TEXT_CACHE,
                             ),
-                        fontFamily = fontFamily,
+                        fonts = overlayFonts,
                         alignmentBarcode = alignmentBarcode,
                         fps = fps.roundToInt(),
                         backdropLuma = { t -> luma?.at(t) },

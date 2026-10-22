@@ -5,6 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.Until
+import java.util.regex.Pattern
 
 /*
  * The paths through the app worth compiling ahead of time, as UI Automator steps. They find things by the words on
@@ -40,7 +41,7 @@ fun MacrobenchmarkScope.waitFor(selector: BySelector, timeoutMs: Long = UI_TIMEO
 fun MacrobenchmarkScope.startToStartScreen() {
     pressHome()
     startActivityAndWait()
-    waitFor(By.text(RECORD_A_SHOT))
+    waitFor(words(RECORD_A_SHOT))
 }
 
 /**
@@ -50,24 +51,27 @@ fun MacrobenchmarkScope.startToStartScreen() {
  * video in the gallery's OnlyShots album.
  */
 fun MacrobenchmarkScope.recordAndExportTheSampleShot() {
-    tap(By.text(RECORD_A_SHOT))
-    tap(By.text(TRY_A_SAMPLE_SHOT))
-    tap(By.text(EXPORT), timeoutMs = TAKE_TIMEOUT_MS)
-    tap(By.text(SAVE_TO_GALLERY))
+    tap(words(RECORD_A_SHOT))
+    tap(words(TRY_A_SAMPLE_SHOT))
+    tap(words(EXPORT), timeoutMs = TAKE_TIMEOUT_MS)
+    tap(words(SAVE_TO_GALLERY))
     // The export sheet says so with the video's quality and length after it.
-    waitFor(By.textContains(SAVED), timeoutMs = EXPORT_TIMEOUT_MS)
+    waitFor(
+        By.text(Pattern.compile(".*" + Pattern.quote(SAVED) + ".*", Pattern.CASE_INSENSITIVE)),
+        timeoutMs = EXPORT_TIMEOUT_MS,
+    )
 }
 
 /** Into the record screen with the sample shot, which starts filming by itself once the camera is armed. */
 fun MacrobenchmarkScope.filmTheSampleShot() {
-    tap(By.text(RECORD_A_SHOT))
-    tap(By.text(TRY_A_SAMPLE_SHOT))
+    tap(words(RECORD_A_SHOT))
+    tap(words(TRY_A_SAMPLE_SHOT))
 }
 
 /** The sample take filmed to its end, and the editor it lands in. */
 fun MacrobenchmarkScope.recordTheSampleShotIntoTheEditor() {
     filmTheSampleShot()
-    waitFor(By.text(EXPORT), timeoutMs = TAKE_TIMEOUT_MS)
+    waitFor(words(EXPORT), timeoutMs = TAKE_TIMEOUT_MS)
 }
 
 /**
@@ -104,6 +108,12 @@ private val PERMISSIONS =
         "android.permission.BLUETOOTH_CONNECT",
         "android.permission.POST_NOTIFICATIONS",
     )
+
+/**
+ * A control by its words, whatever their case: labels are drawn in capitals (the strings are not), so "Record a shot"
+ * shows as "RECORD A SHOT".
+ */
+private fun words(text: String): BySelector = By.text(Pattern.compile(Pattern.quote(text), Pattern.CASE_INSENSITIVE))
 
 // The words the journeys look for (core/resources: home_start_record_title, home_try_sample, edit_export,
 // edit_phone_save, edit_phone_saved, edit_timeline_description).

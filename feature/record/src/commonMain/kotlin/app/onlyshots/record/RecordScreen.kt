@@ -3,14 +3,14 @@ package app.onlyshots.record
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,21 +38,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -63,18 +71,17 @@ import app.onlyshots.camera.CameraPreview
 import app.onlyshots.camera.CameraState
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgMotion
-import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.Banner
 import app.onlyshots.core.designsystem.component.BannerKind
 import app.onlyshots.core.designsystem.component.CgButton
+import app.onlyshots.core.designsystem.component.CgButtonKind
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.EditorSheetSlot
-import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.RecordButton
 import app.onlyshots.core.designsystem.component.RecordButtonState
-import app.onlyshots.core.designsystem.component.StatusChip
 import app.onlyshots.core.designsystem.component.TwoPane
 import app.onlyshots.core.model.Capabilities
 import app.onlyshots.core.model.NormRect
@@ -94,6 +101,7 @@ import app.onlyshots.core.resources.record_focus_locked
 import app.onlyshots.core.resources.record_needs_camera
 import app.onlyshots.core.resources.record_open_settings
 import app.onlyshots.core.resources.record_ready
+import app.onlyshots.core.resources.record_settings_title
 import app.onlyshots.core.resources.record_style
 import app.onlyshots.core.resources.text
 import app.onlyshots.edit.DataSheetContent
@@ -114,6 +122,7 @@ import app.onlyshots.style.StylePicker
 import app.onlyshots.style.StylePickerActions
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -264,25 +273,37 @@ fun RecordBody(
             settingsOpen = false
         }
     }
-    val openRecordingSettings = {
-        graphSheet = null
-        graphSelected = false
-        settingsOpen = true
+    val openRecordingSettings = remember {
+        {
+            graphSheet = null
+            graphSelected = false
+            settingsOpen = true
+        }
     }
     // What of the window the floating controls leave free, in root px: the graph is kept there.
     var clear by remember { mutableStateOf<Rect?>(null) }
+    // While the graph is moved the floating controls step aside, and it may go under them.
+    var graphMoving by remember { mutableStateOf(false) }
+    // The panels read only the take's rules, never the graph: a dragged graph changes the settings every frame, and
+    // must not rebuild the floating controls with it.
+    val rules =
+        remember(settings.autoStart, settings.preRollSeconds, settings.stopRule) {
+            RecordingSettings(settings.autoStart, settings.preRollSeconds, settings.stopRule)
+        }
     val take =
-        TakeInputs(
-            state = state,
-            camera = camera,
-            settings = settings,
-            live = live,
-            actions = actions,
-            canSimulateShot = canSimulateShot,
-            saveError = saveError,
-            onBack = onBack,
-            onSettings = openRecordingSettings,
-        )
+        remember(state, camera, rules, live, actions, canSimulateShot, saveError, onBack) {
+            TakeInputs(
+                state = state,
+                camera = camera,
+                settings = rules,
+                live = live,
+                actions = actions,
+                canSimulateShot = canSimulateShot,
+                saveError = saveError,
+                onBack = onBack,
+                onSettings = openRecordingSettings,
+            )
+        }
     // A pane of its own (a tabletop's upper half, a cover screen) keeps its rail and status on the picture; full
     // screen,
     // the floating controls have them.
@@ -320,10 +341,11 @@ fun RecordBody(
                 sampleLuma = now.sampleLuma,
                 picture = now.picture,
                 capture = now.capture,
-                clear = clear.takeUnless { ownControls },
+                clear = { clear.takeUnless { ownControls } },
                 graphSelected = graphSelected,
                 onGraphSelected = { graphSelected = it },
                 onGraphSheet = { graphSheet = it },
+                onGraphMoving = { graphMoving = it },
                 ownControls = ownControls,
                 modifier = modifier,
             )
@@ -349,7 +371,14 @@ fun RecordBody(
                         first = { pane(Modifier.fillMaxSize(), true) },
                         second = {
                             Box(Modifier.fillMaxSize().background(CgColors.Surface.Bar)) {
-                                if (layout.onItsSide) TabletopPanel(take) else FlexPanel(take)
+                                if (layout.onItsSide)
+                                    TabletopPanel(
+                                        take,
+                                        zoom = { m ->
+                                            if (!state.recording && granted) LensPicker(camera, actions::setZoom, m)
+                                        },
+                                    )
+                                else FlexPanel(take)
                             }
                         },
                     )
@@ -360,8 +389,10 @@ fun RecordBody(
             LayoutKind.Phone,
             LayoutKind.Wide -> {
                 pane(Modifier.fillMaxSize(), false)
+                val controls by animateFloatAsState(if (graphMoving) 0f else 1f, CgMotion.short(), label = "controls")
                 FloatingControls(
                     take,
+                    modifier = Modifier.graphicsLayer { alpha = controls },
                     landscape = capture.landscape,
                     graphOnTop = settings.overlay.rect.let { it.y + it.h / 2f < 0.5f },
                     zoom = { modifier, vertical ->
@@ -373,9 +404,18 @@ fun RecordBody(
         }
     }
 
+    // Where the sheets go: on a fold the right page, all of it; on a tablet 640 dp wide at most, as every sheet; on a
+    // phone across the bottom.
+    val onFold = layout.fold && layout.kind == LayoutKind.Wide
+    val sheetArea =
+        if (onFold) Modifier.fillMaxSize().padding(start = (layout.splitDp + layout.hingeDp).dp)
+        else Modifier.fillMaxSize()
+    val sheetSize =
+        if (onFold) Modifier.fillMaxSize()
+        else Modifier.widthIn(max = SHEET_MAX_WIDTH).fillMaxHeight(0.72f).wrapContentHeight(Alignment.Bottom)
     // The graph for this and the next recordings; a recorded video keeps its own copy, edited in the editor.
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-        EditorSheetSlot(graphSheet, Modifier.fillMaxHeight(0.72f).wrapContentHeight(Alignment.Bottom)) { sheet ->
+    Box(sheetArea, contentAlignment = Alignment.BottomCenter) {
+        EditorSheetSlot(graphSheet, sheetSize, scrim = true, onScrimTap = { graphSheet = null }) { sheet ->
             EditorSheet(
                 title =
                     stringResource(if (sheet == EditSheet.STYLE) Res.string.record_style else Res.string.record_data),
@@ -405,7 +445,19 @@ fun RecordBody(
         }
     }
 
-    if (settingsOpen) {
+    if (onFold) {
+        Box(sheetArea, contentAlignment = Alignment.BottomCenter) {
+            EditorSheetSlot(Unit.takeIf { settingsOpen }, Modifier.fillMaxSize()) {
+                EditorSheet(
+                    title = stringResource(Res.string.record_settings_title),
+                    onDone = { settingsOpen = false },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    RecordingSettingsContent(settings, state.sourceKind, actions::updateSettings)
+                }
+            }
+        }
+    } else if (settingsOpen) {
         RecordingSheet(
             settings = settings,
             sourceKind = state.sourceKind,
@@ -418,7 +470,8 @@ fun RecordBody(
 /**
  * The picture and the overlay. The picture is what the camera films, its whole [capture] frame, covering the pane: on a
  * screen longer than the frame its edges are cut off here, though not in the video. The graph is kept where the screen
- * shows it, inside [clear] (root px) when floating controls cover the rest.
+ * shows it, under the floating controls too ([clear], root px, is only where the viewfinder's marks go); while it is
+ * moved, [onGraphMoving] says so, so the controls step aside.
  */
 @Composable
 private fun CameraPane(
@@ -433,10 +486,14 @@ private fun CameraPane(
     sampleLuma: (x: Float, y: Float, w: Float, h: Float) -> Float?,
     picture: @Composable (Modifier, drawFrames: Boolean) -> Unit,
     capture: VideoFormat,
-    clear: Rect?,
+    /**
+     * Read only where the viewfinder's marks are drawn: it moves with the controls, and must not recompose the pane.
+     */
+    clear: () -> Rect?,
     graphSelected: Boolean,
     onGraphSelected: (Boolean) -> Unit,
     onGraphSheet: (EditSheet) -> Unit,
+    onGraphMoving: (Boolean) -> Unit,
     /** The lenses and the status chip drawn here, where no floating controls have them. */
     ownControls: Boolean,
     modifier: Modifier = Modifier,
@@ -462,7 +519,9 @@ private fun CameraPane(
         val shownH = (maxHeight / frameH).coerceAtMost(1f)
         val shown = NormRect((1f - shownW) / 2f, (1f - shownH) / 2f, shownW, shownH)
         var frame by remember { mutableStateOf(Rect.Zero) }
-        val bounds = graphBounds(shown, clear, frame, capture)
+        // The graph may go anywhere the frame is on screen, under the floating controls too: they are the screen's,
+        // not the video's, and they step aside while it moves.
+        val bounds = graphBounds(shown, capture)
         val rect = settings.overlay.rect.within(bounds)
         // A graph the screen would cut off is moved where it shows, and kept there: the video draws it as placed.
         LaunchedEffect(bounds, settings.overlay.rect, state.recording, state.hasData) {
@@ -472,15 +531,17 @@ private fun CameraPane(
         // A style that adapts to the video follows how bright the picture is behind the graph, sampled twice a second
         // and smoothed so it does not flicker.
         var luma by remember { mutableStateOf<Float?>(null) }
-        LaunchedEffect(graphStyle.adapt.enabled, rect, granted) {
+        // Keyed on whether to sample, not on where: a drag moves the rect every frame, and restarting the loop then
+        // would sample at frame rate. The loop reads the rect it is at.
+        val sampled by rememberUpdatedState(rect)
+        LaunchedEffect(graphStyle.adapt.enabled, granted) {
             if (!graphStyle.adapt.enabled || !granted) {
                 luma = null
                 return@LaunchedEffect
             }
             while (true) {
-                sampleLuma(rect.x, rect.y, rect.w, rect.h)?.let { now ->
-                    luma = luma?.let { it + (now - it) * 0.5f } ?: now
-                }
+                val at = sampled
+                sampleLuma(at.x, at.y, at.w, at.h)?.let { now -> luma = luma?.let { it + (now - it) * 0.5f } ?: now }
                 delay(500)
             }
         }
@@ -520,23 +581,30 @@ private fun CameraPane(
                 )
                 focusAt?.let { FocusRing(it, focusTaps) }
             } else {
-                Column(
-                    Modifier.align(Alignment.Center).padding(CgSpace.S24),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
-                ) {
-                    Text(
-                        stringResource(Res.string.record_needs_camera),
-                        style = CgTheme.type.caption,
-                        color = CgColors.Text.Secondary,
-                        textAlign = TextAlign.Center,
-                    )
-                    CgButton(allowCameraLabel, onClick = onAllowCamera)
+                // No picture: the viewfinder's marks on the part of the window the controls leave, and why.
+                Viewfinder({ clear() ?: shownIn(frame, shown) }, frame)
+                Box(Modifier.matchParentSize().padding(shownPadding(frameW, frameH, shown))) {
+                    Column(
+                        Modifier.align(Alignment.CenterStart).padding(horizontal = CgSpace.S16 * 2),
+                        verticalArrangement = Arrangement.spacedBy(CgSpace.S16),
+                    ) {
+                        Text(
+                            stringResource(Res.string.record_needs_camera),
+                            style = CgTheme.type.screenTitle.copy(letterSpacing = 0.sp, lineHeight = 26.sp),
+                        )
+                        CgButton(
+                            allowCameraLabel,
+                            onClick = onAllowCamera,
+                            kind = CgButtonKind.Signal,
+                            modifier = Modifier.testTag(TestTags.RecordAllowCamera),
+                        )
+                    }
                 }
             }
             // Without a machine there is nothing to draw: the screen is a camera, and the shot comes in the editor.
+            // Without a camera neither: no picture to draw it over.
             AnimatedVisibility(
-                !tiny && state.hasData,
+                !tiny && state.hasData && granted,
                 Modifier.fillMaxSize(),
                 enter = fadeIn(CgMotion.long()),
                 exit = fadeOut(CgMotion.medium()),
@@ -564,7 +632,7 @@ private fun CameraPane(
                     title =
                         "${state.shot.profileName.ifEmpty { RecordSession.defaultProfileName(state.sourceKind).text() }} · " +
                             machineLabel(state.sourceKind),
-                    fontFamily = CgTheme.overlayFont,
+                    fonts = CgTheme.overlayFonts,
                     modifier = Modifier.fillMaxSize(),
                     hazeState = haze,
                     backdropLuma = luma,
@@ -572,7 +640,7 @@ private fun CameraPane(
             }
             // Placed by hand before a shot; while recording nothing on the picture moves.
             AnimatedVisibility(
-                !tiny && !state.recording && state.hasData,
+                !tiny && !state.recording && state.hasData && granted,
                 Modifier.fillMaxSize(),
                 enter = fadeIn(CgMotion.medium()),
                 exit = fadeOut(CgMotion.short()),
@@ -582,18 +650,15 @@ private fun CameraPane(
                     onChange = { moved, _ -> actions.updateOverlay { it.copy(rect = moved) } },
                     onTap = { onGraphSelected(!graphSelected) },
                     selected = graphSelected,
-                    leftGrip = true,
                     format = capture,
                     bounds = bounds,
+                    onDragging = onGraphMoving,
                     toolbar = {
                         GraphToolbar(
                             opacity = settings.overlay.opacity,
                             onStyle = { onGraphSheet(EditSheet.STYLE) },
                             onData = { onGraphSheet(EditSheet.DATA) },
                             onOpacity = { o -> actions.updateOverlay { it.withOpacity(o) } },
-                            onReset = {
-                                actions.updateOverlay { it.copy(rect = NormRect.default(capture).within(bounds)) }
-                            },
                         )
                     },
                     modifier = Modifier.fillMaxSize(),
@@ -601,21 +666,24 @@ private fun CameraPane(
             }
             var ring by remember { mutableStateOf<Offset?>(null) }
             if (focusAt != null) ring = focusAt
-            AnimatedVisibility(
-                camera.focusLocked && focusAt != null && granted && !tiny && !state.recording,
-                Modifier.matchParentSize(),
-                enter = fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.9f),
-                exit = fadeOut(CgMotion.short()),
-            ) {
-                // Under the ring, as the camera apps put their lock label: tap it to go back to continuous focus
-                // and exposure. A held focus survives into the recording, as it should.
-                ring?.let {
-                    Pill(
-                        stringResource(Res.string.record_focus_locked),
-                        onClick = actions::unlockFocus,
-                        color = FocusYellow,
-                        modifier = Modifier.belowFocusRing(it),
-                    )
+            // Under the ring, as the camera apps put their lock label, in words alone: tap it to go back to continuous
+            // focus and
+            // exposure. A held focus survives into the recording, as it should. It lights with the ring and goes out
+            // with it, like a lamp: no motion of its own.
+            if (camera.focusLocked && focusAt != null && granted && !tiny && !state.recording) {
+                Box(Modifier.matchParentSize()) {
+                    ring?.let {
+                        // Just the words, no frame: the ring above already marks the spot.
+                        Text(
+                            stringResource(Res.string.record_focus_locked).caps(),
+                            style = CgTheme.type.labelStrong,
+                            color = CgColors.Status.Warning,
+                            modifier =
+                                Modifier.belowFocusRing(it, grow = FOCUS_LABEL_GROW)
+                                    .clickable(role = Role.Button, onClick = actions::unlockFocus)
+                                    .padding(horizontal = CgSpace.S8, vertical = CgSpace.S12 + FOCUS_LABEL_GROW),
+                        )
+                    }
                 }
             }
         }
@@ -623,25 +691,21 @@ private fun CameraPane(
             // While filming, the panel under the picture says how long: one clock. The opposite corner from the
             // overlay, which it must never cover: when the graph is dragged across the middle, the chip travels to
             // the other corner rather than jumping there.
-            val corner by animateFloatAsState(if (rect.y < 0.5f) 1f else -1f, CgMotion.settle(), label = "chip")
+            val corner = animateFloatAsState(if (rect.y < 0.5f) 1f else -1f, CgMotion.settle(), label = "chip")
             AnimatedVisibility(
                 state.statusWorthShowing && !state.recording,
-                Modifier.align(BiasAlignment(-1f, corner)).padding(CgSpace.S12),
-                enter = fadeIn(CgMotion.medium()),
-                exit = fadeOut(CgMotion.short()),
+                Modifier.matchParentSize().alignedAtStart { corner.value }.padding(CgSpace.S12),
+                enter = CgMotion.reveal,
+                exit = CgMotion.conceal,
             ) {
-                StatusChip(
-                    text = state.status.text(),
-                    recording = state.recording,
-                    dot = if (state.recording) CgColors.Text.Primary else null,
-                )
+                TakeStatus(state)
             }
-            // The lenses step out of the way when recording starts, and back after.
+            // The lenses slide off the edge when recording starts, and back on after.
             AnimatedVisibility(
                 !state.recording && granted,
                 Modifier.align(Alignment.CenterEnd).padding(CgSpace.S12),
-                enter = fadeIn(CgMotion.medium()),
-                exit = fadeOut(CgMotion.short()) + slideOutHorizontally(CgMotion.offsetSpec) { it / 2 },
+                enter = slideInHorizontally(CgMotion.offsetSpec) { it * 2 },
+                exit = slideOutHorizontally(CgMotion.offsetSpec) { it * 2 },
             ) {
                 LensPicker(camera, actions::setZoom, vertical = true)
             }
@@ -649,21 +713,12 @@ private fun CameraPane(
     }
 }
 
-/**
- * Where the graph may go, in the frame's fractions: what of the frame is [shown], less what the floating controls cover
- * (everything outside [clear], in root px, the [frame] laid out there too), a side margin in.
- */
-private fun graphBounds(shown: NormRect, clear: Rect?, frame: Rect, capture: VideoFormat): NormRect {
+/** Where the graph may go, in the frame's fractions: what of the frame is [shown], a side margin in. */
+private fun graphBounds(shown: NormRect, capture: VideoFormat): NormRect {
     var left = shown.x
     var top = shown.y
     var right = shown.right
     var bottom = shown.bottom
-    if (clear != null && !frame.isEmpty) {
-        left = maxOf(left, (clear.left - frame.left) / frame.width)
-        top = maxOf(top, (clear.top - frame.top) / frame.height)
-        right = minOf(right, (clear.right - frame.left) / frame.width)
-        bottom = minOf(bottom, (clear.bottom - frame.top) / frame.height)
-    }
     val mx = NormRect.MARGIN_REF / capture.refW
     val my = NormRect.MARGIN_REF / capture.refH
     left += mx
@@ -673,6 +728,60 @@ private fun graphBounds(shown: NormRect, clear: Rect?, frame: Rect, capture: Vid
     // Never less room than the smallest graph: a sliver of window keeps the whole frame instead.
     if (right - left < NormRect.minW(capture) || bottom - top < NormRect.minH(capture)) return NormRect(0f, 0f, 1f, 1f)
     return NormRect(left, top, right - left, bottom - top)
+}
+
+/** What of the [frame] (root px) is on screen: its [shown] fractions. */
+private fun shownIn(frame: Rect, shown: NormRect): Rect =
+    Rect(
+        frame.left + frame.width * shown.x,
+        frame.top + frame.height * shown.y,
+        frame.left + frame.width * shown.right,
+        frame.top + frame.height * shown.bottom,
+    )
+
+/** The padding that brings a frame of [frameW] × [frameH] in to the part of it on screen. */
+private fun shownPadding(frameW: Dp, frameH: Dp, shown: NormRect): PaddingValues =
+    PaddingValues(
+        start = frameW * shown.x,
+        top = frameH * shown.y,
+        end = frameW * (1f - shown.right),
+        bottom = frameH * (1f - shown.bottom),
+    )
+
+/**
+ * A viewfinder with no picture in it: four corner marks round what [area] gives (root px) and a cross in its middle, in
+ * hairline grey, drawn in the [frame]'s own coordinates.
+ */
+@Composable
+private fun BoxScope.Viewfinder(area: () -> Rect, frame: Rect) {
+    Box(
+        Modifier.matchParentSize().drawWithCache {
+            // Built when the size or the area changes, not on every draw; the area is read here, not in composition.
+            val area = area()
+            val inset = CgSpace.S16.toPx()
+            val arm = CgSpace.S16.toPx()
+            val l = area.left - frame.left + inset
+            val t = area.top - frame.top + inset
+            val r = area.right - frame.left - inset
+            val b = area.bottom - frame.top - inset
+            val stroke = Stroke(1.5.dp.toPx(), cap = StrokeCap.Square)
+            fun mark(x: Float, y: Float, dx: Float, dy: Float) =
+                Path().apply {
+                    moveTo(x, y + dy * arm)
+                    lineTo(x, y)
+                    lineTo(x + dx * arm, y)
+                }
+            val marks = listOf(mark(l, t, 1f, 1f), mark(r, t, -1f, 1f), mark(l, b, 1f, -1f), mark(r, b, -1f, -1f))
+            val c = Offset((l + r) / 2f, (t + b) / 2f)
+            val half = arm / 2f
+            onDrawBehind {
+                if (area.isEmpty || frame.isEmpty) return@onDrawBehind
+                for (m in marks) drawPath(m, CgColors.Line.Hairline, style = stroke)
+                drawLine(CgColors.Line.Hairline, c - Offset(half, 0f), c + Offset(half, 0f), stroke.width)
+                drawLine(CgColors.Line.Hairline, c - Offset(0f, half), c + Offset(0f, half), stroke.width)
+            }
+        }
+    )
 }
 
 /** Why the camera or the last take failed, over the picture. */
@@ -689,8 +798,8 @@ private fun WarningBanner(text: String?) {
     if (text != null) last = text
     AnimatedVisibility(
         text != null,
-        enter = fadeIn(CgMotion.medium()) + expandVertically(CgMotion.sizeSpec),
-        exit = fadeOut(CgMotion.short()) + shrinkVertically(CgMotion.sizeSpec),
+        enter = CgMotion.reveal,
+        exit = CgMotion.conceal,
     ) {
         last?.let { Banner(it, BannerKind.Warning) }
     }
@@ -699,21 +808,18 @@ private fun WarningBanner(text: String?) {
 /** A cover screen or a sliver of split screen: the clock over the picture and the button under it, nothing else. */
 @Composable
 private fun BoxScope.TinyControls(state: RecordUiState, actions: RecordActions) {
+    // Read while drawing: the change of colour redraws the chip, it does not recompose it.
+    val ground =
+        animateColorAsState(if (state.recording) CgColors.Status.Record else CgColors.Surface.Raised, CgMotion.medium())
     Text(
         if (state.recording) state.status.text() else stringResource(Res.string.record_ready),
-        style = CgTheme.type.cardTitle,
+        style = CgTheme.type.label,
+        color = CgColors.Text.Primary,
         modifier =
             Modifier.align(Alignment.TopCenter)
                 .padding(top = CgSpace.S24)
-                .clip(CgShape.Pill)
-                .background(
-                    animateColorAsState(
-                            if (state.recording) CgColors.Status.RecordingChip else CgColors.Surface.Raised,
-                            CgMotion.medium(),
-                        )
-                        .value
-                )
-                .padding(horizontal = CgSpace.S14, vertical = CgSpace.S4),
+                .drawBehind { drawRect(ground.value) }
+                .padding(horizontal = CgSpace.S14, vertical = CgSpace.S6),
     )
     RecordButton(
         state =
@@ -727,13 +833,29 @@ private fun BoxScope.TinyControls(state: RecordUiState, actions: RecordActions) 
     )
 }
 
+/** What the focus label's padding grows by, to a 44 dp target, with its words where they were. */
+private val FOCUS_LABEL_GROW = 2.dp
+
+/**
+ * Where a child of the whole box sits, BiasAlignment's way: at the start, and [vertical] (-1 top, 1 bottom) of the way
+ * down. Read while placing, so an animated bias moves the child without recomposing it.
+ */
+private fun Modifier.alignedAtStart(vertical: () -> Float): Modifier = layout { measurable, constraints ->
+    val child = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+    layout(constraints.maxWidth, constraints.maxHeight) {
+        val center = (constraints.maxHeight - child.height).toFloat() / 2f
+        child.placeRelative(0, (center * (1f + vertical())).roundToInt())
+    }
+}
+
 /**
  * Places a label centred under the focus ring at [ring], or over it when there is no room below, kept inside the
  * picture.
  */
-private fun Modifier.belowFocusRing(ring: Offset): Modifier = layout { measurable, constraints ->
+private fun Modifier.belowFocusRing(ring: Offset, grow: Dp = 0.dp): Modifier = layout { measurable, constraints ->
     val label = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
-    val gap = (FOCUS_RING_RADIUS + 4).dp.roundToPx()
+    // A label padded [grow] more on each side sits [grow] nearer the ring, so its words stay where they were.
+    val gap = (FOCUS_RING_RADIUS + 4).dp.roundToPx() - grow.roundToPx()
     layout(constraints.maxWidth, constraints.maxHeight) {
         val x = (ring.x.toInt() - label.width / 2).coerceIn(0, maxOf(0, constraints.maxWidth - label.width))
         val below = ring.y.toInt() + gap
@@ -760,6 +882,9 @@ private data class PaneInputs(
     val capture: VideoFormat,
 )
 
+/** Every sheet on a tablet, at most. */
+private val SHEET_MAX_WIDTH = 640.dp
+
 /** How far out a graph may stand before it is moved in: what moving it between frames rounds off. */
 private const val BOUNDS_SLACK = 0.005f
 
@@ -772,13 +897,13 @@ private fun CameraError.text(): String =
         is CameraError.RecordingFailed -> detail ?: stringResource(Res.string.camera_recording_failed)
     }
 
-/** A small control that pops into place and out again, rather than appearing and vanishing. */
+/** A small key that slides out of its row's edge and back into it, rather than appearing and vanishing. */
 @Composable
-internal fun PopIn(visible: Boolean, content: @Composable () -> Unit) {
+internal fun KeyIn(visible: Boolean, content: @Composable () -> Unit) {
     AnimatedVisibility(
         visible,
-        enter = fadeIn(CgMotion.medium()) + scaleIn(CgMotion.springy(), initialScale = 0.8f),
-        exit = fadeOut(CgMotion.short()) + scaleOut(CgMotion.short(), targetScale = 0.8f),
+        enter = expandHorizontally(CgMotion.sizeSpec, expandFrom = Alignment.End),
+        exit = shrinkHorizontally(CgMotion.sizeSpec, shrinkTowards = Alignment.End),
     ) {
         content()
     }

@@ -1,6 +1,5 @@
 package app.onlyshots.video
 
-import androidx.compose.ui.text.font.FontFamily
 import app.onlyshots.core.model.Layout
 import app.onlyshots.core.model.NormRect
 import app.onlyshots.core.model.OverlaySettings
@@ -13,6 +12,7 @@ import app.onlyshots.core.model.style.GridStyle
 import app.onlyshots.core.model.style.Material
 import app.onlyshots.overlay.AlignmentBarcode
 import app.onlyshots.overlay.GraphStyles
+import app.onlyshots.overlay.compose.OverlayFonts
 import java.io.File
 import kotlin.math.abs
 import kotlin.test.Test
@@ -27,7 +27,7 @@ import okio.Path.Companion.toOkioPath
 class FfmpegExportTest {
     private val clip = File(System.getProperty("onlyshots.spikeClip") ?: "testdata/${SpikeClip.NAME}").absolutePath
     private val exporter =
-        FfmpegVideoExporter(videoPath = { File(it.file).toOkioPath() }, fonts = { FontFamily.Default })
+        FfmpegVideoExporter(videoPath = { File(it.file).toOkioPath() }, fonts = { OverlayFonts.Default })
     private val tmp = File(System.getProperty("java.io.tmpdir"))
 
     private fun export(trimInUs: Long, trimOutUs: Long, checkAtUs: List<Long>) = runBlocking {

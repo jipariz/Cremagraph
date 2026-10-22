@@ -84,4 +84,5 @@ include(
     ":screenshots",
     ":app:webApp",
     ":uitests",
+    ":app:uitests",
 )

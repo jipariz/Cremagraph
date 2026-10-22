@@ -1,5 +1,7 @@
 package app.onlyshots
 
+import androidx.compose.ui.Modifier
+
 /**
  * Stable names for the controls and screens UI tests drive (`:uitests`, the Android UI Automator and iOS XCUITest smoke
  * tests, where they appear as resource ids and accessibility identifiers). A tag names what a node does, never how it
@@ -37,6 +39,7 @@ object TestTags {
     const val RecordSimulate = "record.simulate"
     const val RecordSettings = "record.settings"
     const val RecordStatus = "record.status"
+    const val RecordAllowCamera = "record.allowCamera"
 
     // Open.
     const val OpenPickVideo = "open.pickVideo"
@@ -46,8 +49,7 @@ object TestTags {
     const val OpenEditor = "open.editor"
 
     // Edit.
-    const val EditUndo = "edit.undo"
-    const val EditRedo = "edit.redo"
+    const val EditSound = "edit.sound"
     const val EditExport = "edit.export"
     const val EditShotChip = "edit.shotChip"
     /** The graph over the picture, in the editor and on the record screen: tap to select. */
@@ -56,10 +58,12 @@ object TestTags {
     const val EditFrame = "edit.frame"
     const val ToolbarStyle = "edit.toolbar.style"
     const val ToolbarData = "edit.toolbar.data"
-    const val ToolbarText = "edit.toolbar.text"
     const val ExportSave = "export.save"
     const val ExportShare = "export.share"
     const val ExportKeepEditing = "export.keepEditing"
+    const val ExportNotifyAllow = "export.notify.allow"
+    const val ExportNotifyLater = "export.notify.later"
+    const val ExportOpenSaved = "export.openSaved"
     const val ExportNext = "export.next"
     const val TextTitleField = "edit.text.title"
 
@@ -80,9 +84,10 @@ object TestTags {
     const val StyleSaveConfirm = "styleEditor.saveConfirm"
     const val StyleMenuEdit = "style.menu.edit"
     const val StyleMenuCopy = "style.menu.copy"
-    const val StyleMenuRename = "style.menu.rename"
     const val StyleMenuDelete = "style.menu.delete"
     const val StyleNameField = "style.nameField"
+
+    /** The selected style's keys under "your styles". */
 
     /** One choice of a segmented setting: `choice("grid", GridMode.ROWS.name)`. */
     fun choice(group: String, value: String) = "choice.$group.$value"
@@ -93,3 +98,10 @@ object TestTags {
     /** One style editor tab: `styleTab("panel")`. */
     fun styleTab(name: String) = "styleEditor.tab.$name"
 }
+
+/**
+ * Shows the test tags under this node to UI Automator as resource ids. Each app root sets it; a dialog, sheet or menu
+ * is a window of its own and doesn't inherit it, so each sets it again. Android only: iOS shows tags as accessibility
+ * identifiers by itself.
+ */
+expect fun Modifier.testTagsAsResourceIds(): Modifier

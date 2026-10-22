@@ -32,37 +32,36 @@ import androidx.navigation3.ui.defaultTransitionSpec
 import app.onlyshots.core.designsystem.CgMotion
 
 /*
- * How screens move, for every host's NavDisplay: a short shared-axis step forward and back (iOS keeps its own push,
- * which its users know), sheets-like screens ([ModalMotion]) rising from the bottom, and elements shared between two
- * screens ([shareBounds]) flying from one to the other.
+ * How screens move, for every host's NavDisplay: a screen slides in over the last and stops (iOS keeps its own push,
+ * which its users know), sheet-like screens ([ModalMotion]) rise from the bottom, and elements shared between two
+ * screens ([shareBounds]) fly from one to the other. Short, one curve, no bounce (CgMotion).
  */
 
 /** iOS: the platform's push and its edge swipe back, as Navigation 3 gives them. Elsewhere, [ScreenMotion]'s own. */
 internal expect val nativeScreenMotion: Boolean
 
-/** The forward, back and predictive-back transitions every [NavDisplay] in the app passes. */
+/**
+ * The forward, back and predictive-back transitions every [NavDisplay] in the app passes: the new screen slides in over
+ * the old across the whole width and stops; the old one steps a quarter aside under it. No fades.
+ */
 object ScreenMotion {
-    private const val SHIFT = 10 // a tenth of the width: enough to say "forward", not a full slide
+    private const val UNDER = 4 // the screen underneath moves a quarter of the width
+
+    private fun <T> run() = tween<T>(CgMotion.LONG, easing = CgMotion.Mechanical)
 
     fun <T : Any> forward(): AnimatedContentTransitionScope<Scene<T>>.() -> ContentTransform =
         if (nativeScreenMotion) defaultTransitionSpec()
         else {
-            {
-                (slideInHorizontally(tween(CgMotion.LONG, easing = CgMotion.Emphasized)) { it / SHIFT } +
-                    fadeIn(tween(CgMotion.MEDIUM, delayMillis = 50))) togetherWith
-                    (slideOutHorizontally(tween(CgMotion.LONG, easing = CgMotion.Emphasized)) { -it / SHIFT } +
-                        fadeOut(tween(CgMotion.SHORT)))
-            }
+            { slideInHorizontally(run()) { it } togetherWith slideOutHorizontally(run()) { -it / UNDER } }
         }
 
     fun <T : Any> back(): AnimatedContentTransitionScope<Scene<T>>.() -> ContentTransform =
         if (nativeScreenMotion) defaultPopTransitionSpec()
         else {
             {
-                (slideInHorizontally(tween(CgMotion.LONG, easing = CgMotion.Emphasized)) { -it / SHIFT } +
-                    fadeIn(tween(CgMotion.MEDIUM, delayMillis = 50))) togetherWith
-                    (slideOutHorizontally(tween(CgMotion.LONG, easing = CgMotion.Emphasized)) { it / SHIFT } +
-                        fadeOut(tween(CgMotion.SHORT)))
+                (slideInHorizontally(run()) { -it / UNDER } togetherWith slideOutHorizontally(run()) { it }).apply {
+                    targetContentZIndex = -1f
+                }
             }
         }
 
@@ -70,37 +69,38 @@ object ScreenMotion {
         if (nativeScreenMotion) defaultPredictivePopTransitionSpec()
         else {
             { _ ->
-                (slideInHorizontally(tween(CgMotion.LONG)) { -it / SHIFT } + fadeIn(tween(CgMotion.LONG))) togetherWith
-                    (slideOutHorizontally(tween(CgMotion.LONG)) { it / SHIFT } + fadeOut(tween(CgMotion.LONG)))
+                (slideInHorizontally(tween(CgMotion.LONG, easing = CgMotion.Linear)) { -it / UNDER } togetherWith
+                        slideOutHorizontally(tween(CgMotion.LONG, easing = CgMotion.Linear)) { it })
+                    .apply { targetContentZIndex = -1f }
             }
         }
 }
 
 /**
  * Entry metadata for a screen that is more a sheet than a step: it rises from the bottom over the one that opened it,
- * and drops back down on back (the privacy policy, the machine shot picker).
+ * which dims at once, and drops back down on back (the privacy policy, the machine shot picker).
  */
 val ModalMotion: Map<String, Any> =
     NavDisplay.transitionSpec {
-        slideInVertically(tween(CgMotion.LONG, easing = CgMotion.EmphasizedDecelerate)) { it } togetherWith
-            fadeOut(tween(CgMotion.LONG), targetAlpha = 0.6f)
+        slideInVertically(tween(CgMotion.LONG, easing = CgMotion.Mechanical)) { it } togetherWith
+            fadeOut(tween(CgMotion.SHORT), targetAlpha = 0.6f)
     } +
         NavDisplay.popTransitionSpec {
-            fadeIn(tween(CgMotion.MEDIUM), initialAlpha = 0.6f) togetherWith
-                slideOutVertically(tween(CgMotion.MEDIUM, easing = CgMotion.EmphasizedAccelerate)) { it }
+            fadeIn(tween(CgMotion.SHORT), initialAlpha = 0.6f) togetherWith
+                slideOutVertically(tween(CgMotion.MEDIUM, easing = CgMotion.Mechanical)) { it }
         } +
         NavDisplay.predictivePopTransitionSpec {
-            fadeIn(tween(CgMotion.LONG), initialAlpha = 0.6f) togetherWith
-                slideOutVertically(tween(CgMotion.LONG)) { it }
+            fadeIn(tween(CgMotion.LONG, easing = CgMotion.Linear), initialAlpha = 0.6f) togetherWith
+                slideOutVertically(tween(CgMotion.LONG, easing = CgMotion.Linear)) { it }
         }
 
 /**
  * Entry metadata for a screen that grows out of something on the one before it (the style editor out of a style's
- * tile): a plain cross-fade, so the shared element is the only thing that moves.
+ * tile): a quick cross-fade under it, so the shared element is the only thing that travels.
  */
 val FadeMotion: Map<String, Any> =
-    NavDisplay.transitionSpec { fadeIn(tween(CgMotion.MEDIUM)) togetherWith fadeOut(tween(CgMotion.MEDIUM)) } +
-        NavDisplay.popTransitionSpec { fadeIn(tween(CgMotion.MEDIUM)) togetherWith fadeOut(tween(CgMotion.MEDIUM)) }
+    NavDisplay.transitionSpec { fadeIn(tween(CgMotion.SHORT)) togetherWith fadeOut(tween(CgMotion.SHORT)) } +
+        NavDisplay.popTransitionSpec { fadeIn(tween(CgMotion.SHORT)) togetherWith fadeOut(tween(CgMotion.SHORT)) }
 
 /** The scope shared elements fly in: the host's [SharedTransitionLayout], or none (a preview, a screenshot test). */
 val LocalSharedTransitionScope = staticCompositionLocalOf<SharedTransitionScope?> { null }
@@ -186,4 +186,4 @@ object SharedKeys {
     const val TAKE_FRAME = "take-frame"
 }
 
-private val SharedBoundsMotion = BoundsTransform { _, _ -> tween(CgMotion.LONG, easing = CgMotion.Emphasized) }
+private val SharedBoundsMotion = BoundsTransform { _, _ -> tween(CgMotion.LONG, easing = CgMotion.Mechanical) }

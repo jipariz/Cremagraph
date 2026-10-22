@@ -1,5 +1,6 @@
 package app.onlyshots.video
 
+import app.onlyshots.overlay.compose.OverlayFonts
 import android.graphics.Matrix
 import androidx.media3.effect.MatrixTransformation
 import app.onlyshots.core.model.Reframe
@@ -61,7 +62,7 @@ class Media3VideoExporter(
     private val context: Context,
     /** Resolves the source file of a video (library files, or the spike's test clip). */
     private val videoPath: (VideoItem) -> Path,
-    private val fonts: suspend () -> FontFamily,
+    private val fonts: suspend () -> OverlayFonts,
     private val fps: Int = 30,
 ) : VideoExporter {
 
@@ -72,7 +73,7 @@ class Media3VideoExporter(
         out: Path,
         alignmentBarcode: Boolean,
     ): Flow<ExportProgress> = callbackFlow {
-        val fontFamily = fonts()
+        val overlayFonts = fonts()
         val labels = overlayLabels()
         val clipping = MediaItem.ClippingConfiguration.Builder()
             .setStartPositionMs(item.trimInUs / 1000)
@@ -123,7 +124,7 @@ class Media3VideoExporter(
                     frameWidth = size.width,
                     frameHeight = size.height,
                     textMeasurer = measurer,
-                    fontFamily = fontFamily,
+                    fonts = overlayFonts,
                     alignmentBarcode = alignmentBarcode,
                     fps = fps,
                     backdropLuma = { t -> luma?.at(t) },

@@ -3,7 +3,6 @@
 package app.onlyshots.video
 
 import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
@@ -15,6 +14,7 @@ import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.model.overlayTitle
 import app.onlyshots.overlay.GraphStyles
 import app.onlyshots.overlay.compose.OVERLAY_TEXT_CACHE
+import app.onlyshots.overlay.compose.OverlayFonts
 import app.onlyshots.overlay.compose.OverlayFrameRenderer
 import app.onlyshots.overlay.compose.overlayLabels
 import app.onlyshots.overlay.scene.BackdropPrim
@@ -106,7 +106,7 @@ import platform.darwin.dispatch_queue_create
  */
 class AvFoundationVideoExporter(
     private val videoPath: (VideoItem) -> Path,
-    private val fonts: suspend () -> FontFamily,
+    private val fonts: suspend () -> OverlayFonts,
     private val fps: Int = 30,
 ) : VideoExporter {
 
@@ -117,11 +117,11 @@ class AvFoundationVideoExporter(
         out: Path,
         alignmentBarcode: Boolean,
     ): Flow<ExportProgress> = channelFlow {
-        val fontFamily = fonts()
+        val overlayFonts = fonts()
         trySend(ExportProgress.Rendering(0f))
         val result =
             withContext(Dispatchers.Default) {
-                runCatching { render(item, quality, withSound, out, alignmentBarcode, fontFamily, this@channelFlow) }
+                runCatching { render(item, quality, withSound, out, alignmentBarcode, overlayFonts, this@channelFlow) }
             }
         send(
             result.fold(
@@ -137,7 +137,7 @@ class AvFoundationVideoExporter(
         withSound: Boolean,
         out: Path,
         alignmentBarcode: Boolean,
-        fontFamily: FontFamily,
+        overlayFonts: OverlayFonts,
         progress: ProducerScope<ExportProgress>,
     ) {
         val labels = overlayLabels()
@@ -252,7 +252,7 @@ class AvFoundationVideoExporter(
                     frameHeight = size.height,
                     textMeasurer =
                         TextMeasurer(createFontFamilyResolver(), Density(1f), LayoutDirection.Ltr, OVERLAY_TEXT_CACHE),
-                    fontFamily = fontFamily,
+                    fonts = overlayFonts,
                     alignmentBarcode = alignmentBarcode,
                     fps = fps,
                     backdropLuma = { t -> luma?.at(t) },

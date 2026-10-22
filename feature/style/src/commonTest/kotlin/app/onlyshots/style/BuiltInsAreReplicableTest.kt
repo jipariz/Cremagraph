@@ -41,7 +41,12 @@ class BuiltInsAreReplicableTest {
         s = s.withGrid(to.grid.mode)
         if (to.grid.mode != GridMode.NONE) s = s.withGridColor(to.grid.color).withGridDashed(to.grid.dash != null)
         // Text
-        s = s.withTitleColor(to.text.title).withLabelColor(to.text.label).withTargetTextColor(to.text.target)
+        s =
+            s.withFont(to.text.font)
+                .withLettering(to.text.lettering)
+                .withTitleColor(to.text.title)
+                .withLabelColor(to.text.label)
+                .withTargetTextColor(to.text.target)
         s = s.withTextEffect(to.text.effect).withPhaseLineColor(to.phase.line).withPhaseLabelColor(to.phase.label)
         // Readings
         val c = to.cells

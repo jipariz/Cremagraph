@@ -3,7 +3,7 @@ package app.onlyshots.uitests
 import app.onlyshots.camera.CameraController
 import app.onlyshots.camera.CameraState
 import app.onlyshots.camera.Recording
-import app.onlyshots.core.designsystem.loadOpenSans
+import app.onlyshots.core.designsystem.loadOverlayFonts
 import app.onlyshots.core.model.ShotHistory
 import app.onlyshots.di.appModule
 import app.onlyshots.editor.CACHE_DIR
@@ -71,7 +71,7 @@ class Harness(private val phone: Boolean) {
                     videoPath = { item ->
                         if (item.file.startsWith("/")) item.file.toPath() else videosDir / item.file
                     },
-                    fonts = { loadOpenSans() },
+                    fonts = { loadOverlayFonts() },
                 )
             }
             single<FrameSampler> { FfmpegFrameSampler() }

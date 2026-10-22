@@ -48,7 +48,7 @@ class StyleLibraryTest {
         val reloaded = StyleLibrary(AppSettingsRepo(SettingsStore(fs, path)))
         assertEquals(listOf(glass), reloaded.custom)
         assertEquals(glass, reloaded.resolve(OverlaySettings(), SourceKind.GAGGIUINO))
-        assertEquals("metro", reloaded.resolve(OverlaySettings(), SourceKind.SCALE).id)
+        assertEquals("instrument", reloaded.resolve(OverlaySettings(), SourceKind.SCALE).id)
     }
 
     @Test

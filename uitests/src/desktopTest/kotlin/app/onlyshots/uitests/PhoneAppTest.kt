@@ -2,13 +2,18 @@ package app.onlyshots.uitests
 
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
 import app.onlyshots.OnlyShotsApp
 import app.onlyshots.TestTags
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * The phones' app on every window it adapts to: record the sample shot and export it, compose a video from a picked
@@ -80,8 +85,9 @@ class PhoneAppTest {
         tap(TestTags.ExportSave)
         await(TestTags.ExportNext, EXPORT_TIMEOUT)
         assertEquals(1, app.gallery.saved.size, "the take went to the gallery")
+        // The next shot starts from Home, where its machine or scale is picked.
         tap(TestTags.ExportNext)
-        await(TestTags.ScreenRecord)
+        await(TestTags.ScreenHome)
     }
 
     /** Start → compose a video → pick both → open the editor → back to Open. */
@@ -121,4 +127,64 @@ fun ComposeUiTest.tapIfPresent(tag: String) {
     }
         .isSuccess
     if (there) tap(tag)
+}
+
+/** How the record screen behaves while a take runs, on a phone: back inert until the take is stopped and saved. */
+@OptIn(ExperimentalTestApi::class)
+class RecordingLookTest {
+    private val app = Harness(phone = true)
+
+    @BeforeTest fun start() = app.start()
+
+    @AfterTest fun stop() = app.stop()
+
+    @Test
+    fun aTakeHoldsBack() =
+        onDevice(Device.Phone, app.pickers, { OnlyShotsApp() }) {
+            await(TestTags.ScreenStart)
+            tap(TestTags.StartRecord)
+            await(TestTags.ScreenHome)
+            tap(TestTags.HomeSample)
+            await(TestTags.ScreenRecord)
+            await(TestTags.Back).assertIsEnabled()
+            tap(TestTags.RecordButton)
+            waitUntil("back held while recording", TIMEOUT) {
+                runCatching { onNodeWithTag(TestTags.Back, useUnmergedTree = true).assertIsNotEnabled() }.isSuccess
+            }
+            Thread.sleep(1_500)
+            tap(TestTags.RecordButton)
+            await(TestTags.ScreenEdit)
+        }
+}
+
+/**
+ * A take not saved anywhere asks before it is left, the safe choice on the left: keep editing stays in the editor,
+ * leave (on the right) goes back to record.
+ */
+@OptIn(ExperimentalTestApi::class)
+class LeaveDialogTest {
+    private val app = Harness(phone = true)
+
+    @BeforeTest fun start() = app.start()
+
+    @AfterTest fun stop() = app.stop()
+
+    @Test
+    fun leaveIsTheRightHandChoice() =
+        onDevice(Device.Phone, app.pickers, { OnlyShotsApp() }) {
+            await(TestTags.ScreenStart)
+            tap(TestTags.StartRecord)
+            tap(TestTags.HomeSample)
+            await(TestTags.ScreenRecord)
+            tap(TestTags.RecordButton)
+            Thread.sleep(1_500)
+            tap(TestTags.RecordButton)
+            await(TestTags.ScreenEdit)
+            tap(TestTags.Back)
+            val keep = await(TestTags.DialogConfirm).getUnclippedBoundsInRoot()
+            val leave = await(TestTags.DialogDismiss).getUnclippedBoundsInRoot()
+            assertTrue(keep.right <= leave.left, "keep editing on the left, leave on the right")
+            tap(TestTags.DialogDismiss)
+            awaitGone(TestTags.ScreenEdit)
+        }
 }

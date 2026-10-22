@@ -4,10 +4,7 @@
     <!-- Export wording per host (ExportWording) -->
     <string name="edit_phone_save">save to gallery</string>
     <string name="edit_phone_save_where">into the OnlyShots album</string>
-    <string name="edit_phone_share">share…</string>
-    <string name="edit_phone_share_where">Instagram, Messages, anywhere</string>
     <string name="edit_phone_saved">In your gallery, in the OnlyShots album</string>
-    <string name="edit_phone_shared">Handed to the share sheet</string>
     <string name="edit_phone_next">record the next shot</string>
     <string name="edit_phone_footer">Made on this phone.</string>
     <string name="edit_desktop_save">save to Movies</string>
@@ -49,12 +46,7 @@
     <string name="edit_timeline_description">timeline: drag the ends to trim, drag the flag to place the shot</string>
     <string name="edit_timeline_trim">trim %1$s – %2$s</string>
     <string name="edit_timeline_zoom">zoom</string>
-    <string name="edit_timeline_seconds">%1$s s</string>
-    <string name="edit_snapped_to">snapped to %1$s</string>
-    <string name="edit_snap_playhead">playhead</string>
-    <string name="edit_snap_shot_start">shot start</string>
-    <string name="edit_snap_shot_end">shot end</string>
-    <string name="edit_snap_pump_start">pump start</string>
+    <string name="edit_timeline_seconds">%1$ss</string>
     <string name="edit_cut_both">graph cut at both ends</string>
     <string name="edit_cut_head">graph starts mid-shot</string>
     <string name="edit_cut_tail">graph ends mid-shot</string>
@@ -62,9 +54,8 @@
     <!-- The graph on the picture -->
     <string name="edit_graph_description">graph: tap for its style, drag to move, drag a corner to resize</string>
     <string name="edit_graph_style_action">graph style</string>
-    <string name="edit_toolbar_style">style ▾</string>
-    <string name="edit_toolbar_data">data ▾</string>
-    <string name="edit_toolbar_text">text ▾</string>
+    <string name="edit_toolbar_style">style</string>
+    <string name="edit_toolbar_data">data</string>
 
     <!-- Editor screen -->
     <string name="edit_leave_title">leave this video?</string>
@@ -78,19 +69,21 @@
     <string name="edit_export">export</string>
     <string name="edit_reframe_hint">drag to move · pinch to zoom</string>
     <string name="edit_done">done</string>
-    <string name="edit_frame_switch">⤢ frame</string>
+    <string name="edit_frame_switch">frame</string>
     <string name="edit_graph_start">graph start</string>
-    <string name="edit_start_here">⚑ start here</string>
+    <string name="edit_start_here">start here</string>
     <string name="edit_find_start">find start</string>
     <string name="edit_muted">muted</string>
     <string name="edit_sound">sound</string>
     <string name="edit_fit">fit</string>
+    <string name="edit_zoom_in">zoom in</string>
+    <string name="edit_step_back">a frame back</string>
+    <string name="edit_step_forward">a frame on</string>
     <string name="edit_graph">graph</string>
     <string name="edit_shot">shot</string>
     <string name="edit_frame">frame</string>
     <string name="edit_style">style</string>
     <string name="edit_data">data</string>
-    <string name="edit_text">text</string>
     <string name="edit_change">change</string>
     <string name="edit_match_by_clock">match by clock</string>
     <string name="edit_zoom_and_crop">zoom and crop</string>
@@ -101,7 +94,7 @@
     <string name="edit_play">play</string>
     <string name="edit_pause">pause</string>
     <string name="edit_style_named">style · %1$s</string>
-    <string name="edit_opacity">opacity %1$s %</string>
+    <string name="edit_opacity">opacity %1$s%</string>
     <string name="edit_making_video">Making your video</string>
     <string name="edit_saved">Saved</string>
 
@@ -131,8 +124,19 @@
     <string name="edit_time_left">about %1$s left</string>
     <string name="edit_working_out">working out how long this will take…</string>
     <string name="edit_keep_open">Keep OnlyShots open while it runs.</string>
+    <string name="edit_export_leave">You can leave OnlyShots: it keeps going, and a notification says when the video is in your gallery.</string>
+    <string name="edit_export_leave_web">Keep this tab open: closing it stops the video. You can switch to another tab; it says when the video is ready.</string>
+    <string name="edit_export_notify_title">tell me when it's done</string>
+    <string name="edit_export_notify_text">Leave OnlyShots while it works. A notification shows the progress, and another says when the video is in your gallery.</string>
+    <string name="edit_export_notify_text_web">Switch tabs while it works. A notification says when the video is ready.</string>
+    <string name="edit_export_notify_allow">allow</string>
+    <string name="edit_export_notify_later">not now</string>
+    <string name="edit_export_open_gallery">open in gallery</string>
+    <string name="edit_export_open_photos">open in Photos</string>
     <string name="edit_cancel">cancel</string>
     <string name="edit_no_sound">no sound</string>
     <string name="edit_with_sound">with sound</string>
     <string name="edit_sound_muted">muted</string>
+    <string name="edit_data_series">series</string>
+    <string name="edit_data_show">show</string>
 </resources>

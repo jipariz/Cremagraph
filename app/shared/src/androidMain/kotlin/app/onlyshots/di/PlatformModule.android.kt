@@ -10,7 +10,7 @@ import androidx.core.content.FileProvider
 import androidx.media3.common.util.UnstableApi
 import app.onlyshots.camera.AndroidCameraController
 import app.onlyshots.camera.CameraController
-import app.onlyshots.core.designsystem.loadOpenSans
+import app.onlyshots.core.designsystem.loadOverlayFonts
 import app.onlyshots.storage.LibraryStore
 import app.onlyshots.platform.BackgroundWork
 import app.onlyshots.platform.ForegroundWork
@@ -46,7 +46,7 @@ actual val platformModule: Module = module {
         Media3VideoExporter(
             context = androidContext(),
             videoPath = { item -> if (item.file.startsWith("/")) item.file.toPath() else videosDir / item.file },
-            fonts = { loadOpenSans() },
+            fonts = { loadOverlayFonts() },
         )
     }
     single<FrameSampler> { AndroidFrameSampler() }

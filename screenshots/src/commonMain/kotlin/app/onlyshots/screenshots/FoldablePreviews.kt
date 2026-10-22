@@ -11,11 +11,16 @@ import app.onlyshots.core.resources.raw
 import app.onlyshots.edit.EditSheet
 import app.onlyshots.home.HomeBody
 import app.onlyshots.home.HomeUiState
+import app.onlyshots.home.MachineShotsBody
+import app.onlyshots.home.MachineShotsUiState
 import app.onlyshots.home.NextTake
 import app.onlyshots.home.SavedSource
+import app.onlyshots.home.StartBody
 import app.onlyshots.layout.LayoutKind
 import app.onlyshots.layout.LocalWindowLayout
 import app.onlyshots.layout.WindowLayout
+import app.onlyshots.open.OpenBody
+import app.onlyshots.privacy.PrivacyScreen
 import app.onlyshots.record.RecordPhase
 import app.onlyshots.record.RecordUiState
 import app.onlyshots.sources.ConnectionState
@@ -162,3 +167,44 @@ internal fun EditTabletop() = OnItsSide { EditUi(sheet = null, selected = false)
 @Preview
 @Composable
 internal fun EditCover() = Cover { EditUi(sheet = null) }
+
+// The screens the redesign gave a book layout: one side per page.
+
+@Mugshot
+@MugshotDevices(MugshotDevice.FOLDABLE)
+@Preview
+@Composable
+internal fun StartBookOpen() = Book { StartBody(onRecord = {}, onEdit = {}) }
+
+@Mugshot
+@MugshotDevices(MugshotDevice.FOLDABLE)
+@Preview
+@Composable
+internal fun PrivacyBookOpen() = Book { PrivacyScreen(onBack = {}, version = "1.0.0") }
+
+@Mugshot
+@MugshotDevices(MugshotDevice.FOLDABLE)
+@Preview
+@Composable
+internal fun MachineShotsBookOpen() = Book {
+    MachineShotsBody(MachineShotsUiState(machines = listOf(machine)), onMachine = {}, onShot = {}, onBack = {})
+}
+
+@Mugshot
+@MugshotDevices(MugshotDevice.FOLDABLE)
+@Preview
+@Composable
+internal fun OpenBookOpen() = Book {
+    OpenBody(
+        picked = pickedVideo,
+        pickedFile = pickedFile,
+        shot = null,
+        status = null,
+        onPickVideo = {},
+        onPickShot = {},
+        onOpenEditor = {},
+        fromMachine = false,
+        // The phone app's Open, which has a way back; without one it is the desktop's and the web's page.
+        onBack = {},
+    )
+}

@@ -12,6 +12,7 @@ import app.onlyshots.sources.machine.NetworkMachine
 import app.onlyshots.sources.machine.NetworkScan
 import app.onlyshots.sources.machine.createMachineHttpClient
 import app.onlyshots.sources.machine.gaggiuinoSource
+import app.onlyshots.storage.AppSettings
 import app.onlyshots.storage.AppSettingsRepo
 import app.onlyshots.storage.SettingsStore
 import io.ktor.client.HttpClient
@@ -65,9 +66,11 @@ class HomeViewModelTest {
     private fun TestScope.viewModel(
         machine: MovingMachine,
         holder: SourceHolder = SourceHolder(backgroundScope, FakeShotSource()),
+        saved: (AppSettings) -> AppSettings = { it },
         scales: () -> Flow<FoundBleDevice>,
     ): HomeViewModel {
-        val settings = AppSettingsRepo(SettingsStore(FakeFileSystem(), "/settings.json".toPath()))
+        val settings =
+            AppSettingsRepo(SettingsStore(FakeFileSystem(), "/settings.json".toPath())).apply { update(saved) }
         val scan = NetworkScan(client, MdnsBrowser.None, { listOf("192.168.1.20") }, listOf(machine))
         return HomeViewModel(holder, settings, client, scan, scales, pauseBetweenSearchesMs = 1_000)
     }
@@ -142,5 +145,41 @@ class HomeViewModelTest {
             store.clear()
             runCurrent()
             assertSame(initial, holder.current.value)
+        }
+
+    @Test
+    fun theSavedMachineSeenAgainIsConnectedAtOnce() =
+        runTest(dispatcher) {
+            // Off: every try to build it fails, and the next would only come in a minute.
+            val holder = SourceHolder(backgroundScope, FakeShotSource(), retryMs = 60_000)
+            var attempts = 0
+            holder.use {
+                attempts++
+                null
+            }
+            runCurrent()
+            val machine = MovingMachine(emptySet())
+            val vm =
+                viewModel(machine, holder, saved = { it.copy(source = SourceKind.GAGGIUINO, host = "192.168.1.7") }) {
+                    emptyFlow()
+                }
+            vm.startSearching()
+            try {
+                runCurrent()
+                assertEquals(1, attempts)
+
+                // Turned on: the next search finds it, and Home connects it without waiting for the retry.
+                machine.at = setOf("192.168.1.7")
+                advanceTimeBy(1_001)
+                runCurrent()
+                assertEquals(2, attempts)
+
+                // Still not reachable though seen: left to the holder's retry, not tried on every search.
+                advanceTimeBy(3_003)
+                runCurrent()
+                assertEquals(2, attempts)
+            } finally {
+                vm.stopSearching()
+            }
         }
 }

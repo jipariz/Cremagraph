@@ -36,7 +36,11 @@ actual fun rememberMediaPermission(onResult: (camera: Boolean, mic: Boolean) -> 
 
 @Composable actual fun KeepScreenOn(enabled: Boolean) = Unit
 
-@Composable actual fun rememberNotificationPermission(): () -> Unit = {}
+/** The desktop app shows nothing outside its window. */
+actual val exportsNotify: Boolean = false
+
+@Composable
+actual fun rememberNotificationPermission(onAnswer: (granted: Boolean) -> Unit): () -> Unit = { onAnswer(false) }
 
 @Composable
 internal actual fun rememberPlatformShotFilePicker(onPicked: (Path) -> Unit): () -> Unit {

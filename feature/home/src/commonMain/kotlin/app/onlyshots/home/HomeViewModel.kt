@@ -3,7 +3,6 @@ package app.onlyshots.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.onlyshots.connect.factoryFor
-import app.onlyshots.connect.sourceFactory
 import app.onlyshots.core.model.RecordingSettings
 import app.onlyshots.core.model.Sample
 import app.onlyshots.core.model.SourceKind
@@ -27,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -86,6 +86,22 @@ class HomeViewModel(
                 }
             }
         }
+        // The saved machine or scale turned back on: the search sees it before the connection's next try would, so
+        // connect now rather than leave its row offline beside "1 found". Once per sighting: a source the search sees
+        // but that still cannot be reached is left to the holder's own retries, not hammered.
+        viewModelScope.launch {
+            state.map(::savedSourceSeen).distinctUntilChanged().collect { seen ->
+                if (seen && holder.connection.value is ConnectionState.Unreachable && !holder.sampling) {
+                    holder.resume()
+                }
+            }
+        }
+    }
+
+    private fun savedSourceSeen(s: HomeUiState): Boolean {
+        val scale = s.savedScale
+        return if (scale != null) s.scales.any { it.id == scale.scaleId }
+        else machineRows(s).firstOrNull { it.selected }?.found != null
     }
 
     /** Home is in front: search until [stopSearching]. */
@@ -162,30 +178,20 @@ class HomeViewModel(
 
     /**
      * Try the app without a machine: the recorded Zer0 shot becomes the source for the record screen it opens, until
-     * Home is back in front ([endSample]). Nothing is saved, so the next launch starts as before.
+     * its take is saved or Home is back in front ([endSample]). Nothing is saved, so the next launch starts as before.
      */
-    fun useSample() {
-        sample = true
-        holder.use { FakeShotSource() }
-    }
-
-    /** The sample is the source; Home itself never says so, because it ends as soon as Home is back. */
-    private var sample = false
+    fun useSample() = holder.useSample { FakeShotSource() }
 
     /**
-     * Back from the sample's record screen (or Home left altogether): the sample is over, and the source that was there
-     * is put back, the saved machine or scale, else none: the record screen opened next has what Home's button says.
+     * Back from the sample's record screen (or Home left altogether), or recording without data: the sample is over,
+     * and the source that was there is put back, the saved machine or scale, else none, so the record screen opened
+     * next has what Home's button says and never the simulated shot.
      */
-    fun endSample() {
-        if (!sample) return
-        sample = false
-        sourceFactory(settings.value, client)?.let(holder::use) ?: holder.useInitial()
-    }
+    fun endSample() = holder.endSample()
 
     override fun onCleared() = endSample()
 
     fun connectScale(device: FoundBleDevice) {
-        sample = false
         val factory = factoryFor(SourceKind.SCALE, "", device.id, client) ?: return
         settings.update { it.copy(source = SourceKind.SCALE, scaleId = device.id, scaleName = device.name) }
         local.update { it.copy(saved = savedSource(settings.value), connectingScaleId = device.id) }
@@ -208,7 +214,6 @@ class HomeViewModel(
     private fun use(kind: SourceKind, address: String): Boolean {
         val factory = factoryFor(kind, address, null, client) ?: return false
         settings.update { it.copy(source = kind, host = address) }
-        sample = false
         local.update { it.copy(saved = savedSource(settings.value)) }
         holder.use(factory)
         return true

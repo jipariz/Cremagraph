@@ -2,7 +2,6 @@ package app.onlyshots.di
 
 import app.onlyshots.connect.sourceFactory
 import app.onlyshots.core.model.ShotHistory
-import app.onlyshots.devTools
 import app.onlyshots.editor.editorModule
 import app.onlyshots.home.HomeViewModel
 import app.onlyshots.home.MachineShotsViewModel
@@ -29,12 +28,11 @@ import org.koin.dsl.module
 
 /** The phones' app: the editor's module plus the machine, the scale and the record and home screens. */
 val appModule = module {
-    // The machine in use, swapped underneath every screen by the connect flow. A debug build
-    // starts on the replayed shot so the record screen can be worked on without a machine; a
-    // release build starts disconnected, because claiming a machine nobody owns is a lie.
+    // The machine in use, swapped underneath every screen by the connect flow. Every build starts disconnected:
+    // claiming a machine nobody owns is a lie, and recording without data must not play a shot. The replayed shot
+    // comes only from Home's "try a sample shot" (SourceHolder.useSample).
     single {
-        val initial =
-            FakeShotSource().apply { if (!devTools) setConnection(ConnectionState.Unreachable("no machine set up")) }
+        val initial = FakeShotSource().apply { setConnection(ConnectionState.Unreachable("no machine set up")) }
         SourceHolder(CoroutineScope(SupervisorJob() + Dispatchers.Default), initial)
     }
     single<ShotSource> { get<SourceHolder>() }

@@ -18,6 +18,25 @@
     <string name="core_export_notification_channel">exports</string>
     <string name="core_export_notification_title">creating your video</string>
 
+    <!-- The export outside the app: notifications, the system's progress, the browser tab -->
+    <string name="core_export_notify_progress">%1$s · %2$s · about %3$s left</string>
+    <string name="core_export_notify_progress_early">%1$s · %2$s</string>
+    <string name="core_export_notify_saved">Your video is in the gallery</string>
+    <string name="core_export_notify_saved_photos">Your video is in Photos</string>
+    <string name="core_export_notify_saved_text">%1$s · %2$s · OnlyShots album. Tap to watch it.</string>
+    <string name="core_export_notify_ready">Your video is ready</string>
+    <string name="core_export_notify_ready_text">%1$s. Click to go back and download it.</string>
+    <string name="core_export_notify_failed">Couldn't finish your video</string>
+    <string name="core_export_notify_failed_text">%1$s: %2$s</string>
+    <string name="core_export_notify_paused">Your video is paused at %1$s</string>
+    <string name="core_export_notify_paused_text">This iPhone only lets it run for a moment in the background. Open OnlyShots to finish it.</string>
+    <string name="core_export_notify_cancel">Cancel</string>
+    <string name="core_export_notify_open">Open</string>
+    <string name="core_export_notify_share">Share</string>
+    <string name="core_export_notify_retry">Try again</string>
+    <string name="core_export_notify_results">Saved videos</string>
+    <string name="core_export_unnamed">OnlyShots video</string>
+
     <!-- Editor controls -->
     <string name="core_colour_chip">colour %1$s, tap to change</string>
     <string name="core_drop_to_open">Drop to open</string>
@@ -65,4 +84,6 @@
     <string name="core_web_videos_note">Exports at 1080p without sound, in Chrome, Edge or Safari 16.4+.</string>
     <string name="core_web_file_gone">that file is gone</string>
     <string name="core_version">OnlyShots %1$s</string>
+    <string name="core_less">less</string>
+    <string name="core_more">more</string>
 </resources>

@@ -6,13 +6,18 @@ import app.onlyshots.core.model.Quality
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.UiText
+import app.onlyshots.core.resources.core_export_unnamed
 import app.onlyshots.core.resources.edit_creating_videos
 import app.onlyshots.core.resources.edit_export_failed
 import app.onlyshots.core.resources.edit_gallery_failed
 import app.onlyshots.core.resources.raw
 import app.onlyshots.core.resources.text
 import app.onlyshots.platform.BackgroundWork
+import app.onlyshots.platform.ExportEnd
+import app.onlyshots.platform.ExportStatus
+import app.onlyshots.platform.ExportTask
 import app.onlyshots.platform.PlatformShare
+import app.onlyshots.platform.SavedVideo
 import app.onlyshots.platform.VideoGallery
 import app.onlyshots.storage.LibraryStore
 import app.onlyshots.storage.ShareTempFiles
@@ -104,7 +109,7 @@ private class FakeShare : PlatformShare {
     }
 }
 
-/** A gallery that keeps what it was given, or refuses with [failWith]. */
+/** A gallery that keeps what it was given, or refuses with [failWith]; each save is found again by its number. */
 private class FakeGallery(private val failWith: String? = null) : VideoGallery {
     val saved = mutableListOf<Path>()
 
@@ -112,10 +117,19 @@ private class FakeGallery(private val failWith: String? = null) : VideoGallery {
         failWith?.let { error(it) }
         saved += file
     }
+
+    override suspend fun saveVideo(file: Path): SavedVideo {
+        save(file)
+        return SavedVideo("saved-${saved.size}")
+    }
 }
 
+/** Keeps the render alive as the platform would, and keeps what it was told to show outside the app. */
 private class FakeBackgroundWork : BackgroundWork {
     val titles = mutableListOf<String>()
+    val tasks = mutableListOf<ExportTask>()
+    val reports = mutableListOf<ExportStatus>()
+    val ends = mutableListOf<ExportEnd>()
     var closed = 0
 
     var error: Throwable? = null
@@ -130,6 +144,15 @@ private class FakeBackgroundWork : BackgroundWork {
         } finally {
             closed++
         }
+    }
+
+    override suspend fun <T> keepAlive(task: ExportTask, block: suspend (report: (ExportStatus) -> Unit) -> T): T {
+        tasks += task
+        return keepAlive(task.name) { block { reports += it } }
+    }
+
+    override suspend fun finished(end: ExportEnd) {
+        ends += end
     }
 }
 
@@ -281,7 +304,8 @@ class ExportManagerTest {
 
         assertEquals(emptyMap(), manager.progress.value)
         assertEquals(1, share.sheets)
-        assertEquals(listOf(Res.plurals.edit_creating_videos.text(1)), spoken)
+        // One video is named for what it is; without a title or a shot, OnlyShots names it.
+        assertEquals(listOf(Res.string.core_export_unnamed.text()), spoken)
     }
 
     @Test
@@ -384,8 +408,8 @@ class ExportManagerTest {
 
         assertTrue(exporter.calls.isEmpty())
         assertEquals(0, share.sheets)
-        // The empty enqueue returns before keepAlive; the missing sidecar is skipped inside it.
-        assertEquals(1, background.titles.size)
+        // Neither has anything to render, so nothing is kept alive or shown outside the app.
+        assertEquals(0, background.titles.size)
     }
 
     @Test
@@ -431,4 +455,93 @@ class ExportManagerTest {
         assertEquals(listOf("a", "b"), exporter.calls.map { it.first })
         assertEquals(2, share.sheets)
     }
+
+    @Test
+    fun aSavedVideoEndsDoneWithItsWayBackAndSaysSoOutsideTheApp() = runTest {
+        store.write(item("a").copy(overlay = OverlaySettings(title = "Sunday shot")))
+        val manager = manager(FakeExporter(), backgroundScope)
+
+        manager.enqueue(listOf("a"), Quality.UHD_4K, withSound = false, ExportManager.Destination.GALLERY)
+        runCurrent()
+        advanceUntilIdle()
+
+        val task = background.tasks.single()
+        assertEquals("a" to "Sunday shot", task.id to task.name)
+        assertEquals("4K", task.quality)
+        assertEquals(
+            ExportManager.Outcome.Done(ExportManager.Destination.GALLERY, SavedVideo("saved-1")),
+            manager.consume("a"),
+        )
+        assertEquals(null, manager.consume("a"), "an outcome is handled once")
+        assertEquals(
+            listOf<ExportEnd>(ExportEnd.Saved("a", "Sunday shot", "0:30", SavedVideo("saved-1"))),
+            background.ends,
+        )
+    }
+
+    @Test
+    fun aFailedRenderEndsFailedOutsideTheAppToo() = runTest {
+        store.write(item("a"))
+        val manager =
+            manager(FakeExporter(mapOf("a" to listOf(ExportProgress.Failed("out of memory")))), backgroundScope)
+
+        manager.enqueue(listOf("a"), Quality.HD_1080, withSound = false, ExportManager.Destination.GALLERY)
+        runCurrent()
+        advanceUntilIdle()
+
+        assertTrue(manager.consume("a") is ExportManager.Outcome.Failed)
+        assertEquals(1, background.ends.size)
+        assertTrue(background.ends.single() is ExportEnd.Failed)
+    }
+
+    @Test
+    fun cancelledFromOutsideTheAppEndsCancelledAndSaysNothing() = runTest {
+        store.write(item("a"))
+        val paused = CompletableDeferred<Unit>()
+        val manager = manager(PausingExporter(0.5f, paused), backgroundScope)
+
+        manager.enqueue(listOf("a"), Quality.HD_1080, withSound = false, ExportManager.Destination.GALLERY)
+        runCurrent()
+        // The notification's Cancel.
+        background.tasks.single().onCancel()
+        runCurrent()
+        advanceUntilIdle()
+
+        assertEquals(ExportManager.Outcome.Cancelled, manager.consume("a"))
+        assertTrue(gallery.saved.isEmpty())
+        assertTrue(background.ends.isEmpty())
+        assertEquals(emptyMap(), manager.progress.value)
+    }
+
+    @Test
+    fun progressGoesOutsideTheAppAboutOnceASecondWithTheTimeLeft() = runTest {
+        store.write(item("a"))
+        val manager =
+            manager(StepExporter(listOf(0.02f, 0.1f, 0.2f, 0.5f), stepMs = 400) { now += it }, backgroundScope)
+
+        manager.enqueue(listOf("a"), Quality.HD_1080, withSound = false)
+        runCurrent()
+        advanceUntilIdle()
+
+        // 400 ms between steps: the first, then the one a second on (two steps, 800 ms, is not yet a second).
+        assertEquals(listOf(0.02f, 0.5f), background.reports.map { it.fraction })
+        assertEquals(null, background.reports.first().left, "too early to guess")
+        assertEquals("0:01", background.reports.last().left)
+    }
+}
+
+/** Renders through [fractions], [stepMs] apart on the test's clock ([tick]), then is done. */
+private class StepExporter(
+    private val fractions: List<Float>,
+    private val stepMs: Long,
+    private val tick: (Long) -> Unit,
+) : VideoExporter {
+    override fun export(item: VideoItem, quality: Quality, withSound: Boolean, out: Path, alignmentBarcode: Boolean) =
+        kotlinx.coroutines.flow.flow {
+            for (f in fractions) {
+                tick(stepMs)
+                emit(ExportProgress.Rendering(f))
+            }
+            emit(ExportProgress.Done(out))
+        }
 }

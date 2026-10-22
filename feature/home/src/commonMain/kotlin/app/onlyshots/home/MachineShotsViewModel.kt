@@ -37,6 +37,8 @@ data class MachineShotsUiState(
     val shots: List<ShotSummary>? = null,
     /** "loading the shot…" while one is fetched whole. */
     val busy: UiText? = null,
+    /** The id of the shot being fetched whole, so its row shows it; null otherwise. */
+    val loadingId: String? = null,
     val message: UiText? = null,
 )
 
@@ -92,15 +94,19 @@ class MachineShotsViewModel(
 
     fun chooseShot(summary: ShotSummary) {
         val found = state.value.machine ?: return
-        state.update { it.copy(busy = Res.string.home_shots_loading_shot.text(), message = null) }
+        state.update {
+            it.copy(busy = Res.string.home_shots_loading_shot.text(), loadingId = summary.id, message = null)
+        }
         loading?.cancel()
         loading = viewModelScope.launch {
             val shot = fetch { found.machine.history(client, found.host, found.port).load(summary.id) }
             if (shot == null) {
-                state.update { it.copy(busy = null, message = Res.string.home_shots_load_failed.text()) }
+                state.update {
+                    it.copy(busy = null, loadingId = null, message = Res.string.home_shots_load_failed.text())
+                }
                 return@launch
             }
-            state.update { it.copy(shot = shot, busy = null) }
+            state.update { it.copy(shot = shot, busy = null, loadingId = null) }
             closeMachines()
         }
     }

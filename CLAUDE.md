@@ -23,6 +23,10 @@ variants. Only CI secret: `VERCEL_TOKEN` (org secret, web deploy on `main`).
 ./gradlew :screenshots:verifyMugshot                   # screenshots, JVM, no device
 ./gradlew :screenshots:recordMugshot                   # re-record after wanted visual change
 ./gradlew ktfmtCheck                                   # format gate. Fix: ktfmtFormat
+./gradlew :uitests:desktopTest                         # UI flows, phone app + editor, every layout (PR gate)
+./gradlew :app:desktopApp:test                         # desktop app starts on Open
+./gradlew :app:uitests:connectedAndroidTest            # Android smoke, UI Automator, device/emulator
+(cd tools/web-smoke && node smoke.mjs)                 # web smoke, Playwright, after the web build
 ./gradlew :app:androidApp:assembleDebug                # Android debug APK
 ./gradlew :app:androidApp:assembleRelease              # R8 on, unsigned
 ./gradlew :app:androidApp:generateBaselineProfile     # baseline profile, phone API 33+ (ANDROID_SERIAL=…)
@@ -68,10 +72,12 @@ Format: ktfmt `kotlinLangStyle`, 4 spaces, width 120. Run `ktfmtFormat` before c
 
 ## CI
 
-- **`pr.yml`** (every PR): `ktfmtCheck`, `checkAppVersion`, `testAndroidHostTest`, `:screenshots:verifyMugshot`.
+- **`pr.yml`** (every PR): `ktfmtCheck`, `checkAppVersion`, `testAndroidHostTest`, `:screenshots:verifyMugshot`,
+  `:uitests:desktopTest`, `:app:desktopApp:test`.
   Branch PRs on self-hosted Mac (`self-hosted`, `macOS`, `ARM64`). Fork PRs on `ubuntu-latest`: fork code never runs on
   the Mac. Keep that guard.
-- **`ci.yml`** (push to `main`): full build, all platforms, export tests, web deploy.
+- **`ci.yml`** (push to `main`): full build, all platforms, export tests, UI smoke tests (Android emulator, iOS
+  XCUITest, web Playwright), web deploy.
 - **`release.yml`** (tag `v*`): desktop installers, GitHub Release.
 
 ## Version and release
@@ -95,6 +101,14 @@ layout, routes (Navigation 3 `NavKey`s, `RouteSaving`, helpers `go`/`back`/`back
 `Navigation.kt`), platform `expect` composables (`VideoSurface`, pickers, permissions, gallery), interfaces
 (`PlatformShare`, `VideoGallery`, `BackgroundWork`), `DevTools.enabled`.
 
+**Look: "Instrument".** Ink `#0B0B0B`, bone text, one signal `#FF5A1F` accent, hairlines, square corners. Plex Mono
+names and counts (capitals via `String.caps()`, never in XML), Plex Sans sentences. Tokens only (`Tokens.kt`,
+`Type.kt`): no raw shapes, colours, font sizes in features. Canvas "OnlyShots · Instrument" = reference.
+
+**UI tests find by `TestTags`.** Every control a test drives has a `Modifier.testTag(TestTags.X)` (in
+`core/designsystem/.../TestTags.kt`); screens are wrapped in `TaggedScreen`. Rename a tag only with its tests. A new
+dialog/sheet/menu window: `Modifier.testTagsAsResourceIds()` on it, or Android tests can't see inside.
+
 **Resources.** All in `:core:resources` (`Res` in `app.onlyshots.core.resources`): fonts, icons and illustrations as
 vector XML (`drawable/ic_*`, `illus_*`), every user string in `values/strings_<area>.xml` (keys prefixed:
 `home_`, `edit_`, `record_`, …).
@@ -111,11 +125,12 @@ vector XML (`drawable/ic_*`, `illus_*`), every user string in `values/strings_<a
 **One scene builder, one painter — "export matches preview".** `buildOverlayScene(shot, time, settings, style)` in
 `:overlay` is pure. Flat rects, polylines, areas, text in frame pixels, from 390-wide reference. `:overlay` has no
 Compose, no resources: words arrive as `OverlayLabels`, resolved once by `rememberOverlayLabels()` (screens) or
-`overlayLabels()` (each exporter, before frame loop). `drawOverlay` in `:overlay:compose` is only code drawing those
+`overlayLabels()` (each exporter, before frame loop). Fonts likewise: `OverlayFonts(sans, mono)` from
+`CgTheme.overlayFonts` / `loadOverlayFonts()`; the painter picks the style's `text.font`. `drawOverlay` in `:overlay:compose` is only code drawing those
 primitives: record, editor, screenshots, `OverlayFrameRenderer` (export), every platform. New visual element → scene
 builder, not renderer.
 
-**Styles are data** (`core/model/.../style/GraphStyle.kt`). Built-ins in `GraphStyles`, user styles in
+**Styles are data** (`core/model/.../style/GraphStyle.kt`). Built-ins in `GraphStyles` (Instrument first), user styles in
 `AppSettings.customStyles` via `StyleLibrary`, copy in video's `OverlaySettings.style`. Resolve with
 `GraphStyles.resolve(overlay, source, custom, defaults)` / `StyleLibrary.resolve`. Never by id alone. Style editor
 changes styles only via `feature/style/.../StyleEdits.kt`. `BuiltInsAreReplicableTest` rebuilds every built-in from
@@ -148,14 +163,22 @@ iOS, desktop, web share `SkiaFrameDrawer` (`video/src/skikoMain`). `reframe` = `
 `MatrixTransformation`, `SkiaFrameDrawer` transform, `media.js` cover draw: same mapping as `Reframe.map`. Alignment
 proved by barcode test clip (`Media3ExportTest`, `AvFoundationExportTest`, `FfmpegExportTest`).
 
+**Background export.** `ExportManager` (Koin single, own scope) renders inside `BackgroundWork.keepAlive(ExportTask)`,
+reports progress about once a second, keeps each video's `Outcome` until the editor `consume`s it, and ends with
+`BackgroundWork.finished(ExportEnd)`. Android: `ExportService` (foreground, `mediaProcessing`/`dataSync`) whose
+notification is the progress (`ExportNotifications`, Live Update on Android 16), Cancel via `ExportCancelReceiver`, a
+result notification that plays the MediaStore video. iOS: `ContinuedExport.swift` (iOS 26 `BGContinuedProcessingTask`,
+system progress) else `beginBackgroundTask`, banner via `UNUserNotificationCenter`. Web: tab title + leave warning +
+desktop `Notification`. A tap opens the editor through `OpenRequests`. Words resolved before, built on the main thread.
+
 **Live data.** Every machine or scale = `ShotSource` in `:sources`. Network machines over WebSocket; scales = pure
 `BleProtocol` over Kable. Network machine = `NetworkMachine` (`sources/.../machine/`) in `NetworkMachines.all`
 (today only Gaggiuino). Home, saved settings, machine log go through registry. `NetworkScan` finds machines (mDNS on
 Android, /24 sweep, fixed `.local` names last), confirms each with `identify`. `SourceKind.GAGGIMATE/DECENT` stay on
 purpose: old sidecars and settings name them. Each decoder pinned to upstream commit in doc comment: check before
-changing format. `SourceHolder` swaps live source under every screen. Debug with nothing set up: `FakeShotSource`
-replays Zer0 (tap **simulate shot** while armed). Release starts disconnected. Home's "try a sample shot" switches
-to replay in any build (how App Review tries app).
+changing format. `SourceHolder` swaps live source under every screen. Every build starts disconnected. Only
+Home's "try a sample shot" switches to the Zer0 replay (`SourceHolder.useSample`, any build, how App Review tries app),
+for one take: saving it or recording without data ends it (`endSample`). **Simulate shot** only then.
 
 **New machine?** Follow README "Add a new machine":
 

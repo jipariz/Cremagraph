@@ -9,6 +9,7 @@ import app.onlyshots.core.model.Shot
 import app.onlyshots.core.model.oneDecimal
 import app.onlyshots.core.model.sampleAt
 import app.onlyshots.core.model.style.CellLook
+import app.onlyshots.core.model.style.Lettering
 import app.onlyshots.core.model.style.Material
 import app.onlyshots.core.model.style.TargetLook
 import app.onlyshots.overlay.Argb
@@ -197,6 +198,12 @@ private class SceneBuilder(
     val labelColor = dark?.text ?: style.text.label
     val targetTextColor = dark?.text ?: style.text.target
     val textShadow = (if (dark != null) dark.effect else style.text.effect)?.scaled()
+
+    /** A readout letters every word in capitals; words stay as written otherwise. */
+    val readout = style.text.lettering == Lettering.READOUT
+
+    fun String.lettered(): String = if (readout) uppercase() else this
+
     val panel = style.panel
     val tiles = panel.tiles
 
@@ -427,9 +434,9 @@ private class SceneBuilder(
         val entryGap = 7f * u
         val entries = buildList {
             if (!settings.legend) return@buildList
-            series.forEach { add(LegendEntry(labels.series(it), seriesColor(it), dashed = false)) }
+            series.forEach { add(LegendEntry(labels.series(it).lettered(), seriesColor(it), dashed = false)) }
             if (showTargets && hasAnyTarget())
-                add(LegendEntry(labels.series(Series.TARGETS), targetTextColor, dashed = true))
+                add(LegendEntry(labels.series(Series.TARGETS).lettered(), targetTextColor, dashed = true))
         }
             .toMutableList()
         fun entryWidth(e: LegendEntry) = swatch + 3f * u + metrics.width(e.label, legendSize, 400)
@@ -445,7 +452,9 @@ private class SceneBuilder(
 
         val titleSize = OverlayMetrics.TITLE_SIZE * u
         val titleMax = header.width - legendW - if (entries.isEmpty()) 0f else 8f * u
-        val titleText = ellipsize(title, titleMax, titleSize, 600)
+        // A readout's title is a quiet label, not a heading: regular weight, and a hairline under the title row.
+        val titleWeight = if (readout) 400 else 600
+        val titleText = ellipsize(title.lettered(), titleMax, titleSize, titleWeight)
         if (titleText.isNotEmpty()) {
             out +=
                 TextPrim(
@@ -453,10 +462,14 @@ private class SceneBuilder(
                     header.left,
                     centeredBaseline(header, titleSize),
                     titleSize,
-                    600,
+                    titleWeight,
                     titleColor,
                     shadow = textShadow,
                 )
+        }
+        if (readout) {
+            val y = box.bottom + OverlayMetrics.GAP * u / 2f
+            out += PolylinePrim(floatArrayOf(box.left, y, box.right, y), style.grid.color, (1f * u).coerceAtLeast(1f))
         }
 
         var x = header.right - legendW
@@ -488,7 +501,7 @@ private class SceneBuilder(
             val line = Box(box.left, header.bottom, box.right, box.bottom)
             out +=
                 TextPrim(
-                    ellipsize(recipe!!, line.width, size, 400),
+                    ellipsize(recipe!!.lettered(), line.width, size, 400),
                     line.left,
                     centeredBaseline(line, size),
                     size,
@@ -714,7 +727,7 @@ private class SceneBuilder(
             val xx = x(start)
             out +=
                 PolylinePrim(floatArrayOf(xx, plot.top, xx, plot.bottom), style.phase.line, (1f * u).coerceAtLeast(1f))
-            val label = labels.phase(i + 1)
+            val label = labels.phase(i + 1).lettered()
             val left = xx + 2f * u
             val right = left + metrics.width(label, size, 400)
             if (left < labelledTo || right > plot.right) return@forEachIndexed
@@ -740,53 +753,62 @@ private class SceneBuilder(
         val cur = shot.sampleAt(tUs.coerceAtLeast(0L))
         fun fmt(v: Float?) = v?.oneDecimal() ?: "–"
         fun target(v: Float?, unit: String) =
-            if (showTargets && v != null) labels.targetValue(v.oneDecimal(), unit) else null
+            if (showTargets && v != null) labels.targetValue(v.oneDecimal(), unit).lettered() else null
         val timeS = (tUs.coerceIn(0L, maxOf(shot.durationUs, 0L)) / 1_000_000f)
-        return buildList {
-            add(Cell(Reading.TIME, labels.time, timeS.oneDecimal(), labels.seconds, null))
-            if (Series.WEIGHT in series)
-                add(
-                    Cell(
-                        Reading.WEIGHT,
-                        labels.weight,
-                        fmt(cur?.weight),
-                        labels.grams,
-                        target(cur?.targetWeight, labels.grams),
+        return buildList<Cell> {
+                add(Cell(Reading.TIME, labels.time, timeS.oneDecimal(), labels.seconds, null))
+                if (Series.WEIGHT in series)
+                    add(
+                        Cell(
+                            Reading.WEIGHT,
+                            labels.weight,
+                            fmt(cur?.weight),
+                            labels.grams,
+                            target(cur?.targetWeight, labels.grams),
+                        )
                     )
-                )
-            if (Series.PRESSURE in series)
-                add(
-                    Cell(
-                        Reading.PRESSURE,
-                        labels.pressure,
-                        fmt(cur?.pressure),
-                        labels.bar,
-                        target(cur?.targetPressure?.takeIf { it > 0f }, labels.bar),
+                if (Series.PRESSURE in series)
+                    add(
+                        Cell(
+                            Reading.PRESSURE,
+                            labels.pressure,
+                            fmt(cur?.pressure),
+                            labels.bar,
+                            target(cur?.targetPressure?.takeIf { it > 0f }, labels.bar),
+                        )
                     )
-                )
-            if (Series.FLOW in series)
-                add(
-                    Cell(
-                        Reading.FLOW,
-                        labels.flow,
-                        fmt(cur?.flow),
-                        labels.mlPerS,
-                        target(cur?.targetFlow?.takeIf { it > 0f }, labels.mlPerS),
+                if (Series.FLOW in series)
+                    add(
+                        Cell(
+                            Reading.FLOW,
+                            labels.flow,
+                            fmt(cur?.flow),
+                            labels.mlPerS,
+                            target(cur?.targetFlow?.takeIf { it > 0f }, labels.mlPerS),
+                        )
                     )
-                )
-            if (Series.WEIGHT_FLOW in series)
-                add(Cell(Reading.WEIGHT_FLOW, labels.weightFlow, fmt(cur?.weightFlow), labels.gPerS, null))
-            if (Series.TEMPERATURE in series)
-                add(
-                    Cell(
-                        Reading.TEMPERATURE,
-                        labels.temperature,
-                        fmt(cur?.temperature),
-                        labels.celsius,
-                        target(cur?.targetTemperature, labels.celsius),
+                if (Series.WEIGHT_FLOW in series)
+                    add(Cell(Reading.WEIGHT_FLOW, labels.weightFlow, fmt(cur?.weightFlow), labels.gPerS, null))
+                if (Series.TEMPERATURE in series)
+                    add(
+                        Cell(
+                            Reading.TEMPERATURE,
+                            labels.temperature,
+                            fmt(cur?.temperature),
+                            labels.celsius,
+                            target(cur?.targetTemperature, labels.celsius),
+                        )
                     )
-                )
-        }
+            }
+            .map { c ->
+                when {
+                    !readout -> c
+                    // Time keeps its word, in capitals, and its unit after the value.
+                    c.reading == Reading.TIME -> c.copy(label = c.label.uppercase())
+                    // Every other reading is named by its unit, and its value stands alone.
+                    else -> c.copy(label = c.unit.uppercase(), unit = "")
+                }
+            }
     }
 
     fun drawReadings(area: Box) {
@@ -845,7 +867,7 @@ private class SceneBuilder(
                 TextPrim(c.value, x, valueBaseline, valueSize, valueWeight, valueColor(c.reading), shadow = textShadow)
             val unitSize = unitSize(valueSize)
             val unitX = x + metrics.width(c.value, valueSize, valueWeight) + 0.25f * valueSize
-            if (unitX + metrics.width(c.unit, unitSize, 400) <= left + cellW - pad / 2f) {
+            if (c.unit.isNotEmpty() && unitX + metrics.width(c.unit, unitSize, 400) <= left + cellW - pad / 2f) {
                 out += TextPrim(c.unit, unitX, valueBaseline, unitSize, 400, labelColor, shadow = textShadow)
             }
             y += lh(valueSize)

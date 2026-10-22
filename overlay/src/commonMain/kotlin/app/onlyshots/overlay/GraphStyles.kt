@@ -9,8 +9,10 @@ import app.onlyshots.core.model.style.DarkSet
 import app.onlyshots.core.model.style.GlassSettings
 import app.onlyshots.core.model.style.Glow
 import app.onlyshots.core.model.style.GridStyle
+import app.onlyshots.core.model.style.Lettering
 import app.onlyshots.core.model.style.LineStyle
 import app.onlyshots.core.model.style.Material
+import app.onlyshots.core.model.style.OverlayFont
 import app.onlyshots.core.model.style.PanelStyle
 import app.onlyshots.core.model.style.PhaseStyle
 import app.onlyshots.core.model.style.Stop
@@ -18,9 +20,9 @@ import app.onlyshots.core.model.style.TextColors
 import app.onlyshots.core.model.style.TileStyle
 
 /**
- * The built-in graph styles: the four of Figma's page 09, and Liquid Glass to show off the glass material. Token values
- * are Figma's "Style tokens" tables (page 09 · Graph styles), which are the source of truth; users build anything else
- * in the style editor.
+ * The built-in graph styles: the app's own Instrument, the four of Figma's page 09, and Liquid Glass to show off the
+ * glass material. Token values are Figma's "Style tokens" tables (page 09 · Graph styles), which are the source of
+ * truth; users build anything else in the style editor.
  */
 object GraphStyles {
     private fun byReading(time: Int, weight: Int, pressure: Int, flow: Int, weightFlow: Int, temperature: Int) =
@@ -34,6 +36,53 @@ object GraphStyles {
         )
 
     private fun allReadings(c: Argb) = Reading.entries.associateWith { c }
+
+    /**
+     * The app's own look ("Instrument"): an ink panel, a hairline grid of rows and columns, square outlined cells, the
+     * signal pressure curve, and every text in Plex Mono, lettered as a readout (grey capitals, a rule under the title,
+     * readings named by their units).
+     */
+    val Instrument =
+        GraphStyle(
+            id = "instrument",
+            name = "Instrument",
+            builtIn = true,
+            panel = PanelStyle(Material.SOLID, color = rgb(0x0B0B0B), opacity = 0.88f, radius = 0f, padding = 6f),
+            grid = GridStyle(GridMode.BOTH, rgb(0x2A2A28)),
+            series =
+                SeriesColors(
+                    pressure = rgb(0xFF5A1F),
+                    flow = rgb(0xE8E6E1),
+                    weight = rgb(0x7FA7B8),
+                    weightFlow = rgb(0x5CD08A),
+                    temperature = rgb(0xFFB020),
+                ),
+            lines = LineStyle(main = 2f, secondary = 1.6f, targetOpacity = 0.5f),
+            text =
+                TextColors(
+                    title = rgb(0xA3A19B),
+                    label = rgb(0xA3A19B),
+                    target = rgb(0xA3A19B),
+                    font = OverlayFont.MONO,
+                    lettering = Lettering.READOUT,
+                ),
+            cells =
+                CellsStyle(
+                    CellLook.OUTLINED,
+                    border = rgb(0x3A3A38),
+                    radius = 0f,
+                    values =
+                        byReading(
+                            time = rgb(0xE8E6E1),
+                            weight = rgb(0x7FA7B8),
+                            pressure = rgb(0xFF5A1F),
+                            flow = rgb(0xE8E6E1),
+                            weightFlow = rgb(0x5CD08A),
+                            temperature = rgb(0xFFB020),
+                        ),
+                ),
+            phase = PhaseStyle(line = rgba(163, 161, 155, 0.5f), label = rgb(0xA3A19B)),
+        )
 
     /** The Gaggiuino web interface: near-black panel, dashed grids, its blue / amber / rose curves. */
     val Gaggiuino =
@@ -285,7 +334,7 @@ object GraphStyles {
         )
 
     /** In picker order. */
-    val all: List<GraphStyle> = listOf(Gaggiuino, Metro, Aero, LiquidGlass, Minimal)
+    val all: List<GraphStyle> = listOf(Instrument, Gaggiuino, Metro, Aero, LiquidGlass, Minimal)
 
     private val byId = all.associateBy { it.id }
 
@@ -307,8 +356,9 @@ object GraphStyles {
 
     fun byId(id: String): GraphStyle? = byId[id] ?: legacy[id]?.let { byId[it] }
 
-    /** The built-in default for a source: Gaggiuino for a Gaggiuino, Metro for everything else. */
-    fun matching(source: SourceKind?): GraphStyle = if (source == SourceKind.GAGGIUINO) Gaggiuino else Metro
+    /** The built-in default, for every source: Instrument, until the user picks another or makes one their default. */
+    val Default: GraphStyle
+        get() = Instrument
 
     /**
      * The style a video or the record screen draws with.
@@ -339,7 +389,7 @@ object GraphStyles {
         defaults: Map<SourceKind, String> = emptyMap(),
     ): GraphStyle {
         fun find(id: String) = custom.firstOrNull { it.id == id } ?: byId(id)
-        fun sourceDefault() = source?.let { defaults[it] }?.let(::find) ?: matching(source)
+        fun sourceDefault() = source?.let { defaults[it] }?.let(::find) ?: Default
         return if (styleId == OverlaySettings.STYLE_AUTO) sourceDefault() else find(styleId) ?: sourceDefault()
     }
 }

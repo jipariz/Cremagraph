@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -44,6 +45,37 @@ private class TestSource(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SourceHolderTest {
+    @Test
+    fun theSampleIsForOneTakeAndPutsBackWhatItStoodInFor() = runTest {
+        val none = TestSource().apply { connection.value = ConnectionState.Unreachable("no machine set up") }
+        val holder = SourceHolder(backgroundScope, none)
+        holder.useSample { FakeShotSource() }
+        runCurrent()
+        assertTrue(holder.sampling)
+        assertIs<FakeShotSource>(holder.current.value)
+
+        holder.endSample()
+        runCurrent()
+        assertTrue(!holder.sampling)
+        assertEquals(none, holder.current.value)
+    }
+
+    @Test
+    fun aSavedMachineOutOfReachNeverLeavesTheSampleBehind() = runTest {
+        val none = TestSource().apply { connection.value = ConnectionState.Unreachable("no machine set up") }
+        val holder = SourceHolder(backgroundScope, none)
+        holder.use { error("the machine is off") }
+        runCurrent()
+        holder.useSample { FakeShotSource() }
+        runCurrent()
+
+        holder.endSample()
+        runCurrent()
+        // The machine is tried again; failing, the app is back on the disconnected source, not on the replay.
+        assertEquals(none, holder.current.value)
+        assertIs<ConnectionState.Unreachable>(holder.connection.value)
+    }
+
     @Test
     fun eventsFollowTheSourceInUse() = runTest {
         val first = TestSource()
@@ -157,5 +189,40 @@ class SourceHolderTest {
         runCurrent()
         advanceUntilIdle()
         assertEquals(emptyList(), holder.history(), "a machine not reached lists nothing")
+    }
+
+    @Test
+    fun aSourceNotFoundIsLookedForAgainUntilItIs() = runTest {
+        val holder = SourceHolder(backgroundScope, FakeShotSource(), retryMs = 5_000)
+        val scale = TestSource(kind = SourceKind.SCALE)
+        var attempts = 0
+        // The scale is off for the first two looks, then on.
+        holder.use { if (++attempts < 3) null else scale }
+        runCurrent()
+        assertIs<ConnectionState.Unreachable>(holder.connection.value)
+
+        advanceTimeBy(5_001)
+        runCurrent()
+        assertIs<ConnectionState.Unreachable>(holder.connection.value)
+        advanceTimeBy(5_001)
+        runCurrent()
+        assertEquals(3, attempts)
+        assertEquals(scale, holder.current.value)
+        assertEquals(ConnectionState.Connected, holder.connection.value)
+    }
+
+    @Test
+    fun pauseStopsLookingForASourceNotFound() = runTest {
+        val holder = SourceHolder(backgroundScope, FakeShotSource(), retryMs = 5_000)
+        var attempts = 0
+        holder.use {
+            attempts++
+            null
+        }
+        runCurrent()
+        holder.pause()
+        advanceTimeBy(60_000)
+        runCurrent()
+        assertEquals(1, attempts)
     }
 }

@@ -3,8 +3,14 @@ package app.onlyshots.platform
 import androidx.compose.runtime.Composable
 
 /**
- * Returns a function that asks, once, for permission to post the export notification. Nothing depends on the answer:
- * the export runs either way, and a refusal only means the progress is invisible outside the app. Already granted or
- * twice refused shows no UI, so it cannot nag.
+ * Whether an export is shown outside the app here (a notification on the phones, the tab and a notification on the
+ * web), so the export screen offers to tell the user when it is done. The desktop app shows nothing.
  */
-@Composable expect fun rememberNotificationPermission(): () -> Unit
+expect val exportsNotify: Boolean
+
+/**
+ * Returns a function that asks for permission to post the export's notifications, then calls [onAnswer] with whether
+ * they may be posted. Nothing depends on the answer: the export runs either way, and a refusal only means it is not
+ * seen outside the app. Already granted, or refused for good, shows no UI.
+ */
+@Composable expect fun rememberNotificationPermission(onAnswer: (granted: Boolean) -> Unit = {}): () -> Unit

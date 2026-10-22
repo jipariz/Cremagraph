@@ -43,6 +43,7 @@ class HomeStateTest {
         val action = recordAction(HomeUiState())
         assertEquals(Res.string.home_action_without_data.text(), action.text)
         assertTrue(action.enabled)
+        assertFalse(action.withData)
     }
 
     @Test
@@ -50,8 +51,10 @@ class HomeStateTest {
         val offline = HomeUiState(saved = savedGaggiuino, connection = ConnectionState.Unreachable("x"))
         assertEquals(Res.string.home_action_without_data.text(), recordAction(offline).text)
         assertTrue(recordAction(offline).enabled)
+        assertFalse(recordAction(offline).withData)
         val back = offline.copy(connection = ConnectionState.Connected)
         assertEquals(Res.string.home_action_open_camera.text("Gaggiuino".raw()), recordAction(back).text)
+        assertTrue(recordAction(back).withData)
     }
 
     @Test

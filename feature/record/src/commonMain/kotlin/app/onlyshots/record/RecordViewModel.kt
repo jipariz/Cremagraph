@@ -103,10 +103,11 @@ class RecordViewModel(
         field = MutableStateFlow<UiText?>(null)
 
     /**
-     * The replayed Zer0 shot is in use (a debug build, or "sample shot" picked on Home): a shot can be pulled by hand.
+     * The replayed Zer0 shot is in use ("try a sample shot" on Home): a shot can be pulled by hand. The holder's own
+     * state counts, so a saved machine still connecting or out of reach never offers the replay that stood in for it.
      */
     val canSimulateShot: Boolean
-        get() = source.current.value.let { it is FakeShotSource && it.connection.value == ConnectionState.Connected }
+        get() = source.current.value is FakeShotSource && source.connection.value == ConnectionState.Connected
 
     init {
         viewModelScope.launch {
@@ -319,6 +320,8 @@ class RecordViewModel(
                 return
             }
         saveError.value = null
+        // The sample was for one take: the next one, after the editor, records with what Home's button says.
+        source.endSample()
         saved.emit(id)
     }
 

@@ -23,12 +23,24 @@ dependencies {
     implementation(projects.core.resources)
     implementation(compose.desktop.currentOs)
     implementation(libs.kotlinx.coroutines.swing)
+    testImplementation(kotlin("test"))
+    testImplementation(libs.compose.ui.test)
+}
+
+// The smoke test starts the app's own Koin, which keeps the library under the user's home: a throwaway one here.
+tasks.test {
+    val home = layout.buildDirectory.dir("test-home").get().asFile
+    doFirst {
+        home.deleteRecursively()
+        home.mkdirs()
+    }
+    systemProperty("user.home", home.absolutePath)
 }
 
 compose.desktop {
     application {
         mainClass = "app.onlyshots.MainKt"
-        // The Viewfinder icon from design/logo/kit/desktop, for packaged builds. The running window sets its own
+        // The Signal tile icon from design/logo/kit/desktop, for packaged builds. The running window sets its own
         // (src/main/resources/onlyshots-icon.png, see Main.kt).
         nativeDistributions {
             // onlyshots.version. macOS refuses a 0.x app version, which is why the app started at 1.0.0.

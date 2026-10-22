@@ -24,6 +24,18 @@ jobs:
         run: ./gradlew testAndroidHostTest --stacktrace
       - name: Screenshot tests (layoutlib on the JVM, no device)
         run: ./gradlew :screenshots:verifyMugshot --stacktrace
+      # The phone app and the editor driven through their test tags at phone, tablet and foldable sizes, exporting
+      # through FFmpeg; and the desktop app as main starts it.
+      - name: UI tests (the apps' flows on the JVM)
+        run: ./gradlew :uitests:desktopTest :app:desktopApp:test --stacktrace
+      - name: UI test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-report
+          path: |
+            uitests/build/reports/tests/desktopTest/
+            app/desktopApp/build/reports/tests/test/
       # Golden, actual and the changed pixels in red: without these a failure here is only
       # reproducible locally.
       - name: Screenshot report
@@ -38,6 +50,17 @@ jobs:
         run: ./gradlew :app:androidApp:assembleDebug --stacktrace
       - name: Build the web editor
         run: ./gradlew :app:webApp:composeCompatibilityBrowserDistribution --stacktrace
+      # The built site in headless Chromium, on the wasm build and the Kotlin/JS fallback: it loads, hands over from
+      # the splash, draws, and logs no errors.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Web smoke test
+        working-directory: tools/web-smoke
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          node smoke.mjs
       # Every green push to main goes live at https://onlyshots.vercel.app. Vercel builds nothing itself
       # (the project's Ignored Build Step is `exit 0`); this uploads the distribution built above.
       - name: Deploy the web editor
@@ -70,7 +93,8 @@ jobs:
 
   android-export:
     # Milestone 1 spike: real Media3 export of the test clip, alignment checked on decoded frames.
-    # Emulator codecs are software, so the timing it logs says nothing about phones.
+    # Emulator codecs are software, so the timing it logs says nothing about phones. Then the installed app's smoke
+    # tests (UI Automator): the sample shot recorded with the emulator's camera, exported, saved; Open; rotation.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +114,8 @@ jobs:
           api-level: 34
           arch: x86_64
           target: google_apis
-          script: ./gradlew :video:connectedAndroidDeviceTest --stacktrace
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back emulated -camera-front emulated
+          script: ./gradlew :video:connectedAndroidDeviceTest :app:uitests:connectedAndroidTest --stacktrace
 
   ios:
     runs-on: macos-latest
@@ -105,9 +130,14 @@ jobs:
         run: ./gradlew iosSimulatorArm64Test --stacktrace
       - name: Link the iOS framework
         run: ./gradlew :app:shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace
-      - name: Build the iOS app
+      # Builds the app and runs its smoke tests (XCUITest, iosAppUITests) with the camera and microphone already
+      # allowed, so no system prompt stands over it.
+      - name: Build the iOS app and run its UI tests
         run: |
           brew install xcodegen
           (cd app/iosApp && xcodegen generate)
+          xcrun simctl boot 'iPhone 17' || true
+          xcrun simctl privacy 'iPhone 17' grant camera dev.parez.onlyshots
+          xcrun simctl privacy 'iPhone 17' grant microphone dev.parez.onlyshots
           xcodebuild -project app/iosApp/iosApp.xcodeproj -scheme iosApp \
-            -destination 'platform=iOS Simulator,name=iPhone 17' build
+            -destination 'platform=iOS Simulator,name=iPhone 17' test

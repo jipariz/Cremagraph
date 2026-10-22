@@ -1,9 +1,10 @@
+<!-- OnlyShots' own icon, written by design/icons/build.py: edit that, not this. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M8 5.6a1.2 1.2 0 0 1 1.8 -1l9.6 6.4a1.2 1.2 0 0 1 0 2l-9.6 6.4A1.2 1.2 0 0 1 8 18.4Z" />
+        android:pathData="M7 4.5V19.5L19 12Z"
+        android:fillColor="#FFFFFFFF" />
 </vector>

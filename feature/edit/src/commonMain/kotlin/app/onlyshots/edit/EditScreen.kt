@@ -6,14 +6,14 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -21,8 +21,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -34,14 +34,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -50,14 +52,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -68,35 +72,53 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import app.onlyshots.SharedKeys
 import app.onlyshots.StyleEditorRoute
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
+import app.onlyshots.core.designsystem.CgMotion.cut
+import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
+import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
+import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
 import app.onlyshots.core.designsystem.component.Banner
 import app.onlyshots.core.designsystem.component.BannerKind
+import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.CgDialog
+import app.onlyshots.core.designsystem.component.CgIcon
+import app.onlyshots.core.designsystem.component.DialogRisk
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.EditorSheetSlot
+import app.onlyshots.core.designsystem.component.ExportAsk
 import app.onlyshots.core.designsystem.component.ExportOverlay
+import app.onlyshots.core.designsystem.component.ExportSavedKeys
 import app.onlyshots.core.designsystem.component.FormatOption
 import app.onlyshots.core.designsystem.component.FormatPicker
+import app.onlyshots.core.designsystem.component.OVER_VIDEO
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.SegmentedControl
 import app.onlyshots.core.designsystem.component.StatusChip
 import app.onlyshots.core.designsystem.component.TopChip
 import app.onlyshots.core.designsystem.component.TwoPane
-import app.onlyshots.core.model.NormRect
+import app.onlyshots.core.designsystem.component.topRule
 import app.onlyshots.core.model.Shot
 import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.VideoFormat
@@ -109,6 +131,9 @@ import app.onlyshots.core.resources.edit_change
 import app.onlyshots.core.resources.edit_data
 import app.onlyshots.core.resources.edit_done
 import app.onlyshots.core.resources.edit_export
+import app.onlyshots.core.resources.edit_export_notify_allow
+import app.onlyshots.core.resources.edit_export_notify_later
+import app.onlyshots.core.resources.edit_export_notify_title
 import app.onlyshots.core.resources.edit_find_start
 import app.onlyshots.core.resources.edit_fit
 import app.onlyshots.core.resources.edit_frame
@@ -137,11 +162,13 @@ import app.onlyshots.core.resources.edit_saved
 import app.onlyshots.core.resources.edit_shot
 import app.onlyshots.core.resources.edit_sound
 import app.onlyshots.core.resources.edit_start_here
+import app.onlyshots.core.resources.edit_step_back
+import app.onlyshots.core.resources.edit_step_forward
 import app.onlyshots.core.resources.edit_style
 import app.onlyshots.core.resources.edit_style_named
 import app.onlyshots.core.resources.edit_tap_graph_hint
-import app.onlyshots.core.resources.edit_text
 import app.onlyshots.core.resources.edit_zoom_and_crop
+import app.onlyshots.core.resources.edit_zoom_in
 import app.onlyshots.core.resources.text
 import app.onlyshots.export.ExportManager
 import app.onlyshots.label
@@ -157,6 +184,7 @@ import app.onlyshots.machineLabel
 import app.onlyshots.overlay.compose.ShotOverlay
 import app.onlyshots.overlayTitleText
 import app.onlyshots.platform.rememberGalleryAccess
+import app.onlyshots.platform.rememberNotificationPermission
 import app.onlyshots.platform.rememberShotFilePicker
 import app.onlyshots.shareBounds
 import app.onlyshots.style.StylePicker
@@ -230,20 +258,24 @@ fun EditScreen(
     // The playhead starts where the export does, and stays inside the trim when the trim moves past it.
     LaunchedEffect(video?.trimInUs, video?.trimOutUs) {
         val v = video ?: return@LaunchedEffect
-        if (player.positionUs !in v.trimInUs..v.trimOutUs) player.seek(v.trimInUs)
+        if (player.positionUs !in v.trimInUs..v.trimOutUs)
+            player.seek(player.positionUs.coerceIn(v.trimInUs, v.trimOutUs))
     }
 
     // There is no library to come back to: leaving a video that was never saved or shared asks first, from the back
     // button and the system back alike. An open sheet is put down before anything else.
     var askLeave by remember { mutableStateOf(false) }
     val leave = { if (ui.kept || !askBeforeLeaving) onBack() else askLeave = true }
-    BackHandler { if (ui.sheet != null && ui.exporting == null) viewModel.closeSheet() else leave() }
+    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None)) {
+        if (ui.sheet != null && ui.exporting == null) viewModel.closeSheet() else leave()
+    }
     if (askLeave) {
         CgDialog(
             title = stringResource(Res.string.edit_leave_title),
             text = stringResource(Res.string.edit_leave_text),
             onDismiss = { askLeave = false },
             confirm = stringResource(Res.string.edit_keep_editing) to { askLeave = false },
+            risk = DialogRisk.Dismiss,
             dismiss =
                 stringResource(Res.string.edit_leave) to
                     {
@@ -327,13 +359,15 @@ fun EditBody(
     // On a wide window the export is an overlay over everything, while it runs and until its result is seen.
     val exportDone = ui.savedToGallery || ui.exported
     val overlay = wide && (ui.exporting != null || exportDone)
+    // On a phone it takes the whole screen once it runs, until the saved video is seen to (shared, it goes on at once).
+    val phoneOverlay = !wide && video != null && (ui.exporting != null || ui.savedToGallery)
     val keys =
         Modifier.focusRequester(focus)
             .focusable()
             .editorKeys(
                 actions,
                 export,
-                blocked = { overlay },
+                blocked = { overlay || phoneOverlay },
                 onEscape = {
                     when {
                         overlay -> if (exportDone) actions.acknowledgeExport()
@@ -367,7 +401,8 @@ fun EditBody(
                             delete = actions::deleteStyle,
                         ),
                 )
-            EditSheet.DATA ->
+            // The graph's words go with its data: what it shows and what it says, in one place.
+            EditSheet.DATA -> {
                 DataSheetContent(
                     video.overlay,
                     seriesIn(video.shot),
@@ -375,7 +410,8 @@ fun EditBody(
                 ) { change ->
                     actions.overlay(change = change)
                 }
-            EditSheet.TEXT -> TextSheetContent(video) { push, change -> actions.overlay(push, change) }
+                GraphTextFields(video) { push, change -> actions.overlay(push, change) }
+            }
             EditSheet.SHOT ->
                 ShotSheetContent(
                     video,
@@ -425,12 +461,13 @@ fun EditBody(
     // A flip's cover screen: there is no room to edit, only to say so.
     if (layout.kind == LayoutKind.Tiny) {
         Box(Modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding().then(keys)) {
-            BackButton(onClick = leave, modifier = Modifier.align(Alignment.TopStart).padding(CgSpace.S8))
+            BackButton(onClick = leave, modifier = Modifier.align(Alignment.TopStart).padding(CgSpace.S16))
             Text(
                 stringResource(Res.string.edit_open_the_phone),
-                style = CgTheme.type.cardTitle,
+                style = CgTheme.type.screenTitle,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.align(Alignment.Center).padding(CgSpace.S24),
+                modifier =
+                    Modifier.align(Alignment.Center).padding(start = CgSpace.S24, end = CgSpace.S24, bottom = 76.dp),
             )
         }
         return
@@ -516,10 +553,12 @@ fun EditBody(
                             )
                             .dp,
                     panelWidth = sidePanelWidthDp(maxWidth.value).dp,
+                    // The panel meets the picture at a hairline, as on the desk, rather than across a gap.
+                    gap = false,
                     animateOn = video.format,
                     main = {
                         Column(Modifier.fillMaxSize()) {
-                            WideTopBar(ui = ui, onBack = leave, actions = actions)
+                            WideTopBar(ui = ui, onBack = leave, player = player)
                             Box(Modifier.weight(1f).fillMaxWidth()) {
                                 // The picture as large as the column's width allows, the timeline right under it, and
                                 // what height is left over above and below the two rather than between them.
@@ -547,11 +586,12 @@ fun EditBody(
                         // The graph's settings while the graph is selected, else the video's: its shot, its frame and
                         // the export. The graph's page stays where it was while something else (an export) borrows the
                         // sheet.
-                        // Selecting the graph swaps the video's panel for the graph's, with a cross-fade rather than a
-                        // cut.
+                        // Selecting the graph swaps the video's panel for the graph's: a cut, the selection already
+                        // shows what changed.
                         AnimatedContent(
                             graphPanel,
-                            transitionSpec = { fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short()) },
+                            modifier = Modifier.fillMaxSize().startRule(),
+                            transitionSpec = { cut() },
                             label = "panel",
                         ) { graph ->
                             if (graph) {
@@ -564,23 +604,16 @@ fun EditBody(
                                     onDone = { graphSelected = false },
                                     tools = {
                                         Pill(
-                                            "◐ ${(video.overlay.opacity * 100).roundToInt()} %",
+                                            "${(video.overlay.opacity * 100).roundToInt()}%",
+                                            icon = CgIcons.Contrast,
                                             onClick = { actions.overlay { it.withOpacity(nextOpacity(it.opacity)) } },
-                                        )
-                                        Pill(
-                                            "↺",
-                                            onClick = {
-                                                actions.overlay { it.copy(rect = NormRect.default(video.format)) }
-                                            },
                                         )
                                     },
                                     footer = exportBar,
                                 ) {
                                     AnimatedContent(
                                         page,
-                                        transitionSpec = {
-                                            fadeIn(CgMotion.medium()) togetherWith fadeOut(CgMotion.short())
-                                        },
+                                        transitionSpec = { cut() },
                                         label = "page",
                                     ) { shown ->
                                         Column(verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
@@ -604,43 +637,7 @@ fun EditBody(
                 )
             }
             // The export fades in over the editor, and out once its result is seen.
-            AnimatedVisibility(overlay, enter = fadeIn(CgMotion.medium()), exit = fadeOut(CgMotion.medium())) {
-                val wording = LocalExportWording.current
-                val detail =
-                    listOfNotNull(
-                            (ui.exportingQuality ?: ui.galleryQuality).size(video.format).let {
-                                "${it.width} × ${it.height}"
-                            },
-                            clock(video.trimmedDurationUs),
-                            video.shot?.profileName,
-                        )
-                        .joinToString(" · ")
-                val doneNow =
-                    when {
-                        ui.exporting != null -> null
-                        ui.savedToGallery -> stringResource(wording.saved)
-                        else -> wording.shared?.let { stringResource(it) } ?: ""
-                    }
-                // While it fades out the export is over and acknowledged: it keeps saying what it said.
-                var done by remember { mutableStateOf(doneNow) }
-                if (overlay) done = doneNow
-                ExportOverlay(
-                    detail = detail,
-                    footer = stringResource(wording.footer),
-                    progress = ui.exporting,
-                    left = ui.exportLeftMs?.let { clock(it * 1000) },
-                    done = done,
-                    still = ui.thumbnails.getOrNull(ui.thumbnails.size / 2),
-                    stillRatio = video.format.ratio,
-                    onCancel = actions::cancelExport,
-                    onKeepEditing = actions::acknowledgeExport,
-                    next = stringResource(wording.next),
-                    onNext = {
-                        actions.acknowledgeExport()
-                        onExported()
-                    },
-                )
-            }
+            ExportOver(overlay, ui, video, actions, onExported, fullScreen = false)
         }
         return
     }
@@ -648,7 +645,7 @@ fun EditBody(
     BoxWithConstraints(Modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding().then(keys)) {
         val sheetMax = maxHeight * 0.72f
         Column(Modifier.fillMaxSize()) {
-            TopBar(ui, leave, actions)
+            TopBar(ui, leave, actions, player)
             if (video == null) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(stringResource(Res.string.edit_loading), style = CgTheme.type.body, color = CgColors.Text.Dim)
@@ -665,16 +662,41 @@ fun EditBody(
                     selected = graphSelected,
                     onSelected = { graphSelected = it },
                     reframing = reframing,
+                    formatStrip = false,
                     onReframing = setReframing,
+                    doneOnPicture = false,
                     modifier = Modifier.fillMaxSize(),
                 )
                 MessageBanner(ui.message, actions::clearMessage, Modifier.align(Alignment.TopCenter))
             }
-            TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions)
+            if (reframing) {
+                // Framing: the formats under the picture, and "done" at the bottom right, where the timeline was.
+                FormatPicker(
+                    FORMAT_OPTIONS,
+                    VideoFormat.entries.indexOf(video.format),
+                    onPick = { actions.setFormat(VideoFormat.entries[it]) },
+                )
+                Box(Modifier.fillMaxWidth().padding(CgSpace.S16), contentAlignment = Alignment.CenterEnd) {
+                    CgButton(
+                        stringResource(Res.string.edit_done),
+                        onClick = { setReframing(false) },
+                        modifier = Modifier.widthIn(min = 112.dp).testTag(TestTags.EditFrame),
+                    )
+                }
+            } else {
+                // With the graph picked, only the filmstrip stays under the picture, so the picture gets the room.
+                TimeBand(video, ui, player, zoom, onZoom = { zoom = it }, actions, tools = true)
+            }
         }
 
         if (video != null) {
-            EditorSheetSlot(ui.sheet, Modifier.align(Alignment.BottomCenter)) { sheet ->
+            // The export's own screen stands in for its sheet while it runs and until it is seen to.
+            EditorSheetSlot(
+                ui.sheet.takeUnless { phoneOverlay },
+                Modifier.align(Alignment.BottomCenter),
+                scrim = true,
+                onScrimTap = actions::closeSheet.takeIf { ui.exporting == null },
+            ) { sheet ->
                 EditorSheet(
                     title = sheetTitle(sheet, ui),
                     onDone = actions::closeSheet.takeIf { ui.exporting == null },
@@ -683,27 +705,109 @@ fun EditBody(
                     sheetBody(sheet, video)
                 }
             }
+            ExportOver(phoneOverlay, ui, video, actions, onExported, fullScreen = true)
         }
     }
 }
 
 /**
- * Back, the shot with its status dot, undo and redo while there is something to take back or bring back, and the orange
- * export. The reframe switch sits on the picture ([Picture]), so the bar keeps room for the shot's name.
+ * The first export's offer to say outside the app when it is done; Allow asks the system, whatever it answers the offer
+ * goes for good.
  */
 @Composable
-private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions) {
+private fun exportAsk(ui: EditUiState, wording: ExportWording, actions: EditActions): ExportAsk? {
+    val text = wording.notifyText ?: return null
+    val ask = rememberNotificationPermission { actions.answerExportNotifications(it) }
+    if (!ui.askExportNotifications || ui.exporting == null) return null
+    return ExportAsk(
+        title = stringResource(Res.string.edit_export_notify_title),
+        text = stringResource(text),
+        allow = stringResource(Res.string.edit_export_notify_allow),
+        later = stringResource(Res.string.edit_export_notify_later),
+        onAllow = ask,
+        onLater = { actions.answerExportNotifications(false) },
+    )
+}
+
+/**
+ * The export over the editor while it runs and until its result is seen: a card over the dimmed window on a wide one,
+ * the whole screen on a phone ([fullScreen]). Keep editing puts it down, and the export sheet with it.
+ */
+@Composable
+private fun ExportOver(
+    visible: Boolean,
+    ui: EditUiState,
+    video: VideoItem,
+    actions: EditActions,
+    onExported: () -> Unit,
+    fullScreen: Boolean,
+) {
+    AnimatedVisibility(visible, enter = fadeIn(CgMotion.medium()), exit = fadeOut(CgMotion.medium())) {
+        val wording = LocalExportWording.current
+        val detail =
+            listOfNotNull(
+                    (ui.exportingQuality ?: ui.galleryQuality).size(video.format).let { "${it.width} × ${it.height}" },
+                    clock(video.trimmedDurationUs),
+                    video.shot?.profileName,
+                )
+                .joinToString(" · ")
+        val doneNow =
+            when {
+                ui.exporting != null -> null
+                ui.savedToGallery -> stringResource(wording.saved)
+                else -> wording.shared?.let { stringResource(it) } ?: ""
+            }
+        // While it fades out the export is over and acknowledged: it keeps saying what it said.
+        var done by remember { mutableStateOf(doneNow) }
+        if (visible) done = doneNow
+        ExportOverlay(
+            detail = detail,
+            footer = stringResource(wording.footer),
+            progress = ui.exporting,
+            left = ui.exportLeftMs?.let { clock(it * 1000) },
+            done = done,
+            still = ui.thumbnails.getOrNull(ui.thumbnails.size / 2),
+            stillRatio = video.format.ratio,
+            onCancel = actions::cancelExport,
+            onKeepEditing = {
+                actions.acknowledgeExport()
+                actions.closeSheet()
+            },
+            next = stringResource(wording.next),
+            onNext = {
+                actions.acknowledgeExport()
+                onExported()
+            },
+            fullScreen = fullScreen,
+            leave = wording.leave?.let { stringResource(it) },
+            ask = exportAsk(ui, wording, actions),
+            savedKeys =
+                ui.savedVideo?.let {
+                    wording.openSaved?.let { open ->
+                        ExportSavedKeys(open = stringResource(open), onOpen = actions::openSavedVideo)
+                    }
+                },
+        )
+    }
+}
+
+/**
+ * Back, the shot with its status dot filling the rest of the bar, the sound key and the orange export. The reframe
+ * switch sits on the picture ([Picture]), so the bar keeps room for the shot's name.
+ */
+@Composable
+private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions, player: PlayerState) {
     val video = ui.item
     Row(
-        Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
+        Modifier.fillMaxWidth().bottomRule().padding(CgSpace.S8),
+        horizontalArrangement = Arrangement.spacedBy(CgSpace.S4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BackButton(onClick = onBack)
         TopChip(
             text = video?.shot?.profileName ?: stringResource(Res.string.edit_add_shot),
             onClick = { actions.openSheet(EditSheet.SHOT) },
-            modifier = Modifier.testTag(TestTags.EditShotChip),
+            modifier = Modifier.weight(1f).testTag(TestTags.EditShotChip),
             dot =
                 when {
                     video?.shot == null -> CgColors.Text.Dim
@@ -711,8 +815,7 @@ private fun TopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions) {
                     else -> CgColors.Status.Highlight
                 },
         )
-        Spacer(Modifier.weight(1f))
-        UndoRedo(ui, actions)
+        SoundToggle(ui.item, player)
         TopChip(
             stringResource(Res.string.edit_export),
             onClick = { actions.openSheet(EditSheet.EXPORT) },
@@ -739,6 +842,8 @@ private fun Picture(
     toolbar: Boolean = true,
     /** The reframe switch over the picture: the phone's; a wide window has it in its panel. */
     onReframing: ((Boolean) -> Unit)? = null,
+    /** The switch's "done" on the picture while framing; false where the screen puts it under the picture. */
+    doneOnPicture: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     // The video is Haze's source, so styles that blur what is behind the graph blur the video.
@@ -746,6 +851,9 @@ private fun Picture(
     val sheetOpen by rememberUpdatedState(ui.sheet != null)
     // Each tap that plays or pauses, for the mark that answers it.
     var taps by remember { mutableIntStateOf(0) }
+    // While the graph is moved, the keys over the picture step aside, so it can go where they are.
+    var graphMoving by remember { mutableStateOf(false) }
+    val keys by animateFloatAsState(if (graphMoving) 0f else 1f, CgMotion.short(), label = "keys")
     BoxWithConstraints(
         modifier.fillMaxWidth().background(CgColors.Surface.Scrim),
         contentAlignment = Alignment.Center,
@@ -790,6 +898,8 @@ private fun Picture(
                 // The whole picture around the frame, moved and zoomed by the reframe, as the exporters draw it.
                 Box(Modifier.fillMaxSize().reframed(video.reframe)) { picture(Modifier.coverOf(ui.sourceAspect)) }
             }
+            // Framing: the frame's edge in the signal and its thirds, to line the cup up on.
+            if (reframing) FrameGuides(Modifier.fillMaxSize())
             // The graph steps aside while the picture is framed, and comes back when framing is done.
             AnimatedVisibility(
                 !reframing,
@@ -806,7 +916,7 @@ private fun Picture(
                         style = ui.style ?: return@let,
                         title = overlayTitleText(shot, video.overlay),
                         recipe = video.overlay.recipe,
-                        fontFamily = CgTheme.overlayFont,
+                        fonts = CgTheme.overlayFonts,
                         modifier = Modifier.fillMaxSize(),
                         hazeState = haze,
                         backdropLuma = { ui.luma?.at(player.positionUs) },
@@ -826,23 +936,20 @@ private fun Picture(
                                         onStyle = { actions.openSheet(EditSheet.STYLE) },
                                         onData = { actions.openSheet(EditSheet.DATA) },
                                         onOpacity = { o -> actions.overlay { it.withOpacity(o) } },
-                                        onReset = {
-                                            actions.overlay { it.copy(rect = NormRect.default(video.format)) }
-                                        },
-                                        onText = { actions.openSheet(EditSheet.TEXT) },
                                     )
                                 }
                             },
+                        onDragging = { graphMoving = it },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
-            PlayMark(taps, player.playing, Modifier.align(Alignment.Center))
+            PlayMark(taps, player.playing, idle = !selected && !reframing, Modifier.align(Alignment.Center))
             var busy by remember { mutableStateOf(ui.busy) }
             if (ui.busy != null) busy = ui.busy
             AnimatedVisibility(
                 ui.busy != null,
-                Modifier.align(Alignment.TopStart).padding(CgSpace.S12),
+                Modifier.align(Alignment.TopStart).padding(CgSpace.S12).graphicsLayer { alpha = keys },
                 enter = fadeIn(CgMotion.medium()),
                 exit = fadeOut(CgMotion.medium()),
             ) {
@@ -851,43 +958,61 @@ private fun Picture(
             if (formatStrip) {
                 AnimatedVisibility(
                     reframing,
-                    Modifier.align(Alignment.TopCenter).padding(CgSpace.S12),
-                    enter = fadeIn(CgMotion.medium()) + slideInVertically(CgMotion.offsetSpec) { -it / 2 },
-                    exit = fadeOut(CgMotion.short()) + slideOutVertically(CgMotion.offsetSpec) { -it / 2 },
+                    Modifier.align(Alignment.TopCenter).padding(CgSpace.S12).clipToBounds(),
+                    enter = slideInVertically(CgMotion.offsetSpec) { -it },
+                    exit = slideOutVertically(CgMotion.offsetSpec) { -it },
                 ) {
                     FormatStrip(video.format, onPick = actions::setFormat)
                 }
             }
             AnimatedVisibility(
                 reframing,
-                Modifier.align(if (onReframing != null) Alignment.BottomStart else Alignment.BottomCenter)
-                    .padding(CgSpace.S12),
-                enter = fadeIn(CgMotion.medium()) + slideInVertically(CgMotion.offsetSpec) { it / 2 },
-                exit = fadeOut(CgMotion.short()) + slideOutVertically(CgMotion.offsetSpec) { it / 2 },
+                Modifier.align(
+                        when {
+                            !doneOnPicture -> Alignment.TopStart
+                            onReframing != null -> Alignment.BottomStart
+                            else -> Alignment.BottomCenter
+                        }
+                    )
+                    .padding(CgSpace.S8)
+                    .clipToBounds(),
+                enter = slideInVertically(CgMotion.offsetSpec) { if (doneOnPicture) it else -it },
+                exit = slideOutVertically(CgMotion.offsetSpec) { if (doneOnPicture) it else -it },
             ) {
                 StatusChip(stringResource(Res.string.edit_reframe_hint), recording = false)
             }
             // Top right while the graph is being edited, so it never covers the toolbar; bottom right beside the hint
             // while framing, clear of the formats along the top.
-            onReframing?.let { set ->
-                // It travels between the two rather than jumping.
-                val bias by animateFloatAsState(if (reframing) 1f else -1f, CgMotion.settle(), label = "switch")
-                Pill(
-                    if (reframing) stringResource(Res.string.edit_done)
-                    else stringResource(Res.string.edit_frame_switch),
-                    onClick = { set(!reframing) },
-                    light = reframing,
-                    modifier =
-                        Modifier.align(BiasAlignment(1f, bias))
-                            .padding(horizontal = CgSpace.S8)
-                            .testTag(TestTags.EditFrame),
-                )
-            }
+            onReframing
+                ?.takeIf { doneOnPicture || !reframing }
+                ?.let { set ->
+                    // It travels between the two rather than jumping.
+                    // It travels between the two rather than jumping; the slide is read in layout, so only the key
+                    // moves, not the picture recomposing under it.
+                    val bias by animateFloatAsState(if (reframing) 1f else -1f, CgMotion.settle(), label = "switch")
+                    Pill(
+                        if (reframing) stringResource(Res.string.edit_done)
+                        else stringResource(Res.string.edit_frame_switch),
+                        onClick = { set(!reframing) },
+                        light = reframing,
+                        icon = if (reframing) null else CgIcons.Frame,
+                        overVideo = true,
+                        modifier =
+                            Modifier.align(Alignment.TopEnd)
+                                .biasedDown { bias }
+                                .padding(horizontal = CgSpace.S8)
+                                .graphicsLayer { alpha = keys }
+                                .testTag(TestTags.EditFrame),
+                    )
+                }
         }
     }
 }
 
-/** The timeline and its tools: place the shot's start, find it by ear, step a frame, zoom. */
+/**
+ * The timeline and its tools: place the shot's start, find it by ear, step a frame, zoom. Without [tools], only the
+ * filmstrip (the phone while the graph is picked).
+ */
 @Composable
 private fun TimeBand(
     video: VideoItem,
@@ -896,8 +1021,9 @@ private fun TimeBand(
     zoom: Float?,
     onZoom: (Float?) -> Unit,
     actions: EditActions,
+    tools: Boolean = true,
 ) {
-    Column(Modifier.fillMaxWidth().background(CgColors.Surface.Bar).padding(bottom = CgSpace.S8)) {
+    Column(Modifier.fillMaxWidth().topRule().background(CgColors.Surface.Base).padding(bottom = CgSpace.S8)) {
         EditTimeline(
             item = video,
             playheadUs = { player.positionUs },
@@ -918,7 +1044,9 @@ private fun TimeBand(
                     shotStart = { us, push -> actions.setShotStart(us, push) },
                     zoom = onZoom,
                 ),
+            compact = !tools,
         )
+        if (!tools) return@Column
         // A narrow pane (a book foldable's page) has no room for the gap between the two groups: the row scrolls
         // instead.
         BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -944,36 +1072,34 @@ private fun TimeBand(
                         stringResource(Res.string.edit_start_here),
                         onClick = { actions.setShotStart(player.positionUs, push = true) },
                         enabled = movable,
+                        icon = CgIcons.Flag,
                     )
                     Pill(stringResource(Res.string.edit_find_start), onClick = actions::findStart, enabled = movable)
                 }
                 if (!narrow) Spacer(Modifier.weight(1f))
-                // Mutes playback and the export alike; a video recorded without the microphone has nothing to mute.
-                if (video.hasAudio) {
-                    Pill(
-                        if (player.muted) stringResource(Res.string.edit_muted)
-                        else stringResource(Res.string.edit_sound),
-                        onClick = { player.muted = !player.muted },
-                        color = if (player.muted) CgColors.Text.Secondary else CgColors.Text.Primary,
-                    )
-                }
                 Pill(
-                    "‹",
+                    "",
                     onClick = {
                         player.playing = false
                         player.seek(TimelineMath.stepFrame(video, player.positionUs, -1))
                     },
+                    icon = CgIcons.ChevronLeft,
+                    iconDescription = stringResource(Res.string.edit_step_back),
                 )
                 Pill(
-                    "›",
+                    "",
                     onClick = {
                         player.playing = false
                         player.seek(TimelineMath.stepFrame(video, player.positionUs, 1))
                     },
+                    icon = CgIcons.ChevronRight,
+                    iconDescription = stringResource(Res.string.edit_step_forward),
                 )
                 Pill(
-                    if (zoom == null) "+" else stringResource(Res.string.edit_fit),
+                    if (zoom == null) "" else stringResource(Res.string.edit_fit),
                     onClick = { onZoom(if (zoom == null) 4f else null) },
+                    icon = if (zoom == null) CgIcons.Plus else null,
+                    iconDescription = stringResource(Res.string.edit_zoom_in),
                 )
             }
         }
@@ -1008,53 +1134,46 @@ private const val WIDE_CHROME_DP = 236f
 /** The least the panel under the picture gets on an upright window: its pages scroll, the export stays pinned. */
 private const val BELOW_PANEL_DP = 360f
 
-private val PanelPages = listOf(EditSheet.STYLE, EditSheet.DATA, EditSheet.TEXT)
+private val PanelPages = listOf(EditSheet.STYLE, EditSheet.DATA)
 
 /**
- * The wide editor's top bar: back, what is being edited (the shot, else the file), and undo and redo while there is
- * something to take back or bring back. The shot, the frame and the export are in the side panel.
+ * The wide editor's top bar: back, what is being edited (the shot, else the file), and the sound. The shot, the frame
+ * and the export are in the side panel; undo and redo are Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z.
  */
 @Composable
-private fun WideTopBar(ui: EditUiState, onBack: () -> Unit, actions: EditActions) {
+private fun WideTopBar(ui: EditUiState, onBack: () -> Unit, player: PlayerState) {
     val video = ui.item
     Row(
-        Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 10.dp),
+        Modifier.fillMaxWidth().bottomRule().padding(CgSpace.S8),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BackButton(onClick = onBack)
         Text(
-            video?.shot?.profileName ?: video?.file.orEmpty(),
+            (video?.shot?.profileName ?: video?.file.orEmpty()).caps(),
             style = CgTheme.type.label,
             color = CgColors.Text.Primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        UndoRedo(ui, actions)
+        SoundToggle(video, player)
     }
 }
 
 /**
- * Undo and redo, there only while there is something to take back or bring back: they open out of the bar and fold back
- * into it, so the chips beside them slide over rather than jump.
+ * Sound on or off, for playback and the export alike; a video recorded without the microphone has nothing to mute, so
+ * there is no key.
  */
 @Composable
-private fun RowScope.UndoRedo(ui: EditUiState, actions: EditActions) {
-    AnimatedVisibility(
-        ui.canUndo,
-        enter = fadeIn(CgMotion.short()) + expandHorizontally(CgMotion.sizeSpec),
-        exit = fadeOut(CgMotion.short()) + shrinkHorizontally(CgMotion.sizeSpec),
-    ) {
-        Pill("↺", onClick = actions::undo, modifier = Modifier.testTag(TestTags.EditUndo))
-    }
-    AnimatedVisibility(
-        ui.canRedo,
-        enter = fadeIn(CgMotion.short()) + expandHorizontally(CgMotion.sizeSpec),
-        exit = fadeOut(CgMotion.short()) + shrinkHorizontally(CgMotion.sizeSpec),
-    ) {
-        Pill("↻", onClick = actions::redo, modifier = Modifier.testTag(TestTags.EditRedo))
-    }
+private fun SoundToggle(video: VideoItem?, player: PlayerState) {
+    if (video?.hasAudio != true) return
+    // A top-bar key like the shot and export ones beside it, the same height.
+    TopChip(
+        if (player.muted) stringResource(Res.string.edit_muted) else stringResource(Res.string.edit_sound),
+        onClick = { player.muted = !player.muted },
+        modifier = Modifier.testTag(TestTags.EditSound),
+    )
 }
 
 /**
@@ -1068,8 +1187,8 @@ private fun MessageBanner(message: UiText?, onOk: () -> Unit, modifier: Modifier
     AnimatedVisibility(
         message != null,
         modifier.clipToBounds(),
-        enter = slideInVertically(CgMotion.offsetSpec) { -it } + fadeIn(CgMotion.medium()),
-        exit = slideOutVertically(CgMotion.offsetSpec) { -it } + fadeOut(CgMotion.short()),
+        enter = slideInVertically(CgMotion.offsetSpec) { -it },
+        exit = slideOutVertically(CgMotion.offsetSpec) { -it },
     ) {
         last?.let {
             Banner(it.text(), BannerKind.Warning, action = stringResource(Res.string.edit_ok), onAction = onOk)
@@ -1095,77 +1214,109 @@ private fun VideoPanel(
     // The machine's shots, for the list under the file.
     LaunchedEffect(ui.hasShotHistory) { if (ui.hasShotHistory) actions.loadShots() }
     var changingShot by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().padding(CgSpace.S16)) {
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).animateContentSize(CgMotion.sizeSpec),
-            verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
-        ) {
-            PanelLabel(stringResource(Res.string.edit_shot))
+    Column(Modifier.fillMaxSize()) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).animateContentSize(CgMotion.sizeSpec)) {
             val shot = video.shot
-            if (shot != null && !changingShot) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("${shot.profileName} · ${machineLabel(shot.source)}", style = CgTheme.type.body)
-                        Text(shotDetail(video), style = CgTheme.type.caption, color = CgColors.Text.Secondary)
+            // Picking another shot: the section is marked with the signal along its edge while it is open.
+            PanelSection(marked = shot == null || changingShot) {
+                PanelLabel(stringResource(Res.string.edit_shot))
+                if (shot != null && !changingShot) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(width = 4.dp, height = 36.dp).background(machineColor(shot.source)))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                "${shot.profileName} · ${machineLabel(shot.source)}".caps(),
+                                style = CgTheme.type.label,
+                            )
+                            Text(shotDetail(video), style = CgTheme.type.data, color = CgColors.Text.Secondary)
+                        }
+                        Pill(stringResource(Res.string.edit_change), onClick = { changingShot = true })
                     }
-                    Pill(stringResource(Res.string.edit_change), onClick = { changingShot = true })
-                }
-                if (video.syncLocked) {
-                    Pill(
-                        stringResource(Res.string.edit_graph_start),
-                        onClick = actions::unlockShotStart,
-                        icon = CgIcons.Lock,
+                    if (video.syncLocked) {
+                        Pill(
+                            stringResource(Res.string.edit_graph_start),
+                            onClick = actions::unlockShotStart,
+                            icon = CgIcons.Lock,
+                        )
+                    } else if (video.shotStartByClock() != null) {
+                        Pill(stringResource(Res.string.edit_match_by_clock), onClick = actions::matchByClock)
+                    }
+                } else {
+                    ShotSheetContent(
+                        video,
+                        ui.shots,
+                        onPick = {
+                            actions.pickShot(it)
+                            changingShot = false
+                        },
+                        onFile = onPickShotFile,
+                        onMatchByClock = actions::matchByClock,
+                        onUnlock = actions::unlockShotStart,
+                        onFromMachine = LocalFromMachine.current,
                     )
-                } else if (video.shotStartByClock() != null) {
-                    Pill(stringResource(Res.string.edit_match_by_clock), onClick = actions::matchByClock)
+                    if (shot != null) Pill(stringResource(Res.string.edit_done), onClick = { changingShot = false })
                 }
-            } else {
-                ShotSheetContent(
-                    video,
-                    ui.shots,
-                    onPick = {
-                        actions.pickShot(it)
-                        changingShot = false
-                    },
-                    onFile = onPickShotFile,
-                    onMatchByClock = actions::matchByClock,
-                    onUnlock = actions::unlockShotStart,
-                    onFromMachine = LocalFromMachine.current,
-                )
-                if (shot != null) Pill(stringResource(Res.string.edit_done), onClick = { changingShot = false })
             }
-            Spacer(Modifier.height(CgSpace.S8))
-            PanelLabel(stringResource(Res.string.edit_frame))
-            FormatPicker(
-                FORMAT_OPTIONS,
-                VideoFormat.entries.indexOf(video.format),
-                onPick = { actions.setFormat(VideoFormat.entries[it]) },
-                compact = true,
-            )
-            Pill(
-                if (reframing) stringResource(Res.string.edit_done) else stringResource(Res.string.edit_zoom_and_crop),
-                onClick = { onReframing(!reframing) },
-                light = reframing,
-                modifier = Modifier.fillMaxWidth(),
-                fill = true,
-            )
-            if (shot != null) {
-                Spacer(Modifier.height(CgSpace.S8))
-                PanelLabel(stringResource(Res.string.edit_graph))
-                Text(ui.style?.name ?: video.overlay.styleId, style = CgTheme.type.body)
-                Text(
-                    stringResource(Res.string.edit_tap_graph_hint),
-                    style = CgTheme.type.caption,
-                    color = CgColors.Text.Dim,
+            PanelSection {
+                PanelLabel(stringResource(Res.string.edit_frame))
+                FormatPicker(
+                    FORMAT_OPTIONS,
+                    VideoFormat.entries.indexOf(video.format),
+                    onPick = { actions.setFormat(VideoFormat.entries[it]) },
+                    compact = true,
                 )
+                Pill(
+                    if (reframing) stringResource(Res.string.edit_done)
+                    else stringResource(Res.string.edit_zoom_and_crop),
+                    onClick = { onReframing(!reframing) },
+                    light = reframing,
+                    modifier = Modifier.fillMaxWidth(),
+                    fill = true,
+                )
+            }
+            if (shot != null) {
+                PanelSection(gap = CgSpace.S4) {
+                    PanelLabel(stringResource(Res.string.edit_graph))
+                    Text((ui.style?.name ?: video.overlay.styleId).caps(), style = CgTheme.type.label)
+                    Text(
+                        stringResource(Res.string.edit_tap_graph_hint),
+                        style = CgTheme.type.caption,
+                        color = CgColors.Text.Secondary,
+                    )
+                }
             }
         }
-        Spacer(Modifier.height(CgSpace.S16))
-        footer()
+        PanelFooter(footer)
     }
+}
+
+/**
+ * One part of the desk panel (the shot, the frame, the graph): padded, over a hairline. [marked] draws the signal along
+ * its leading edge, for the part that is open for a change.
+ */
+@Composable
+private fun PanelSection(
+    marked: Boolean = false,
+    gap: Dp = 10.dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth()
+            .bottomRule()
+            .then(if (marked) Modifier.leadingSignal() else Modifier)
+            .padding(CgSpace.S16),
+        verticalArrangement = Arrangement.spacedBy(gap),
+        content = content,
+    )
+}
+
+/** The export pinned at the bottom of the desk panel, under a hairline. */
+@Composable
+private fun PanelFooter(footer: @Composable () -> Unit) {
+    Box(Modifier.fillMaxWidth().topRule().padding(horizontal = CgSpace.S16, vertical = CgSpace.S12)) { footer() }
 }
 
 /** "Gaggiuino · 0:40.0 · 3 phases · lined up by the clock": the shot under its name. */
@@ -1181,11 +1332,11 @@ private fun shotDetail(video: VideoItem): String {
 
 @Composable
 private fun PanelLabel(text: String) {
-    Text(text.uppercase(), style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
+    Text(text.caps(), style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
 }
 
 /**
- * The upper half on its side: back, what is edited, undo and redo on the left; the picture in its shape in the middle;
+ * The upper half on its side: back, what is edited, the sound on the left; the picture in its shape in the middle;
  * framing, the time and play on the right.
  */
 @Composable
@@ -1203,15 +1354,28 @@ private fun PlayerHalf(
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
             BackButton(onClick = onBack)
             val shot = video.shot
-            Text(shot?.profileName ?: video.file, style = CgTheme.type.cardTitle, maxLines = 2)
-            if (shot != null)
-                Text(
-                    shotDetail(video).removePrefix(" · "),
-                    style = CgTheme.type.caption,
-                    color = CgColors.Text.Secondary,
-                )
+            Text((shot?.profileName ?: video.file).caps(), style = CgTheme.type.screenTitle, maxLines = 2)
+            if (shot != null) {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .border(CgStroke.Hairline, CgColors.Line.Hairline)
+                        .padding(horizontal = CgSpace.S12, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(width = 4.dp, height = 32.dp).background(machineColor(shot.source)))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("${shot.profileName} · ${machineLabel(shot.source)}".caps(), style = CgTheme.type.label)
+                        Text(
+                            shotDetail(video).removePrefix(" · "),
+                            style = CgTheme.type.data,
+                            color = CgColors.Text.Secondary,
+                        )
+                    }
+                }
+            }
             Spacer(Modifier.weight(1f))
-            Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) { UndoRedo(ui, actions) }
+            SoundToggle(video, player)
         }
         picture(Modifier.fillMaxHeight().aspectRatio(video.format.ratio, matchHeightConstraintsFirst = true))
         Column(
@@ -1225,16 +1389,23 @@ private fun PlayerHalf(
                 light = reframing,
             )
             Spacer(Modifier.weight(1f))
-            Text(clock(player.positionUs), style = CgTheme.type.cardTitle)
+            PlayheadClock(player)
             Text(
                 stringResource(Res.string.edit_of_duration, clock(video.durationUs)),
                 style = CgTheme.type.caption,
                 color = CgColors.Text.Secondary,
             )
-            Pill(
-                if (player.playing) stringResource(Res.string.edit_pause) else stringResource(Res.string.edit_play),
-                onClick = player::toggle,
-            )
+            val playLabel =
+                if (player.playing) stringResource(Res.string.edit_pause) else stringResource(Res.string.edit_play)
+            Box(
+                Modifier.size(64.dp)
+                    .border(CgStroke.Hairline, CgColors.Brand.Bone)
+                    .clickable(role = Role.Button, onClick = player::toggle)
+                    .semantics { contentDescription = playLabel },
+                contentAlignment = Alignment.Center,
+            ) {
+                CgIcon(if (player.playing) CgIcons.Pause else CgIcons.Play, size = 28.dp)
+            }
         }
     }
 }
@@ -1243,8 +1414,13 @@ private fun PlayerHalf(
 @Composable
 private fun ToolChips(ui: EditUiState, video: VideoItem, actions: EditActions, onExport: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(CgSpace.S12),
+        Modifier.fillMaxWidth()
+            .padding(horizontal = CgSpace.S24)
+            .topRule()
+            .horizontalScroll(rememberScrollState())
+            .padding(top = CgSpace.S12, bottom = CgSpace.S24),
         horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (video.shot != null) {
             Pill(
@@ -1252,7 +1428,6 @@ private fun ToolChips(ui: EditUiState, video: VideoItem, actions: EditActions, o
                 onClick = { actions.openSheet(EditSheet.STYLE) },
             )
             Pill(stringResource(Res.string.edit_data), onClick = { actions.openSheet(EditSheet.DATA) })
-            Pill(stringResource(Res.string.edit_text), onClick = { actions.openSheet(EditSheet.TEXT) })
             Pill(
                 stringResource(Res.string.edit_opacity, "${(video.overlay.opacity * 100).roundToInt()}"),
                 onClick = { actions.overlay { it.withOpacity(nextOpacity(it.opacity)) } },
@@ -1260,24 +1435,57 @@ private fun ToolChips(ui: EditUiState, video: VideoItem, actions: EditActions, o
         } else {
             Pill(stringResource(Res.string.edit_add_shot), onClick = { actions.openSheet(EditSheet.SHOT) })
         }
-        Pill(stringResource(LocalExportWording.current.save), onClick = onExport, light = true)
+        TopChip(stringResource(LocalExportWording.current.save), onClick = onExport, primary = true)
     }
 }
 
 private val FORMAT_OPTIONS = VideoFormat.entries.map { FormatOption(it.label, it.ratio) }
 
-/** The video's shape, while framing: the four formats, the current one lit. */
+/**
+ * The video's shape, while framing: the four formats as one strip on an ink ground over the picture, like the camera's
+ * lenses, the current one filled bone.
+ */
 @Composable
 private fun FormatStrip(format: VideoFormat, onPick: (VideoFormat) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
+    Row(
+        modifier
+            .background(CgColors.Surface.Base.copy(alpha = OVER_VIDEO))
+            .border(CgStroke.Hairline, CgColors.Line.Hairline)
+            .padding(CgStroke.Hairline),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         for (f in VideoFormat.entries) {
-            Pill(
-                f.label,
-                onClick = { onPick(f) },
-                light = f == format,
-                modifier = Modifier.testTag(TestTags.format(f.label)),
-            )
+            val on = f == format
+            Box(
+                Modifier.testTag(TestTags.format(f.label))
+                    .heightIn(min = CgSize.Touch)
+                    .widthIn(min = 64.dp)
+                    .background(if (on) CgColors.Brand.Bone else Color.Transparent)
+                    .selectable(on, role = Role.RadioButton, onClick = { onPick(f) })
+                    .padding(horizontal = CgSpace.S12),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    f.label,
+                    style = CgTheme.type.labelStrong,
+                    color = if (on) CgColors.Text.OnLight else CgColors.Text.Primary,
+                )
+            }
         }
+    }
+}
+
+/** The frame being framed: a signal hairline round it and bone hairlines on its thirds. */
+@Composable
+private fun FrameGuides(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val w = CgStroke.Hairline.toPx()
+        val thirds = CgColors.Text.Primary.copy(alpha = 0.25f)
+        for (i in 1..2) {
+            drawRect(thirds, Offset(size.width * i / 3f - w / 2, 0f), Size(w, size.height))
+            drawRect(thirds, Offset(0f, size.height * i / 3f - w / 2), Size(size.width, w))
+        }
+        drawRect(CgColors.Brand.Signal, Offset(w / 2, w / 2), Size(size.width - w, size.height - w), style = Stroke(w))
     }
 }
 
@@ -1301,7 +1509,6 @@ private val EditSheet.label: StringResource
         when (this) {
             EditSheet.STYLE -> Res.string.edit_style
             EditSheet.DATA -> Res.string.edit_data
-            EditSheet.TEXT -> Res.string.edit_text
             EditSheet.SHOT -> Res.string.edit_shot
             EditSheet.EXPORT -> Res.string.edit_export
         }
@@ -1323,64 +1530,112 @@ private fun EditPanel(
     footer: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    Column(
-        Modifier.fillMaxSize().padding(CgSpace.S16),
-        verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
-    ) {
+    Column(Modifier.fillMaxSize().topRule()) {
+        Row(
+            Modifier.fillMaxWidth()
+                .bottomRule()
+                .padding(start = CgSpace.S16, end = CgSpace.S12, top = CgSpace.S12, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CgSpace.S6),
+        ) {
+            Text(title.caps(), style = CgTheme.type.sheetTitle, modifier = Modifier.weight(1f))
+            tools()
+            Pill(
+                stringResource(Res.string.edit_done),
+                onClick = onDone,
+                light = true,
+                modifier = Modifier.testTag(TestTags.SheetDone),
+            )
+        }
         SegmentedControl(
             PanelPages.map { stringResource(it.label) },
             PanelPages.indexOf(page),
             onSelect = { onPage(PanelPages[it]) },
             fill = true,
             modifier = Modifier.fillMaxWidth(),
-            tags = listOf(TestTags.ToolbarStyle, TestTags.ToolbarData, TestTags.ToolbarText),
+            tags = listOf(TestTags.ToolbarStyle, TestTags.ToolbarData),
         )
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(CgSpace.S6)) {
-            Text(title, style = CgTheme.type.sheetTitle, modifier = Modifier.weight(1f))
-            tools()
-            Pill(
-                stringResource(Res.string.edit_done),
-                onClick = onDone,
-                modifier = Modifier.testTag(TestTags.SheetDone),
-            )
-        }
         Column(
-            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
             verticalArrangement = Arrangement.spacedBy(CgSpace.S12),
         ) {
             content()
         }
-        footer()
+        PanelFooter(footer)
     }
 }
 
 /**
- * The answer to a tap on the picture: a play or pause mark that swells and fades in the middle, so a tap that starts or
- * stops the video is seen to. Nothing until the first tap ([taps] counts them).
+ * The play or pause key in the middle of the picture, shown only when a tap on the picture plays or pauses it: it holds
+ * a moment and then cuts out, so the tap is seen to. Never while something else is being worked on ([idle] false: the
+ * graph picked, the picture framed).
  */
 @Composable
-private fun PlayMark(taps: Int, playing: Boolean, modifier: Modifier = Modifier) {
-    val fade = remember { Animatable(0f) }
+private fun PlayMark(taps: Int, playing: Boolean, idle: Boolean, modifier: Modifier = Modifier) {
+    val shown = remember { Animatable(0f) }
     LaunchedEffect(taps) {
-        if (taps == 0) return@LaunchedEffect
-        fade.snapTo(1f)
-        fade.animateTo(0f, tween(PLAY_MARK_MS, delayMillis = 120, easing = CgMotion.Standard))
+        if (taps > 0 && idle) {
+            shown.snapTo(1f)
+            shown.animateTo(0f, tween(CgMotion.SHORT, delayMillis = PLAY_MARK_HOLD_MS, easing = CgMotion.Linear))
+        } else shown.snapTo(0f)
     }
     Box(
         modifier
-            .size(64.dp)
-            .graphicsLayer {
-                alpha = fade.value
-                val grow = 1f + 0.25f * (1f - fade.value)
-                scaleX = grow
-                scaleY = grow
-            }
-            .clip(CircleShape)
-            .background(CgColors.Surface.Scrim.copy(alpha = 0.55f)),
+            .size(56.dp)
+            .graphicsLayer { alpha = shown.value }
+            .background(CgColors.Surface.Base.copy(alpha = 0.6f))
+            .border(CgStroke.Hairline, CgColors.Brand.Bone),
         contentAlignment = Alignment.Center,
     ) {
-        Text(if (playing) "▶" else "❚❚", style = CgTheme.type.cardTitle, color = CgColors.Text.Primary)
+        CgIcon(if (playing) CgIcons.Play else CgIcons.Pause, size = 24.dp)
     }
 }
 
-private const val PLAY_MARK_MS = 450
+private const val PLAY_MARK_HOLD_MS = 300
+
+/**
+ * Where the playhead is, as a clock: its own scope, changing only when the shown time does (tenths), so playback does
+ * not recompose the half of the screen around it every frame.
+ */
+@Composable
+private fun PlayheadClock(player: PlayerState) {
+    val shown by remember(player) { derivedStateOf { clock(player.positionUs) } }
+    Text(shown, style = CgTheme.type.pivot)
+}
+
+/**
+ * Places the content down its parent's height as `BiasAlignment(_, bias)` would (−1 top, 1 bottom), reading [bias]
+ * while laying out: an animated bias then moves the content without recomposing anything.
+ */
+private fun Modifier.biasedDown(bias: () -> Float): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints.copy(minHeight = 0))
+    val height = if (constraints.hasBoundedHeight) constraints.maxHeight else placeable.height
+    layout(placeable.width, height) {
+        val space = (height - placeable.height).toFloat()
+        placeable.place(0, (space / 2f * (1f + bias())).roundToInt())
+    }
+}
+
+/** A hairline along the bottom edge: under the top bars. */
+private fun Modifier.bottomRule(): Modifier = drawBehind {
+    val h = CgStroke.Hairline.toPx()
+    drawRect(CgColors.Line.Hairline, Offset(0f, size.height - h), Size(size.width, h))
+}
+
+/** A hairline along the leading edge: where the desk panel meets the picture. */
+private fun Modifier.startRule(): Modifier = drawBehind {
+    drawRect(CgColors.Line.Hairline, Offset.Zero, Size(CgStroke.Hairline.toPx(), size.height))
+}
+
+/** The signal along the leading edge: the desk panel's part that is open for a change. */
+private fun Modifier.leadingSignal(): Modifier = drawBehind {
+    drawRect(CgColors.Brand.Signal, Offset.Zero, Size(CgStroke.Rule.toPx(), size.height))
+}
+
+/** A hairline along the top edge: over the timeline's band. */
+private fun Modifier.topRule(): Modifier = drawBehind {
+    drawRect(CgColors.Line.Hairline, Offset.Zero, Size(size.width, CgStroke.Hairline.toPx()))
+}

@@ -147,7 +147,8 @@ fun foundNote(count: Int): UiText =
     if (count == 0) Res.string.home_searching.text() else Res.string.home_found.text(count.toString())
 
 /** The record action and the line under it (Figma "Primary action"). */
-data class RecordActionModel(val text: UiText, val caption: UiText, val enabled: Boolean)
+/** The record action: what it says, the line under it, and [withData] whether a source's graph will be drawn. */
+data class RecordActionModel(val text: UiText, val caption: UiText, val enabled: Boolean, val withData: Boolean = true)
 
 /**
  * With nothing chosen, or the chosen source offline, there is no graph to wait for: the action records without data,
@@ -161,12 +162,14 @@ fun recordAction(s: HomeUiState): RecordActionModel {
                 Res.string.home_action_without_data.text(),
                 Res.string.home_action_pick_source.text(),
                 enabled = true,
+                withData = false,
             )
         s.connection is ConnectionState.Unreachable ->
             RecordActionModel(
                 Res.string.home_action_without_data.text(),
                 Res.string.home_action_offline.text(saved.name),
                 enabled = true,
+                withData = false,
             )
         saved.isScale ->
             RecordActionModel(

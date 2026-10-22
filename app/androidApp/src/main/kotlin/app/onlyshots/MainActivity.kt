@@ -1,6 +1,7 @@
 package app.onlyshots
 
 import android.app.Application
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
@@ -11,9 +12,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import app.onlyshots.di.initKoin
+import app.onlyshots.platform.ExportNotifications
+import app.onlyshots.platform.OpenRequests
 import org.koin.android.ext.koin.androidContext
 
 class OnlyShotsApplication : Application() {
@@ -29,18 +38,20 @@ private const val SPLASH_FALLBACK_MS = 3_000L
 
 /**
  * Where the system splash's mark is, in the window: the system draws the 240 dp icon at 1.5 times its view (a 288 dp
- * icon over a 192 dp view), and the mark is 64 % of the icon (design/splash/avd.py), so 0.96 of the view, in its
- * middle. Null when the icon was never laid out (the screen was off): the app's splash then centres its own.
+ * icon over a 192 dp view), and the mark's 256 grid is 256 / 420 of the icon (design/splash/avd.py), so 0.914 of the
+ * view, in its middle. Null when the icon was never laid out (the screen was off): the app's splash then centres its
+ * own.
  */
 private fun markBounds(icon: View): Rect? {
     if (icon.width <= 0 || icon.height <= 0) return null
     val at = IntArray(2).also { icon.getLocationInWindow(it) }
-    val side = icon.width * 0.96f
+    val side = icon.width * 1.5f * 256f / 420f
     val left = at[0] + (icon.width - side) / 2f
     val top = at[1] + (icon.height - side) / 2f
     return Rect(left, top, left + side, top + side)
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // First: it swaps the starting theme for the app's before anything (edge to edge) builds the window from it.
@@ -79,7 +90,24 @@ class MainActivity : ComponentActivity() {
             // The system hands its splash over only if it showed one. Whatever happened, the app shows itself.
             main.postDelayed({ if (!splash.released) splash.release() }, SPLASH_FALLBACK_MS)
         }
+        // Started from an export's notification: the editor on that video. Not again after a rotation or a restore.
+        if (savedInstanceState == null) openFrom(intent)
         // Recording survives rotation and posture changes: the activity handles config changes itself.
-        setContent { OnlyShotsApp(splash) }
+        setContent {
+            // Test tags as resource ids, so the UI Automator smoke tests (:app:uitests) find controls by
+            // app.onlyshots.TestTags.
+            Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }, propagateMinConstraints = true) {
+                OnlyShotsApp(splash)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openFrom(intent)
+    }
+
+    private fun openFrom(intent: Intent?) {
+        intent?.getStringExtra(ExportNotifications.EXTRA_OPEN_VIDEO)?.let { OpenRequests.ask(OpenRequests.Video(it)) }
     }
 }

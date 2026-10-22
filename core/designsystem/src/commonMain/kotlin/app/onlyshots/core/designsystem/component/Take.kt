@@ -207,32 +207,6 @@ fun RuleStatusRow(text: String, done: Boolean, modifier: Modifier = Modifier, ma
 }
 
 /**
- * An amber note about the take (a format that will not record the way the screen is held, and what to do): a hairline
- * frame and Mono capitals in the warning colour over the ink.
- */
-@Composable
-fun TakeNotice(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: (() -> Unit)? = null) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .background(CgColors.Surface.Base.copy(alpha = 0.85f))
-            .border(CgStroke.Hairline, CgColors.Status.Warning)
-            .padding(horizontal = 10.dp, vertical = CgSpace.S6),
-        horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(6.dp).background(CgColors.Status.Warning))
-        Text(
-            text.caps(),
-            style = CgTheme.type.labelStrong,
-            color = CgColors.Status.Warning,
-            modifier = Modifier.weight(1f),
-        )
-        if (action != null && onAction != null) Pill(action, onClick = onAction, light = true)
-    }
-}
-
-/**
  * The source a take uses: a square live dot and its name in Mono capitals, on a 44 dp key with a hairline edge; grey
  * when there is none.
  */

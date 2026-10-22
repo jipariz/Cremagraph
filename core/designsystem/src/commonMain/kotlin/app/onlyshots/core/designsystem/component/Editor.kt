@@ -15,7 +15,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,14 +47,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -64,14 +61,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -99,7 +93,6 @@ import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion
 import app.onlyshots.core.designsystem.CgMotion.tick
-import app.onlyshots.core.designsystem.CgShape
 import app.onlyshots.core.designsystem.CgSize
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
@@ -107,18 +100,12 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.core_cancel
-import app.onlyshots.core.resources.core_choose_file
 import app.onlyshots.core.resources.core_colour_chip
 import app.onlyshots.core.resources.core_done
-import app.onlyshots.core.resources.core_drop_formats
-import app.onlyshots.core.resources.core_drop_to_open
-import app.onlyshots.core.resources.core_drop_video
 import app.onlyshots.core.resources.core_export_estimating
 import app.onlyshots.core.resources.core_export_keep_editing
 import app.onlyshots.core.resources.core_export_left
 import app.onlyshots.core.resources.core_export_making
-import app.onlyshots.core.resources.core_export_more
-import app.onlyshots.testTagsAsResourceIds
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -175,60 +162,8 @@ fun TopChip(
 }
 
 /**
- * The wide editor's main action: [text] runs it at once ([onClick]); when there is a second way to do it, the ▾ half
- * opens [menu] (its items close it with the function they are handed). The signal, like the phone's export chip.
- */
-@Composable
-fun SplitButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    menu: (@Composable (close: () -> Unit) -> Unit)? = null,
-) {
-    var open by remember { mutableStateOf(false) }
-    val moreWays = stringResource(Res.string.core_export_more)
-    Row(
-        modifier.height(IntrinsicSize.Min).heightIn(min = CgSize.Touch).background(CgColors.Brand.Signal),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.fillMaxHeight()
-                .clickable(role = Role.Button, onClick = onClick)
-                .padding(start = CgSpace.S16, end = if (menu == null) CgSpace.S16 else CgSpace.S12),
-            Alignment.Center,
-        ) {
-            Text(text.caps(), style = KeyStyle, color = CgColors.Text.OnLight, maxLines = 1)
-        }
-        if (menu != null) {
-            Box(Modifier.width(CgStroke.Hairline).fillMaxHeight().background(CgColors.Text.OnLight.copy(alpha = 0.35f)))
-            Box(Modifier.fillMaxHeight()) {
-                Box(
-                    Modifier.fillMaxHeight()
-                        .clickable(role = Role.DropdownList) { open = true }
-                        .semantics { contentDescription = moreWays }
-                        .padding(horizontal = CgSpace.S12),
-                    Alignment.Center,
-                ) {
-                    CgIcon(CgIcons.CaretDown, tint = CgColors.Text.OnLight, size = 12.dp)
-                }
-                DropdownMenu(
-                    expanded = open,
-                    onDismissRequest = { open = false },
-                    modifier = Modifier.testTagsAsResourceIds(),
-                    shape = CgShape.Chip,
-                    containerColor = CgColors.Surface.Bar,
-                    border = BorderStroke(CgStroke.Hairline, CgColors.Line.Hairline),
-                ) {
-                    menu { open = false }
-                }
-            }
-        }
-    }
-}
-
-/**
- * A menu row in the design's type, for [SplitButton] and the editor's other menus: Mono 13 capitals over a divider,
- * with a sentence under it when there is a [detail].
+ * A menu row in the design's type, for the editor's menus: Mono 13 capitals over a divider, with a sentence under it
+ * when there is a [detail].
  */
 @Composable
 fun CgMenuItem(text: String, modifier: Modifier = Modifier, detail: String? = null, onClick: () -> Unit) {
@@ -983,62 +918,6 @@ fun ColorChip(color: Color, name: String, onClick: () -> Unit, modifier: Modifie
 
 /** Material's bottom-sheet width: no sheet spans a whole tablet or desktop window. */
 val SHEET_MAX_WIDTH = 640.dp
-
-/**
- * Where a computer opens a video: a dashed square to drop a file on, with [onPick] as a button inside it (and on the
- * square itself) for those who would rather choose. [active] while a file is dragged over the window: the outline turns
- * the signal, solid, and the square says so. [busy] replaces the invitation while a video is being read.
- */
-@Composable
-fun DropZone(onPick: () -> Unit, modifier: Modifier = Modifier, active: Boolean = false, busy: String? = null) {
-    val outline = if (active) CgColors.Brand.Signal else CgColors.Line.Hairline
-    Column(
-        modifier
-            .fillMaxWidth()
-            .heightIn(min = 240.dp)
-            .background(if (active) CgColors.Surface.Raised else CgColors.Surface.Bar)
-            // The edge is made once per size and state, not on every draw.
-            .drawWithCache {
-                val stroke = (if (active) CgStroke.Rule else CgStroke.Hairline).toPx()
-                val edge =
-                    Stroke(
-                        width = stroke,
-                        pathEffect = if (active) null else PathEffect.dashPathEffect(floatArrayOf(6f, 6f)),
-                    )
-                onDrawBehind {
-                    drawRect(
-                        color = outline,
-                        topLeft = Offset(stroke / 2, stroke / 2),
-                        size = Size(size.width - stroke, size.height - stroke),
-                        style = edge,
-                    )
-                }
-            }
-            .clickable(enabled = busy == null, role = Role.Button, onClick = onPick)
-            .padding(CgSpace.S24),
-        verticalArrangement = Arrangement.spacedBy(CgSpace.S12, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        CgIcon(CgIcons.Film, tint = if (active) CgColors.Brand.Signal else CgColors.Text.Secondary, size = 40.dp)
-        Text(
-            (busy ?: stringResource(if (active) Res.string.core_drop_to_open else Res.string.core_drop_video)).caps(),
-            style = CgTheme.type.sheetTitle,
-            color = CgColors.Text.Primary,
-        )
-        if (busy == null) {
-            Text(
-                stringResource(Res.string.core_drop_formats),
-                style = CgTheme.type.caption,
-                color = CgColors.Text.Secondary,
-            )
-            CgButton(
-                stringResource(Res.string.core_choose_file),
-                onClick = onPick,
-                modifier = Modifier.padding(top = CgSpace.S4),
-            )
-        }
-    }
-}
 
 /** The export screen's one-time offer to say outside the app when the export is done. */
 data class ExportAsk(

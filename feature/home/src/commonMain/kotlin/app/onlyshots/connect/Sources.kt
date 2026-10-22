@@ -1,9 +1,6 @@
 package app.onlyshots.connect
 
 import app.onlyshots.core.model.SourceKind
-import app.onlyshots.core.resources.Res
-import app.onlyshots.core.resources.home_hint_machine
-import app.onlyshots.core.resources.home_hint_scale
 import app.onlyshots.devTools
 import app.onlyshots.machine.MachineLog
 import app.onlyshots.sources.ShotSource
@@ -14,7 +11,6 @@ import app.onlyshots.sources.machine.NetworkMachines
 import app.onlyshots.storage.AppSettings
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
-import org.jetbrains.compose.resources.StringResource
 
 /** How a source is built from a saved choice: the one place that maps a machine to its code. */
 typealias SourceFactory = suspend (CoroutineScope) -> ShotSource?
@@ -44,7 +40,3 @@ fun factoryFor(kind: SourceKind, address: String, scaleId: String?, client: Http
     val (host, port) = MachineLog.parseAddress(address, machine.defaultPort) ?: return null
     return { scope -> machine.source(client, host, port).also { it.start(scope) } }
 }
-
-/** How each source is reached, shown on its tile. */
-fun connectionHint(kind: SourceKind): StringResource =
-    if (kind == SourceKind.SCALE) Res.string.home_hint_scale else Res.string.home_hint_machine

@@ -10,5 +10,3 @@ interface PlatformShare {
      */
     fun shareVideos(files: List<Path>, onDone: () -> Unit = {})
 }
-
-fun PlatformShare.shareVideo(file: Path) = shareVideos(listOf(file))

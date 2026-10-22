@@ -268,8 +268,6 @@ fun SeriesColors.of(series: Series): Int =
 /** The series a style has a colour for, in the editor's order (targets are drawn in their series' colours). */
 val StyleSeries = listOf(Series.PRESSURE, Series.FLOW, Series.WEIGHT, Series.WEIGHT_FLOW, Series.TEMPERATURE)
 
-internal fun Int.alphaFraction(): Float = ((this ushr 24) and 0xFF) / 255f
-
 private fun Int.withAlphaOf(a: Int): Int = (this and 0xFFFFFF) or (a shl 24)
 
 private fun lighten(c: Int, t: Float): Int = mix(c, 0xFFFFFF, t)

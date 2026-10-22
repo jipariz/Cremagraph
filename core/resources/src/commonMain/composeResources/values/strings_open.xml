@@ -19,9 +19,7 @@
     <string name="open_recorded">recorded %1$s</string>
 
     <!-- Phone column -->
-    <string name="open_phone_intro">Pick a video of an espresso shot and the shot itself, then place the graph and export.</string>
     <string name="open_phone_video_title">Video</string>
-    <string name="open_phone_video_drop">drop a video here, or choose one</string>
     <string name="open_phone_video_gallery">a video of the shot, from your gallery</string>
     <string name="open_phone_shot_title">Shot</string>
     <string name="open_phone_shot_machine">a .shot file, or straight from your machine</string>

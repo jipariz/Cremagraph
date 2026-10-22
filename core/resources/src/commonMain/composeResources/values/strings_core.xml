@@ -9,7 +9,6 @@
     <string name="core_cancel">cancel</string>
 
     <!-- The wide editor's export -->
-    <string name="core_export_more">more ways to export</string>
     <string name="core_export_keep_editing">keep editing</string>
     <string name="core_export_making">Making your video</string>
     <string name="core_export_left">about %1$s left</string>
@@ -39,10 +38,6 @@
 
     <!-- Editor controls -->
     <string name="core_colour_chip">colour %1$s, tap to change</string>
-    <string name="core_drop_to_open">Drop to open</string>
-    <string name="core_drop_video">Drop a video here</string>
-    <string name="core_drop_formats">.mp4 or .mov, from the phone or the camera</string>
-    <string name="core_choose_file">choose a file</string>
 
     <!-- Timeline, for screen readers -->
     <string name="core_timeline_description">timeline, keeping %1$s to %2$s of %3$s seconds, playhead at %4$s seconds</string>

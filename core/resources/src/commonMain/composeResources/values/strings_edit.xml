@@ -132,7 +132,6 @@
     <string name="edit_export_notify_allow">allow</string>
     <string name="edit_export_notify_later">not now</string>
     <string name="edit_export_open_gallery">open in gallery</string>
-    <string name="edit_export_open_photos">open in Photos</string>
     <string name="edit_cancel">cancel</string>
     <string name="edit_no_sound">no sound</string>
     <string name="edit_with_sound">with sound</string>

@@ -16,7 +16,6 @@
     <string name="style_copy">copy</string>
     <string name="style_remove">remove</string>
     <string name="style_long_press_hint">long-press a style to copy, edit or remove it</string>
-    <string name="style_rename_style">rename style</string>
     <string name="style_name">style name</string>
     <string name="style_delete_title">delete %1$s?</string>
     <string name="style_delete_text">Videos made with it keep their look.</string>

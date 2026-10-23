@@ -11,6 +11,8 @@ import app.onlyshots.storage.ShareTempFiles
 import app.onlyshots.storage.VideoImport
 import app.onlyshots.style.StyleEditorViewModel
 import app.onlyshots.style.StyleLibrary
+import app.onlyshots.visualizer.Visualizer
+import app.onlyshots.visualizer.createVisualizer
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,8 +30,9 @@ const val LIBRARY_DIR = "libraryDir"
 
 /**
  * What the editor needs, on every platform: the library, the settings, the styles, the export manager, and the open,
- * edit and style-editor view models. A host adds its platform module (file system, directories, exporter, probe, share,
- * gallery) and a `ShotHistory` (a machine's shots, or `ShotHistory.None`).
+ * edit and style-editor view models, and visualizer.coffee for fetching a shared shot. A host adds its platform module
+ * (file system, directories, exporter, probe, share, gallery) and a `ShotHistory` (a machine's shots, or
+ * `ShotHistory.None`).
  */
 val editorModule = module {
     single { LibraryStore(get(), get<Path>(named(LIBRARY_DIR))) }
@@ -39,6 +42,7 @@ val editorModule = module {
     single { ShareTempFiles(get(), get<Path>(named(CACHE_DIR)) / "share") }
     single { AppSettingsRepo(get()) }
     single { StyleLibrary(get()) }
+    single<Visualizer> { createVisualizer() }
     single {
         ExportManager(
             store = get(),
@@ -64,9 +68,10 @@ val editorModule = module {
             get(),
             get(),
             get(),
+            get<Visualizer>(),
         )
     }
-    viewModel { OpenViewModel(get(), get(), get(), get(), get()) }
+    viewModel { OpenViewModel(get(), get(), get(), get(), get(), get()) }
     // Koin parameters cannot be null; an absent id travels as "".
     viewModel { (baseId: String, editId: String, videoId: String) ->
         StyleEditorViewModel(

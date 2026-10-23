@@ -10,6 +10,7 @@ fun machineName(kind: SourceKind, scale: String): String =
         SourceKind.GAGGIMATE -> "GaggiMate"
         SourceKind.DECENT -> "Decent DE1"
         SourceKind.SCALE -> scale
+        SourceKind.VISUALIZER -> "Visualizer"
     }
 
 /**

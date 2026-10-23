@@ -87,6 +87,8 @@ private fun pickedShotLine(words: StepWords, chosen: ChosenShot): UiText =
             when (chosen.from) {
                 ShotOrigin.File -> chosen.label.raw()
                 ShotOrigin.Machine -> Res.string.open_shot_from.text(chosen.label, machineText(chosen.shot.source))
+                ShotOrigin.Visualizer ->
+                    Res.string.open_shot_from.text(chosen.label, machineText(SourceKind.VISUALIZER))
             }
         StepWords.MobileWeb,
         StepWords.Desk -> shotLine(chosen)

@@ -17,10 +17,14 @@ import app.onlyshots.layout.WindowLayout
  */
 data class ChosenShot(val shot: Shot, val label: String, val from: ShotOrigin)
 
-/** Where a picked shot came from: a `.shot` or `.json` file, or the machine itself (which the shot names). */
+/**
+ * Where a picked shot came from: a `.shot` or `.json` file, the machine itself (which the shot names), or a share on
+ * visualizer.coffee.
+ */
 enum class ShotOrigin {
     File,
     Machine,
+    Visualizer,
 }
 
 /** What the desktop or the web says about itself on its start screen. */

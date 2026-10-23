@@ -75,8 +75,8 @@ fun EditScreen(
         }
     }
     val player = remember { PlayerState() }
-    // A Gaggiuino shot the machine uploaded on its own: SproFiler, the visualizer and the machine's own API all hand
-    // out the same file.
+    // A Gaggiuino shot the machine uploaded on its own: the visualizer and the machine's own API both hand out the
+    // same file.
     val pickShotFile = rememberShotFilePicker(viewModel::importShotFile)
     val video = ui.item
     val sound = playsSound(player.muted, video)

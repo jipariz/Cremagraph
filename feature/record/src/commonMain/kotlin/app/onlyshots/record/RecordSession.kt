@@ -363,6 +363,8 @@ class RecordSession(
                 SourceKind.GAGGIMATE -> Res.string.record_trigger_gaggimate.text()
                 SourceKind.DECENT -> Res.string.record_trigger_decent.text()
                 SourceKind.SCALE -> Res.string.record_trigger_scale.text()
+                // Never live: a fetched shot is not recorded with.
+                SourceKind.VISUALIZER -> Res.string.record_start_by_hand.text()
             }
 
         /** How a recording starts, in a few words for the rules tile: a title and an optional second line. */

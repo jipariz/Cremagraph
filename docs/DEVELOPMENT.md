@@ -228,9 +228,23 @@ bundle, sideloaded). Rotate either key? Update it there.
 
 Check after deploy: `adb shell pm get-app-links dev.parez.onlyshots`, Apple's AASA validator.
 
-**Shot files.** "from a file" reads Gaggiuino `.shot` JSON: what `GET /api/shots/{id}` gives, and what SproFiler,
-visualizer.coffee, baristagiuino give. `GaggiuinoShotFile` parses it. Arrays under `datapoints`. Time in deciseconds.
-Values ×10. Missing series left out, not guessed.
+**Shot files.** "from a file" goes through `ShotFiles.parse`, which tells three shapes apart:
+
+- Gaggiuino `.shot` JSON (`datapoints`): what `GET /api/shots/{id}` and baristagiuino give. `GaggiuinoShotFile`. Older
+  firmware: parallel arrays, time in deciseconds, values ×10. Newer: one object per reading, real units, ms.
+- visualizer.coffee's normalized shot (`timeframe` + `data.espresso_*`): any machine's, as the visualizer kept it (it
+  keeps no upload). `VisualizerShot`. A Decent's values arrive as strings, its missing goals as -1; phases are where
+  `espresso_state_change` flips sign.
+- Beanconqueror's brew (`brewFlow`, bare or under the visualizer's `brewdata`). `BeanconquerorShot`. One list per
+  sensor at its own rate, lined up by wall-clock `timestamp` (nearest within 250 ms, else left out).
+
+Missing series left out, not guessed. All shots read from the visualizer or Beanconqueror are `SourceKind.VISUALIZER`.
+
+**Visualizer.** `:visualizer` fetches a shared shot: a share code (four letters from the shot page's Share, valid about an
+hour) via `GET /api/shots/shared?code=X&with_data=1` (without `with_data` no readings), or a link / id via
+`GET /api/shots/{id}`. No account. CORS allows any origin, so the web editor fetches too (Ktor `Js` engine). 429 past 50
+requests a minute. Its own `HttpClient`, never the machine one. Bound in `editorModule`; UI tests bind a fake
+(`SharedOnVisualizer` in `uitests/.../Harness.kt`).
 
 ## Status
 

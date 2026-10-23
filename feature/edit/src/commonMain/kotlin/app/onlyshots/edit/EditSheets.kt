@@ -91,13 +91,18 @@ import app.onlyshots.core.resources.edit_status_recorded
 import app.onlyshots.core.resources.edit_time_left
 import app.onlyshots.core.resources.edit_title
 import app.onlyshots.core.resources.edit_use_another_shot
+import app.onlyshots.core.resources.edit_visualizer
 import app.onlyshots.core.resources.edit_with_sound
 import app.onlyshots.core.resources.edit_working_out
 import app.onlyshots.core.resources.unit_grams
+import app.onlyshots.core.resources.visualizer_from
+import app.onlyshots.core.resources.visualizer_from_detail
 import app.onlyshots.export.ExportManager
 import app.onlyshots.label
 import app.onlyshots.machineLabel
 import app.onlyshots.overlayTitleText
+import app.onlyshots.visualizer.VisualizerFetchForm
+import app.onlyshots.visualizer.VisualizerFetchState
 import kotlin.math.roundToInt
 import kotlin.time.TimeSource
 import org.jetbrains.compose.resources.StringResource
@@ -242,7 +247,21 @@ fun ShotSheetContent(
     onUnlock: () -> Unit = {},
     /** The host can reach machines on the network (the phones): a recent shot from one, picked on its own screen. */
     onFromMachine: (() -> Unit)? = null,
+    /** A shot shared on visualizer.coffee: turns the sheet to [visualizer]'s form. */
+    onVisualizer: (() -> Unit)? = null,
+    /** Non-null while the sheet shows the Visualizer's code-or-link form, in place of the ways in. */
+    visualizer: VisualizerFetchState? = null,
+    onFetchVisualizer: (String) -> Unit = {},
 ) {
+    if (visualizer != null) {
+        Text(
+            stringResource(Res.string.visualizer_from).caps(),
+            style = CgTheme.type.labelStrong,
+            color = CgColors.Text.Secondary,
+        )
+        VisualizerFetchForm(visualizer, onFetch = onFetchVisualizer)
+        return
+    }
     val shot = item.shot
     if (shot != null) {
         ShotCard(item, shot, onMatchByClock = onMatchByClock, onUnlock = onUnlock)
@@ -260,6 +279,13 @@ fun ShotSheetContent(
             )
             Pill(stringResource(Res.string.edit_file), onClick = onFile)
             if (onFromMachine != null) Pill(stringResource(Res.string.edit_machine), onClick = onFromMachine)
+            if (onVisualizer != null) {
+                Pill(
+                    stringResource(Res.string.edit_visualizer),
+                    onClick = onVisualizer,
+                    modifier = Modifier.testTag(TestTags.ShotFromVisualizer),
+                )
+            }
         }
     } else {
         ListRow(
@@ -272,6 +298,14 @@ fun ShotSheetContent(
                 stringResource(Res.string.edit_from_machine),
                 stringResource(Res.string.edit_from_machine_detail),
                 onClick = onFromMachine,
+            )
+        }
+        if (onVisualizer != null) {
+            ListRow(
+                stringResource(Res.string.visualizer_from),
+                stringResource(Res.string.visualizer_from_detail),
+                onClick = onVisualizer,
+                modifier = Modifier.testTag(TestTags.ShotFromVisualizer),
             )
         }
     }

@@ -275,7 +275,9 @@ and `editor/.../EditorApp.kt` (desktop, web). Web ties back stack to browser his
 - **Start** (`feature/home/.../StartScreen.kt`) offers two flows.
   - **Record live:** Home → Record → Edit (save + export) → Record.
   - **Edit by hand:** `OpenScreen` (`feature/open/`, also desktop/web start). Pick video + shot, both required. Shot
-    from file, or (phones, desktop; not web) machine's recent shots over HTTP via `MachineShotsRoute`
+    from file (`ShotFiles.parse`: Gaggiuino, visualizer.coffee, Beanconqueror), from Visualizer by share code or link
+    (`:visualizer`, every platform, web too; `VisualizerFetchForm` in `:core:ui`), or (phones, desktop; not web)
+    machine's recent shots over HTTP via `MachineShotsRoute`
     (`feature/home/MachineShotsScreen.kt`, `GaggiuinoHistory`), back through `NavResults.pickedShot` → Edit. Shot saved
     unplaced; editor lines it up. `EditRoute.manual` sends back/export to picking screen.
 - **Home** (`feature/home/`): searches machines and scales while in front (stops via `LifecycleStartEffect`). User

@@ -85,6 +85,8 @@ import app.onlyshots.core.resources.open_phone_video_title
 import app.onlyshots.core.resources.open_shot_file_detail
 import app.onlyshots.core.resources.open_video
 import app.onlyshots.core.resources.text
+import app.onlyshots.core.resources.visualizer_from
+import app.onlyshots.core.resources.visualizer_from_detail
 import app.onlyshots.layout.FoldPage
 import app.onlyshots.layout.FoldPanes
 import app.onlyshots.layout.FoldScrim
@@ -444,9 +446,14 @@ internal fun DrawScope.dashedBorder(color: Color) {
 
 // The shot sheet ---------------------------------------------------------------------------------------------------
 
-/** What the shot sheet offers: a file, and the machine where the host can reach one. */
+/** What the shot sheet offers: a file, the machine where the host can reach one, and a shot shared on Visualizer. */
 @Composable
-fun ShotSourceChoices(onFile: () -> Unit, onMachine: (() -> Unit)?, modifier: Modifier = Modifier) {
+fun ShotSourceChoices(
+    onFile: () -> Unit,
+    onMachine: (() -> Unit)?,
+    onVisualizer: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier) {
         SourceChoice(
             title = stringResource(Res.string.open_from_file),
@@ -466,6 +473,18 @@ fun ShotSourceChoices(onFile: () -> Unit, onMachine: (() -> Unit)?, modifier: Mo
             ) {
                 // The machine's colour bar, as its rows wear it.
                 Box(Modifier.size(width = CgSpace.S4, height = CgSpace.S24).background(CgColors.Machine.Gaggiuino))
+            }
+        }
+        if (onVisualizer != null) {
+            SourceChoice(
+                title = stringResource(Res.string.visualizer_from),
+                detail = stringResource(Res.string.visualizer_from_detail),
+                onClick = onVisualizer,
+                modifier =
+                    Modifier.offset(y = -CgStroke.Hairline * (if (onMachine != null) 2 else 1))
+                        .testTag(TestTags.ShotFromVisualizer),
+            ) {
+                Box(Modifier.size(width = CgSpace.S4, height = CgSpace.S24).background(CgColors.Machine.Visualizer))
             }
         }
     }

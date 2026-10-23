@@ -2,7 +2,6 @@ package app.onlyshots.core.model
 
 import kotlin.time.Clock
 import kotlin.time.Instant
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -14,9 +13,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
 /**
- * A Gaggiuino shot as a file: what `GET /api/shots/{id}` returns, and what SproFiler, visualizer and baristagiuino hand
+ * A Gaggiuino shot as a file: what `GET /api/shots/{id}` returns, and what baristagiuino and the machine's web UI hand
  * back as a `.shot` download. Parsing it lets a shot the machine uploaded on its own reach a video that was filmed
- * without OnlyShots connected to anything.
+ * without OnlyShots connected to anything. A shot the machine sent to visualizer.coffee comes back in the visualizer's
+ * own shape instead ([VisualizerShot]); [ShotFiles] tells the two apart.
  *
  * The shape is parallel arrays under `datapoints`, every value scaled by ten and time in deciseconds:
  * ```
@@ -38,7 +38,7 @@ import kotlinx.serialization.json.longOrNull
  *
  * ponytail: the scaling and the field names come from reading other clients (`mxkissnr/gaggiuino-local-profiler`, whose
  * GaggiMate adapter reproduces this payload, and whose charts divide every series by ten), because neither Gaggiuino's
- * REST docs nor SproFiler document the body. Anything missing is left null rather than guessed, so a firmware that
+ * REST docs nor its web UI document the body. Anything missing is left null rather than guessed, so a firmware that
  * renames a series loses that curve instead of drawing a wrong one.
  */
 object GaggiuinoShotFile {
@@ -51,10 +51,6 @@ object GaggiuinoShotFile {
     /** Every reading is stored as an integer ten times its real value. */
     private const val SCALE = 10f
 
-    class NotAShotFile(message: String) : IllegalArgumentException(message)
-
-    private val json = Json { ignoreUnknownKeys = true }
-
     /**
      * @param fallbackId used when the file carries no id of its own.
      * @param now stamps a file with no timestamp, so the shot still sorts somewhere sensible.
@@ -62,11 +58,15 @@ object GaggiuinoShotFile {
     fun parse(text: String, fallbackId: String, now: () -> Instant = { Clock.System.now() }): Shot {
         val root =
             try {
-                json.parseToJsonElement(text).jsonObject
+                ShotFiles.json.parseToJsonElement(text).jsonObject
             } catch (e: Exception) {
                 throw NotAShotFile("not JSON")
             }
-        // SproFiler and the visualizer wrap the machine's payload; Gaggiuino itself does not.
+        return parse(root, fallbackId, now)
+    }
+
+    fun parse(root: JsonObject, fallbackId: String, now: () -> Instant = { Clock.System.now() }): Shot {
+        // A payload wrapped as `{"shot": …}` is read too; Gaggiuino itself does not wrap it.
         val shot = (root["shot"] as? JsonObject) ?: root
         val (samples, phaseStartsUs) =
             when (val points = shot["datapoints"]) {
@@ -163,9 +163,6 @@ object GaggiuinoShotFile {
         (this[key] as? JsonPrimitive)?.let { it.longOrNull ?: it.doubleOrNull?.toLong() }
 
     private fun JsonObject.float(key: String): Float? = (this[key] as? JsonPrimitive)?.floatOrNull
-
-    private fun JsonObject.text(key: String): String? =
-        (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
 
     private fun JsonObject.numbers(key: String): List<Long>? =
         (this[key] as? JsonArray)?.map { it.jsonPrimitive.longOrNull ?: 0L }

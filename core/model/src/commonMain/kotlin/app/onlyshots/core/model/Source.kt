@@ -8,6 +8,8 @@ enum class SourceKind {
     GAGGIMATE,
     DECENT,
     SCALE,
+    /** A shot fetched from visualizer.coffee, or read from its download: never a live source. */
+    VISUALIZER,
 }
 
 @Serializable
@@ -70,6 +72,8 @@ data class Capabilities(
                     )
                 SourceKind.DECENT ->
                     Capabilities(Series.entries.toSet(), phases = true, history = true, Trigger.SHOT_START)
+                // Read after the fact, whatever machine made it: no live series to promise.
+                SourceKind.VISUALIZER -> Capabilities(emptySet(), phases = false, history = false, Trigger.FIRST_DROPS)
                 SourceKind.SCALE ->
                     Capabilities(
                         series = setOf(Series.WEIGHT, Series.WEIGHT_FLOW),

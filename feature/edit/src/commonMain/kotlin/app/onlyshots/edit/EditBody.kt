@@ -204,6 +204,9 @@ private fun SheetBody(
                 onMatchByClock = actions::matchByClock,
                 onUnlock = actions::unlockShotStart,
                 onFromMachine = LocalFromMachine.current,
+                onVisualizer = if (ui.hasVisualizer) actions::openVisualizer else null,
+                visualizer = ui.visualizer,
+                onFetchVisualizer = actions::fetchFromVisualizer,
             )
         EditSheet.EXPORT ->
             ExportSheetContent(

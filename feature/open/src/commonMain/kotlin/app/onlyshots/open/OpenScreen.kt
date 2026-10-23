@@ -14,10 +14,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.open_sheet_title
+import app.onlyshots.core.resources.visualizer_from
 import app.onlyshots.layout.LocalWindowLayout
 import app.onlyshots.platform.rememberShotFilePicker
 import app.onlyshots.platform.rememberVideoPicker
 import app.onlyshots.platform.videoDrop
+import app.onlyshots.visualizer.VisualizerFetchForm
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.compose.resources.stringResource
@@ -25,9 +27,9 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * Every editor's start: pick the video and its shot, then open the editor, which lines the shot up. Both are needed:
- * the editor is for putting a shot's graph on a video. The shot comes from a `.shot` file, or from the machine itself
- * where the host can reach one ([onFromMachine]: the phones and the desktop, not the web), whose picker hands the shot
- * back through [pickedShot].
+ * the editor is for putting a shot's graph on a video. The shot comes from a `.shot` or `.json` file, from
+ * visualizer.coffee by a share code or link, or from the machine itself where the host can reach one ([onFromMachine]:
+ * the phones and the desktop, not the web), whose picker hands the shot back through [pickedShot].
  *
  * The phones come here from their start screen ([OpenEntry.PhoneApp]); the desktop and the web start here and take a
  * dropped video ([OpenEntry.Desk]).
@@ -55,19 +57,18 @@ fun OpenScreen(
     }
     val videoPicker = rememberVideoPicker(viewModel::pickVideo)
     val shotFilePicker = rememberShotFilePicker(viewModel::chooseFile)
-    var choosingSource by remember { mutableStateOf(false) }
+    val visualizerFetch by viewModel.visualizerFetch.collectAsStateWithLifecycle()
+    var sheet by remember { mutableStateOf<ShotSheet?>(null) }
     var dragging by remember { mutableStateOf(false) }
     val currentOnOpen by rememberUpdatedState(onOpen)
     val machineReachable = onFromMachine != null
     val actions =
-        remember(viewModel, videoPicker, shotFilePicker, machineReachable) {
+        remember(viewModel, videoPicker) {
             object : OpenActions {
                 override fun pickVideo() = videoPicker()
 
-                // With the file the only way (the web), the file picker opens at once rather than a sheet with one
-                // choice.
                 override fun pickShot() {
-                    if (machineReachable) choosingSource = true else shotFilePicker()
+                    sheet = ShotSheet.Choices
                 }
 
                 override fun openEditor() = viewModel.openWith { currentOnOpen(it) }
@@ -88,24 +89,41 @@ fun OpenScreen(
             actions = actions,
             modifier = Modifier.videoDrop(onFile = viewModel::pickVideo, onHover = { dragging = it }),
         )
-        if (choosingSource) {
+        sheet?.let { page ->
             ShotSourceSheet(
                 entry,
+                page,
                 onFile = {
-                    choosingSource = false
+                    sheet = null
                     shotFilePicker()
                 },
                 onMachine =
                     onFromMachine?.let { open ->
                         {
-                            choosingSource = false
+                            sheet = null
                             open()
                         }
                     },
-                onDismiss = { choosingSource = false },
+                onVisualizer = { sheet = ShotSheet.Visualizer },
+                visualizer = {
+                    VisualizerFetchForm(
+                        visualizerFetch,
+                        onFetch = { viewModel.fetchFromVisualizer(it) { sheet = null } },
+                    )
+                },
+                onDismiss = {
+                    if (page == ShotSheet.Visualizer) viewModel.visualizerClosed()
+                    sheet = null
+                },
             )
         }
     }
+}
+
+/** The shot sheet's page: the ways to get a shot, or the Visualizer's code and link. */
+private enum class ShotSheet {
+    Choices,
+    Visualizer,
 }
 
 /**
@@ -115,15 +133,25 @@ fun OpenScreen(
 @Composable
 private fun ShotSourceSheet(
     entry: OpenEntry,
+    page: ShotSheet,
     onFile: () -> Unit,
     onMachine: (() -> Unit)?,
+    onVisualizer: () -> Unit,
+    visualizer: @Composable () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val layout = LocalWindowLayout.current
-    val title = stringResource(Res.string.open_sheet_title)
+    val title =
+        stringResource(if (page == ShotSheet.Visualizer) Res.string.visualizer_from else Res.string.open_sheet_title)
+    val content: @Composable () -> Unit = {
+        when (page) {
+            ShotSheet.Choices -> ShotSourceChoices(onFile, onMachine, onVisualizer)
+            ShotSheet.Visualizer -> visualizer()
+        }
+    }
     if (shotSheetIsFoldPage(entry, layout)) {
-        FoldPageSheet(title, layout, onDismiss) { ShotSourceChoices(onFile, onMachine) }
+        FoldPageSheet(title, layout, onDismiss) { content() }
     } else {
-        CgSheet(title = title, onDismiss = onDismiss) { ShotSourceChoices(onFile, onMachine) }
+        CgSheet(title = title, onDismiss = onDismiss) { content() }
     }
 }

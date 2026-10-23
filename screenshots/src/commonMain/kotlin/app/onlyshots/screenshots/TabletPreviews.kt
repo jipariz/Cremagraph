@@ -141,7 +141,7 @@ private val scaleConnected =
 
 @Composable
 private fun HomeScale() =
-    HomeBody(scaleConnected, {}, {}, {}, {}, {}, take = NextTake(live = Sample(0, weight = 0f, flow = 0f)))
+    HomeBody(scaleConnected, {}, {}, {}, {}, {}, take = { NextTake(live = Sample(0, weight = 0f, flow = 0f)) })
 
 @Mugshot
 @MugshotDevices(MugshotDevice.TABLET)

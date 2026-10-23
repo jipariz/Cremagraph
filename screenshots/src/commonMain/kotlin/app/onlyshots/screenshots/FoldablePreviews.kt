@@ -102,14 +102,14 @@ private val armed =
 @MugshotDevices(MugshotDevice.FOLDABLE)
 @Preview
 @Composable
-internal fun HomeBookOpen() = Book { HomeBody(connected, {}, {}, {}, {}, {}, take = NextTake(live = idleReading)) }
+internal fun HomeBookOpen() = Book { HomeBody(connected, {}, {}, {}, {}, {}, take = { NextTake(live = idleReading) }) }
 
 /** The iPhone Duo open: the inner display is landscape. */
 @Mugshot
 @MugshotDevices(MugshotDevice.TABLET)
 @Preview
 @Composable
-internal fun HomeDuoOpen() = Book { HomeBody(connected, {}, {}, {}, {}, {}, take = NextTake(live = idleReading)) }
+internal fun HomeDuoOpen() = Book { HomeBody(connected, {}, {}, {}, {}, {}, take = { NextTake(live = idleReading) }) }
 
 // Record ----------------------------------------------------------------------------------
 

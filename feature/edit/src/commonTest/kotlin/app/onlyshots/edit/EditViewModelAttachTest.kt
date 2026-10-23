@@ -3,9 +3,12 @@ package app.onlyshots.edit
 import app.onlyshots.core.model.Origin
 import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.Quality
+import app.onlyshots.core.model.Shot
 import app.onlyshots.core.model.ShotHistory
+import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.VideoFormat
 import app.onlyshots.core.model.VideoItem
+import app.onlyshots.core.model.sample.SampleShots
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.edit_no_pump_at_zero
 import app.onlyshots.core.resources.text
@@ -256,6 +259,34 @@ class EditViewModelAttachTest {
         assertEquals(before.overlay.rect.refit(VideoFormat.PORTRAIT_9_16, VideoFormat.SQUARE_1_1), square.overlay.rect)
         vm.undo()
         assertEquals(before, vm.ui.value.item)
+    }
+
+    @Test
+    fun aPickedShotHandedOverAsJsonIsAttachedOnceTheVideoIsIn() = runTest {
+        val vm = viewModel(video(), sound = null)
+        vm.attachPickedShot(SidecarCodec.json.encodeToString(Shot.serializer(), SampleShots.zer0))
+        val item = vm.ui.first { it.item?.shot != null && it.busy == null }.item!!
+        assertEquals(SampleShots.zer0.id, item.shot?.id)
+        assertEquals(0L, item.shotStartInVideoUs)
+    }
+
+    @Test
+    fun aPickedShotThatIsNotAShotIsDropped() = runTest {
+        val vm = viewModel(video(), sound = null)
+        vm.ui.first { it.item != null }
+        vm.attachPickedShot("not a shot")
+        assertNull(vm.ui.value.item?.shot)
+    }
+
+    @Test
+    fun theGraphPageFollowsTheGraphsSheetsAndStaysForTheOthers() = runTest {
+        val vm = viewModel(video(), sound = null)
+        vm.ui.first { it.item != null }
+        vm.openSheet(EditSheet.DATA)
+        vm.openSheet(EditSheet.EXPORT)
+        assertEquals(EditSheet.DATA, vm.ui.value.graphPage)
+        vm.closeSheet()
+        assertEquals(EditSheet.DATA, vm.ui.value.graphPage)
     }
 }
 

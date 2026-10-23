@@ -11,6 +11,7 @@ import app.onlyshots.core.model.Reframe
 import app.onlyshots.core.model.Shot
 import app.onlyshots.core.model.ShotHistory
 import app.onlyshots.core.model.ShotSummary
+import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.VideoFormat
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
@@ -49,6 +50,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,6 +83,8 @@ data class EditUiState(
     /** The source picture's width over height as shown, once read: how far it reaches past the frame. */
     val sourceAspect: Float? = null,
     val sheet: EditSheet? = null,
+    /** The graph's page (style or data) shown last: a wide panel stays on it while the export borrows the sheet. */
+    val graphPage: EditSheet = EditSheet.STYLE,
     val busy: UiText? = null,
     val message: UiText? = null,
     /** Frames across the clip for the filmstrip, in order; empty until they are all made. */
@@ -143,6 +147,8 @@ class EditViewModel(
             }
             state = EditState(item)
             publish()
+            // The machine's shots, for the shot pickers to list under the file.
+            if (ui.value.hasShotHistory) loadShots()
             val info = withContext(work) { runCatching { probe.info(store.videoPath(item)) }.getOrNull() }
             sourceAspect = info?.aspect
             val qualities = availableQualities(info?.shortSidePx ?: 0, probe.supports4k())
@@ -296,7 +302,7 @@ class EditViewModel(
 
     override fun openSheet(sheet: EditSheet) {
         if (sheet == EditSheet.SHOT) loadShots()
-        ui.update { it.copy(sheet = sheet) }
+        ui.update { it.copy(sheet = sheet, graphPage = graphPage(sheet, it.graphPage)) }
     }
 
     override fun closeSheet() = ui.update { it.copy(sheet = null, savedToGallery = false) }
@@ -343,10 +349,16 @@ class EditViewModel(
     }
 
     /**
-     * A whole shot handed in from outside the editor (the phones' machine shot picker), attached as one picked here.
+     * A shot handed over as JSON (the phones' machine shot picker loads it outside the editor), attached once the video
+     * is in. Anything that does not read as a shot is dropped.
      */
-    fun attachShot(shot: Shot) {
+    fun attachPickedShot(json: String) {
         viewModelScope.launch {
+            ui.first { it.item != null }
+            val shot =
+                withContext(work) {
+                    runCatching { SidecarCodec.json.decodeFromString(Shot.serializer(), json) }.getOrNull()
+                } ?: return@launch
             attach(shot)
             ui.update { it.copy(busy = null) }
         }

@@ -159,6 +159,13 @@ internal fun EditDuoOpen() = Book { EditUi(sheet = null, selected = false) }
 @Composable
 internal fun EditTabletop() = OnItsSide { EditUi(sheet = null, selected = false) }
 
+/** Exporting on its side: the export's own screen over both halves, as on a phone. */
+@Mugshot
+@MugshotDevices(MugshotDevice.TABLET)
+@Preview
+@Composable
+internal fun EditTabletopExporting() = OnItsSide { EditUi(sheet = EditSheet.EXPORT, exporting = 0.42f) }
+
 @Mugshot
 @MugshotDevices(MugshotDevice.PHONE)
 @Preview

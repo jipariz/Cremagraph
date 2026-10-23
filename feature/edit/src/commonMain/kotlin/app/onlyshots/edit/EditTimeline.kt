@@ -173,9 +173,7 @@ fun EditTimeline(
                     val inOverview = y < RULER_TOP.dp.toPx()
                     if (inOverview && y < (OVERVIEW - 8).dp.toPx()) return@awaitEachGesture
                     fun overviewUs(x: Float): Long =
-                        (((x - pad) / (size.width - 2 * pad)) * current.durationUs)
-                            .toLong()
-                            .coerceIn(0, current.durationUs)
+                        TimelineMath.overviewUs(x, size.width.toFloat(), pad, current.durationUs)
                     fun clampToTrim(us: Long) = us.coerceIn(current.trimInUs, current.trimOutUs)
 
                     val grip =
@@ -228,11 +226,7 @@ fun EditTimeline(
                                 val outUs = if (grip == TimelineHandle.TRIM_OUT) us else current.trimOutUs
                                 val next = current.trimmed(inUs, outUs)
                                 // A locked start stops the handle: felt as it is reached.
-                                val stopped =
-                                    current.syncLocked &&
-                                        (next.trimInUs != inUs.coerceAtLeast(0) && grip == TimelineHandle.TRIM_IN ||
-                                            next.trimOutUs != outUs.coerceAtMost(current.durationUs) &&
-                                                grip == TimelineHandle.TRIM_OUT)
+                                val stopped = TimelineMath.trimStopped(current, next, grip, inUs, outUs)
                                 snapped(if (stopped) SnapTarget.SHOT_START else label)
                                 act.trim(inUs, outUs, push)
                                 // The playhead rides the handle in the same frame, not after the trim comes back.
@@ -272,9 +266,7 @@ fun EditTimeline(
                                 pinchStart = d
                                 pinchScale = view().scale
                             } else if (pinchStart > 0f) {
-                                val fit = view().fitScale
-                                val s = (pinchScale * d / pinchStart).coerceIn(fit, TimelineMath.MAX_PX_PER_SECOND)
-                                act.zoom(if (s <= fit * 1.05f) null else s / fit)
+                                act.zoom(TimelineMath.pinchZoom(pinchScale, pinchStart, d, view().fitScale))
                             }
                             pressed.forEach(PointerInputChange::consume)
                             continue

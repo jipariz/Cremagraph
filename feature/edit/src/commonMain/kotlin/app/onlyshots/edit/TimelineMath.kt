@@ -135,6 +135,31 @@ object TimelineMath {
     fun rulerStep(pxPerSecond: Float, minPx: Float): Float =
         rulerSteps.firstOrNull { it * pxPerSecond >= minPx } ?: rulerSteps.last()
 
+    /** Where a press at [x] on the overview (the whole clip between the [padPx] margins of [widthPx]) points. */
+    fun overviewUs(x: Float, widthPx: Float, padPx: Float, durationUs: Long): Long =
+        (((x - padPx) / (widthPx - 2 * padPx)) * durationUs).toLong().coerceIn(0, durationUs)
+
+    /**
+     * Whether a trim handle dragged to [inUs] or [outUs] was stopped short of it by a locked shot start: [next] is the
+     * trim [current] took. Felt as it is reached.
+     */
+    fun trimStopped(current: VideoItem, next: VideoItem, handle: TimelineHandle, inUs: Long, outUs: Long): Boolean =
+        current.syncLocked &&
+            (handle == TimelineHandle.TRIM_IN && next.trimInUs != inUs.coerceAtLeast(0) ||
+                handle == TimelineHandle.TRIM_OUT && next.trimOutUs != outUs.coerceAtMost(current.durationUs))
+
+    /**
+     * The zoom a pinch asks for: the scale at its start ([startScale] px per second) grown as the fingers spread from
+     * [startDistance] to [distance], kept between the fitted [fitScale] and [MAX_PX_PER_SECOND]. Within 5 % of fitted
+     * it snaps back to fitted (null); otherwise a factor over fitted.
+     */
+    fun pinchZoom(startScale: Float, startDistance: Float, distance: Float, fitScale: Float): Float? {
+        val s = (startScale * distance / startDistance).coerceIn(fitScale, MAX_PX_PER_SECOND)
+        return if (s <= fitScale * PINCH_FIT_SNAP) null else s / fitScale
+    }
+
+    private const val PINCH_FIT_SNAP = 1.05f
+
     /** The playhead moved by one frame at [fps], kept inside the trim. */
     fun stepFrame(item: VideoItem, playheadUs: Long, frames: Int, fps: Float = 30f): Long =
         (playheadUs + (frames * 1e6f / fps).toLong()).coerceIn(item.trimInUs, item.trimOutUs)

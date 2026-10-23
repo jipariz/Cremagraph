@@ -162,4 +162,39 @@ class TimelineMathTest {
         // A hair inside the shot is the clocks, not a cut.
         assertEquals(null, TimelineMath.shotCut(take.copy(trimInUs = 3_100_000)))
     }
+
+    @Test
+    fun theOverviewPointsAcrossTheWholeClipBetweenItsMargins() {
+        assertEquals(0L, TimelineMath.overviewUs(16f, width + 32f, 16f, 30_000_000))
+        assertEquals(15_000_000L, TimelineMath.overviewUs(16f + width / 2, width + 32f, 16f, 30_000_000))
+        assertEquals(30_000_000L, TimelineMath.overviewUs(width + 100f, width + 32f, 16f, 30_000_000))
+        assertEquals(0L, TimelineMath.overviewUs(0f, width + 32f, 16f, 30_000_000))
+    }
+
+    @Test
+    fun aLockedStartStopsATrimHandleAndOnlyThen() {
+        val locked = item.copy(syncLocked = true)
+        val stoppedAtStart = locked.trimmed(20_000_000, locked.trimOutUs)
+        // The start at 0:15 holds the in handle there.
+        assertEquals(15_000_000L, stoppedAtStart.trimInUs)
+        assertEquals(
+            true,
+            TimelineMath.trimStopped(locked, stoppedAtStart, TimelineHandle.TRIM_IN, 20_000_000, locked.trimOutUs),
+        )
+        val free = item.trimmed(20_000_000, item.trimOutUs)
+        assertEquals(false, TimelineMath.trimStopped(item, free, TimelineHandle.TRIM_IN, 20_000_000, item.trimOutUs))
+        // The other handle is not stopped by a stop on this one.
+        assertEquals(
+            false,
+            TimelineMath.trimStopped(locked, locked, TimelineHandle.TRIM_OUT, 20_000_000, locked.trimOutUs),
+        )
+    }
+
+    @Test
+    fun aPinchZoomsByTheSpreadAndSnapsBackNearFitted() {
+        assertEquals(2f, TimelineMath.pinchZoom(10f, 100f, 200f, fitScale = 10f))
+        assertEquals(null, TimelineMath.pinchZoom(10f, 100f, 104f, fitScale = 10f))
+        assertEquals(null, TimelineMath.pinchZoom(10f, 100f, 50f, fitScale = 10f))
+        assertEquals(TimelineMath.MAX_PX_PER_SECOND / 10f, TimelineMath.pinchZoom(10f, 1f, 1000f, fitScale = 10f))
+    }
 }

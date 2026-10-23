@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -24,15 +25,19 @@ import org.jetbrains.compose.resources.stringResource
  * which dims under [FoldScrim] until the page is done.
  */
 
-/** A sheet as a fold's page: its header under a signal rule, then [content]. */
+/**
+ * A sheet as a fold's page: its header under a signal rule, then [content]. [contentPadding] keeps both clear of the
+ * window's edges where the page meets them; the rule stays at the page's top.
+ */
 @Composable
 fun FoldPage(
     title: String,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(modifier.fillMaxSize().topRule().padding(top = CgStroke.Rule)) {
+    Column(modifier.fillMaxSize().topRule().padding(top = CgStroke.Rule).padding(contentPadding)) {
         SheetHeader(title, onDone = onDismiss)
         content()
     }

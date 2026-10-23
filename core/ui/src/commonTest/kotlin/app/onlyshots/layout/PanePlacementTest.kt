@@ -53,6 +53,12 @@ class PanePlacementTest {
     }
 
     @Test
+    fun anUnsizedPanelIsHalfAMediumWindowAndTheDeskPanelOnAnExpandedOne() {
+        assertEquals(390f, defaultPanelWidthDp(800f, gapDp = 20f))
+        assertEquals(380f, defaultPanelWidthDp(1280f, gapDp = 20f))
+    }
+
+    @Test
     fun aFrameFitsByItsTighterSide() {
         assertEquals(800f to 450f, fitRatio(800f, 864f, wide))
         assertEquals(486f to 864f, fitRatio(800f, 864f, tall))

@@ -35,7 +35,6 @@ import app.onlyshots.connect.color
 import app.onlyshots.connect.label
 import app.onlyshots.connect.labelRes
 import app.onlyshots.core.designsystem.CgColors
-import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion.tick
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
@@ -69,11 +68,9 @@ import app.onlyshots.core.resources.edit_file
 import app.onlyshots.core.resources.edit_from_machine
 import app.onlyshots.core.resources.edit_from_machine_detail
 import app.onlyshots.core.resources.edit_graph
-import app.onlyshots.core.resources.edit_graph_start
 import app.onlyshots.core.resources.edit_keep_open
 import app.onlyshots.core.resources.edit_legend
 import app.onlyshots.core.resources.edit_machine
-import app.onlyshots.core.resources.edit_match_by_clock
 import app.onlyshots.core.resources.edit_no_sound
 import app.onlyshots.core.resources.edit_not_in_shot
 import app.onlyshots.core.resources.edit_number_phases
@@ -338,21 +335,13 @@ fun ShotSheetContent(
 private fun ShotCard(item: VideoItem, shot: Shot, onMatchByClock: () -> Unit, onUnlock: () -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
         Column(Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline)) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
-                horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(Modifier.width(4.dp).height(36.dp).background(machineColor(shot.source)))
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(shot.profileName.caps(), style = CgTheme.type.cardTitle)
-                    Text(
-                        machineLabel(shot.source).caps(),
-                        style = CgTheme.type.data,
-                        color = CgColors.Text.Secondary,
-                    )
-                }
-            }
+            ShotSummaryRow(
+                color = machineColor(shot.source),
+                title = shot.profileName,
+                subtitle = machineLabel(shot.source).caps(),
+                titleStyle = CgTheme.type.cardTitle,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
+            )
             Rule()
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                 ShotNumber(stringResource(Res.string.edit_number_time), clock(shot.durationUs))
@@ -382,14 +371,7 @@ private fun ShotCard(item: VideoItem, shot: Shot, onMatchByClock: () -> Unit, on
                 Text(stringResource(shotStatus(item)), style = CgTheme.type.bodySmall, color = tone)
             }
         }
-        // The machine or scale may have started the take a little early or late: the start can still be moved.
-        // The camera's clock and the machine's agree on where the shot starts: one tap lines it up.
-        when {
-            item.syncLocked ->
-                Pill(stringResource(Res.string.edit_graph_start), onClick = onUnlock, icon = CgIcons.Lock)
-            item.shotStartByClock() != null ->
-                Pill(stringResource(Res.string.edit_match_by_clock), onClick = onMatchByClock)
-        }
+        ShotStartPill(item, onUnlock = onUnlock, onMatchByClock = onMatchByClock)
     }
 }
 

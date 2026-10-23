@@ -16,10 +16,13 @@ import app.onlyshots.home.MachineShotsUiState
 import app.onlyshots.home.NextTake
 import app.onlyshots.home.SavedSource
 import app.onlyshots.home.StartBody
-import app.onlyshots.layout.LayoutKind
 import app.onlyshots.layout.LocalWindowLayout
-import app.onlyshots.layout.WindowLayout
+import app.onlyshots.layout.bookLayout
+import app.onlyshots.layout.stackedLayout
+import app.onlyshots.layout.tinyLayout
 import app.onlyshots.open.OpenBody
+import app.onlyshots.open.OpenEntry
+import app.onlyshots.open.OpenUi
 import app.onlyshots.privacy.PrivacyScreen
 import app.onlyshots.record.RecordPhase
 import app.onlyshots.record.RecordUiState
@@ -40,7 +43,7 @@ import uk.co.fractalmotion.mugshot.annotations.MugshotDevices
 @Composable
 private fun Book(content: @Composable () -> Unit) = CgTheme {
     BoxWithConstraints {
-        val layout = WindowLayout(LayoutKind.Wide, splitDp = maxWidth.value / 2f, hingeDp = 0f, fold = true)
+        val layout = bookLayout(maxWidth.value, maxHeight.value)
         CompositionLocalProvider(LocalWindowLayout provides layout) { content() }
     }
 }
@@ -49,13 +52,7 @@ private fun Book(content: @Composable () -> Unit) = CgTheme {
 @Composable
 private fun OnItsSide(content: @Composable () -> Unit) = CgTheme {
     BoxWithConstraints {
-        val layout =
-            WindowLayout(
-                LayoutKind.Stacked,
-                splitDp = maxHeight.value / 2f,
-                hingeDp = 0f,
-                onItsSide = maxWidth > maxHeight,
-            )
+        val layout = stackedLayout(maxWidth.value, maxHeight.value)
         CompositionLocalProvider(LocalWindowLayout provides layout) { content() }
     }
 }
@@ -63,7 +60,9 @@ private fun OnItsSide(content: @Composable () -> Unit) = CgTheme {
 /** A flip's cover screen, or a sliver of split screen. */
 @Composable
 private fun Cover(content: @Composable () -> Unit) = CgTheme {
-    CompositionLocalProvider(LocalWindowLayout provides WindowLayout(LayoutKind.Tiny)) { content() }
+    BoxWithConstraints {
+        CompositionLocalProvider(LocalWindowLayout provides tinyLayout(maxWidth.value, maxHeight.value)) { content() }
+    }
 }
 
 private val machine = FoundMachine(NetworkMachines.all.first(), "10.0.1.42", 80, "gaggiuino.local")
@@ -105,14 +104,14 @@ private val armed =
 @MugshotDevices(MugshotDevice.FOLDABLE)
 @Preview
 @Composable
-internal fun HomeBookOpen() = Book { HomeBody(connected, {}, {}, {}, {}, {}, take = NextTake(live = idleReading)) }
+internal fun HomeBookOpen() = Book { HomeBody(connected, {}, {}, {}, {}, {}, take = { NextTake(live = idleReading) }) }
 
 /** The iPhone Duo open: the inner display is landscape. */
 @Mugshot
 @MugshotDevices(MugshotDevice.TABLET)
 @Preview
 @Composable
-internal fun HomeDuoOpen() = Book { HomeBody(connected, {}, {}, {}, {}, {}, take = NextTake(live = idleReading)) }
+internal fun HomeDuoOpen() = Book { HomeBody(connected, {}, {}, {}, {}, {}, take = { NextTake(live = idleReading) }) }
 
 // Record ----------------------------------------------------------------------------------
 
@@ -162,6 +161,13 @@ internal fun EditDuoOpen() = Book { EditUi(sheet = null, selected = false) }
 @Composable
 internal fun EditTabletop() = OnItsSide { EditUi(sheet = null, selected = false) }
 
+/** Exporting on its side: the export's own screen over both halves, as on a phone. */
+@Mugshot
+@MugshotDevices(MugshotDevice.TABLET)
+@Preview
+@Composable
+internal fun EditTabletopExporting() = OnItsSide { EditUi(sheet = EditSheet.EXPORT, exporting = 0.42f) }
+
 @Mugshot
 @MugshotDevices(MugshotDevice.PHONE)
 @Preview
@@ -196,15 +202,7 @@ internal fun MachineShotsBookOpen() = Book {
 @Composable
 internal fun OpenBookOpen() = Book {
     OpenBody(
-        picked = pickedVideo,
-        pickedFile = pickedFile,
-        shot = null,
-        status = null,
-        onPickVideo = {},
-        onPickShot = {},
-        onOpenEditor = {},
-        fromMachine = false,
-        // The phone app's Open, which has a way back; without one it is the desktop's and the web's page.
-        onBack = {},
+        OpenUi(picked = pickedVideo, pickedFile = pickedFile, fromMachine = false),
+        OpenEntry.PhoneApp(onBack = {}),
     )
 }

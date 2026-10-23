@@ -7,6 +7,7 @@ import app.onlyshots.core.model.GaggiuinoShotFile
 import app.onlyshots.core.model.Origin
 import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.Shot
+import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.UiText
@@ -73,15 +74,16 @@ class OpenViewModel(
                 }
             if (parsed == null) status.value = Res.string.open_error_not_a_shot.text(path.name)
             else {
-                shot.value = ChosenShot(parsed, path.name, "file")
+                shot.value = ChosenShot(parsed, path.name, ShotOrigin.File)
                 status.value = null
             }
         }
     }
 
-    /** A shot from elsewhere: the machine shot picker's. */
-    fun chooseShot(picked: Shot, label: String, from: String) {
-        shot.value = ChosenShot(picked, label, from)
+    /** The shot the machine's shot picker handed back, as the sidecar writes it; one that does not decode is let go. */
+    fun chooseMachineShot(json: String) {
+        val decoded = runCatching { SidecarCodec.json.decodeFromString(Shot.serializer(), json) }.getOrNull() ?: return
+        shot.value = ChosenShot(decoded, decoded.profileName, ShotOrigin.Machine)
         status.value = null
     }
 

@@ -38,8 +38,11 @@ import app.onlyshots.home.StartBody
 import app.onlyshots.layout.ProvideWindowLayout
 import app.onlyshots.open.ChosenShot
 import app.onlyshots.open.OpenBody
+import app.onlyshots.open.OpenEntry
 import app.onlyshots.open.OpenHost
+import app.onlyshots.open.OpenUi
 import app.onlyshots.open.PickedFile
+import app.onlyshots.open.ShotOrigin
 import app.onlyshots.open.StoreLinks
 import app.onlyshots.overlay.GraphStyles
 import app.onlyshots.platform.SavedVideo
@@ -446,54 +449,20 @@ private val androidStores = StoreLinks(onPlay = {}, onAppStore = null, phone = t
 @ScreenShots
 @Preview
 @Composable
-internal fun OpenEmpty() = Screen {
-    OpenBody(
-        picked = null,
-        shot = null,
-        status = null,
-        {},
-        {},
-        {},
-        fromMachine = false,
-        host = webHost,
-        stores = computerStores,
-    )
-}
+internal fun OpenEmpty() = Screen { OpenBody(OpenUi(fromMachine = false), OpenEntry.Desk(webHost, computerStores)) }
 
 /** The web on a phone (phone size) or a tablet (tablet size): the banner, or the band with one store. */
 @ScreenShots
 @Preview
 @Composable
-internal fun OpenMobileWeb() = Screen {
-    OpenBody(
-        picked = null,
-        shot = null,
-        status = null,
-        {},
-        {},
-        {},
-        fromMachine = false,
-        host = webHost,
-        stores = androidStores,
-    )
-}
+internal fun OpenMobileWeb() = Screen { OpenBody(OpenUi(fromMachine = false), OpenEntry.Desk(webHost, androidStores)) }
 
 /** The phone's banner closed: the header's "get the app" link instead. */
 @ScreenShots
 @Preview
 @Composable
 internal fun OpenMobileWebClosed() = Screen {
-    OpenBody(
-        picked = null,
-        shot = null,
-        status = null,
-        {},
-        {},
-        {},
-        fromMachine = false,
-        host = webHost,
-        stores = androidStores.copy(bannerDismissed = true),
-    )
+    OpenBody(OpenUi(fromMachine = false), OpenEntry.Desk(webHost, androidStores.copy(bannerDismissed = true)))
 }
 
 /** The phone's page with the video picked: the shot is next. */
@@ -502,16 +471,8 @@ internal fun OpenMobileWebClosed() = Screen {
 @Composable
 internal fun OpenMobileWebPicked() = Screen {
     OpenBody(
-        picked = pickedVideo,
-        pickedFile = pickedFile,
-        shot = null,
-        status = null,
-        onPickVideo = {},
-        onPickShot = {},
-        onOpenEditor = {},
-        fromMachine = false,
-        host = webHost,
-        stores = androidStores,
+        OpenUi(picked = pickedVideo, pickedFile = pickedFile, fromMachine = false),
+        OpenEntry.Desk(webHost, androidStores),
     )
 }
 
@@ -520,17 +481,7 @@ internal fun OpenMobileWebPicked() = Screen {
 @Preview
 @Composable
 internal fun OpenPicked() = Screen {
-    OpenBody(
-        picked = pickedVideo,
-        pickedFile = pickedFile,
-        shot = null,
-        status = null,
-        onPickVideo = {},
-        onPickShot = {},
-        onOpenEditor = {},
-        fromMachine = false,
-        host = webHost,
-    )
+    OpenBody(OpenUi(picked = pickedVideo, pickedFile = pickedFile, fromMachine = false), OpenEntry.Desk(webHost))
 }
 
 /** Both picked: "open editor" lights up. */
@@ -539,15 +490,13 @@ internal fun OpenPicked() = Screen {
 @Composable
 internal fun OpenReady() = Screen {
     OpenBody(
-        picked = pickedVideo,
-        pickedFile = pickedFile,
-        shot = ChosenShot(SampleShots.zer0, "shot-1287.json", "file"),
-        status = null,
-        onPickVideo = {},
-        onPickShot = {},
-        onOpenEditor = {},
-        fromMachine = false,
-        host = webHost,
+        OpenUi(
+            picked = pickedVideo,
+            pickedFile = pickedFile,
+            shot = ChosenShot(SampleShots.zer0, "shot-1287.json", ShotOrigin.File),
+            fromMachine = false,
+        ),
+        OpenEntry.Desk(webHost),
     )
 }
 
@@ -555,45 +504,29 @@ internal fun OpenReady() = Screen {
 @ScreenShots
 @Preview
 @Composable
-internal fun OpenEmptyDesktop() = Screen {
-    OpenBody(picked = null, shot = null, status = null, {}, {}, {}, host = desktopHost)
-}
+internal fun OpenEmptyDesktop() = Screen { OpenBody(OpenUi(), OpenEntry.Desk(desktopHost)) }
 
 /** A video held over the window. */
 @ScreenShots
 @Preview
 @Composable
-internal fun OpenDragging() = Screen {
-    OpenBody(
-        picked = null,
-        shot = null,
-        status = null,
-        {},
-        {},
-        {},
-        dragging = true,
-        fromMachine = false,
-        host = webHost,
-    )
-}
+internal fun OpenDragging() = Screen { OpenBody(OpenUi(dragging = true, fromMachine = false), OpenEntry.Desk(webHost)) }
 
 @ScreenShots
 @Preview
 @Composable
-internal fun EditVideoEmpty() = Screen { OpenBody(picked = null, shot = null, status = null, {}, {}, {}, onBack = {}) }
+internal fun EditVideoEmpty() = Screen { OpenBody(OpenUi(), OpenEntry.PhoneApp(onBack = {})) }
 
 @ScreenShots
 @Preview
 @Composable
 internal fun EditVideoPicked() = Screen {
     OpenBody(
-        picked = sampleVideo.copy(shot = null),
-        shot = ChosenShot(SampleShots.zer0, SampleShots.zer0.profileName, "Gaggiuino"),
-        status = null,
-        onPickVideo = {},
-        onPickShot = {},
-        onOpenEditor = {},
-        onBack = {},
+        OpenUi(
+            picked = sampleVideo.copy(shot = null),
+            shot = ChosenShot(SampleShots.zer0, SampleShots.zer0.profileName, ShotOrigin.Machine),
+        ),
+        OpenEntry.PhoneApp(onBack = {}),
     )
 }
 

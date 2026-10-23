@@ -21,6 +21,8 @@ import app.onlyshots.layout.bookLayout
 import app.onlyshots.layout.stackedLayout
 import app.onlyshots.layout.tinyLayout
 import app.onlyshots.open.OpenBody
+import app.onlyshots.open.OpenEntry
+import app.onlyshots.open.OpenUi
 import app.onlyshots.privacy.PrivacyScreen
 import app.onlyshots.record.RecordPhase
 import app.onlyshots.record.RecordUiState
@@ -200,15 +202,7 @@ internal fun MachineShotsBookOpen() = Book {
 @Composable
 internal fun OpenBookOpen() = Book {
     OpenBody(
-        picked = pickedVideo,
-        pickedFile = pickedFile,
-        shot = null,
-        status = null,
-        onPickVideo = {},
-        onPickShot = {},
-        onOpenEditor = {},
-        fromMachine = false,
-        // The phone app's Open, which has a way back; without one it is the desktop's and the web's page.
-        onBack = {},
+        OpenUi(picked = pickedVideo, pickedFile = pickedFile, fromMachine = false),
+        OpenEntry.PhoneApp(onBack = {}),
     )
 }

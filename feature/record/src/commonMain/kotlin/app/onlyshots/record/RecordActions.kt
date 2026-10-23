@@ -1,5 +1,6 @@
 package app.onlyshots.record
 
+import app.onlyshots.core.model.NormRect
 import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.RecordingSettings
 
@@ -28,6 +29,9 @@ interface RecordActions {
 
     fun updateSettings(change: (RecordingSettings) -> RecordingSettings)
 
+    /** Where the screen shows the graph, in the frame's fractions: a graph placed outside is moved in. */
+    fun keepGraphWithin(bounds: NormRect)
+
     /** Does nothing: for previews. */
     object None : RecordActions {
         override fun recordPressed() = Unit
@@ -49,5 +53,7 @@ interface RecordActions {
         override fun updateOverlay(change: (OverlaySettings) -> OverlaySettings) = Unit
 
         override fun updateSettings(change: (RecordingSettings) -> RecordingSettings) = Unit
+
+        override fun keepGraphWithin(bounds: NormRect) = Unit
     }
 }

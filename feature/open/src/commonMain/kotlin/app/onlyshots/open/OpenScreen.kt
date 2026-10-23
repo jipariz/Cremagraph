@@ -370,8 +370,8 @@ private fun WideCompose(
             val start = WindowInsets.safeDrawing.asPaddingValues().calculateStartPadding(LocalLayoutDirection.current)
             TwoPane(
                 vertical = false,
-                splitDp = (layout.splitDp.dp - start).coerceAtLeast(0.dp),
-                hingeDp = layout.hingeDp.dp,
+                split = (layout.splitDp.dp - start).coerceAtLeast(0.dp),
+                hinge = layout.hingeDp.dp,
                 first = {
                     Column(
                         Modifier.fillMaxSize()
@@ -575,8 +575,8 @@ private fun FoldPageSheet(
     NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None)) { onDismiss() }
     TwoPane(
         vertical = false,
-        splitDp = layout.splitDp.dp,
-        hingeDp = layout.hingeDp.dp,
+        split = layout.splitDp.dp,
+        hinge = layout.hingeDp.dp,
         modifier = Modifier.testTagsAsResourceIds(),
         first = {
             Box(

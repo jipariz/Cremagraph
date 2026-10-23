@@ -366,8 +366,8 @@ fun RecordBody(
                 Box(Modifier.fillMaxSize().safeDrawingPadding()) {
                     TwoPane(
                         vertical = true,
-                        splitDp = layout.splitDp.dp,
-                        hingeDp = layout.hingeDp.dp,
+                        split = layout.splitDp.dp,
+                        hinge = layout.hingeDp.dp,
                         first = { pane(Modifier.fillMaxSize(), true) },
                         second = {
                             Box(Modifier.fillMaxSize().background(CgColors.Surface.Bar)) {

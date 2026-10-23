@@ -5,20 +5,20 @@ import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -43,10 +43,7 @@ fun WidePanes(
     layout: WindowLayout,
     modifier: Modifier = Modifier,
     placement: PanePlacement = PanePlacement.Side,
-    /**
-     * The side panel's width. By default half a medium window (as the adaptive scaffold splits it: a list beside a form
-     * both need the room) and [PANEL_WIDTH] on an expanded one; a picture beside it asks for [sidePanelWidthDp].
-     */
+    /** The side panel's width. By default [defaultPanelWidthDp]; a picture beside it asks for [sidePanelWidthDp]. */
     panelWidth: Dp? = null,
     belowHeight: Dp = 0.dp,
     /**
@@ -59,17 +56,9 @@ fun WidePanes(
     panel: @Composable () -> Unit,
 ) {
     if (layout.fold) {
-        // On a fold the panes meet at it, one page each. [layout] measures from the window's edge, the panes from
-        // inside the safe area.
-        val start = WindowInsets.safeDrawing.asPaddingValues().calculateStartPadding(LocalLayoutDirection.current)
-        TwoPane(
-            vertical = false,
-            splitDp = (layout.splitDp.dp - start).coerceAtLeast(0.dp),
-            hingeDp = layout.hingeDp.dp,
-            modifier = modifier,
-            first = main,
-            second = { Box(Modifier.fillMaxSize().background(CgColors.Surface.Bar)) { panel() } },
-        )
+        FoldPanes(layout, modifier, first = main) {
+            Box(Modifier.fillMaxSize().background(CgColors.Surface.Bar)) { panel() }
+        }
         return
     }
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -84,7 +73,7 @@ fun WidePanes(
                 } else {
                     val spacer = if (gap) layout.directive.horizontalPartitionSpacerSize.toPx() else 0f
                     val panelW =
-                        (panelWidth?.toPx() ?: if (maxWidth < EXPANDED_WIDTH) (w - spacer) / 2f else PANEL_WIDTH.toPx())
+                        (panelWidth?.toPx() ?: defaultPanelWidthDp(w.toDp().value, spacer.toDp().value).dp.toPx())
                             .coerceAtMost(w)
                     Rect(0f, 0f, (w - panelW - spacer).coerceAtLeast(0f), h) to Rect(w - panelW, 0f, w, h)
                 }
@@ -125,7 +114,26 @@ private fun Slot(rect: Rect, modifier: Modifier = Modifier, content: @Composable
     }
 }
 
-/** The side panel's width on an expanded window, as the web editor's desk layout has it. */
-val PANEL_WIDTH = 380.dp
-
-private val EXPANDED_WIDTH = 840.dp
+/**
+ * A fold's two pages, [first] and [second], meeting at it ([WindowLayout.fold]). [layout] measures the split from the
+ * window's edge; the panes measure from where they are placed, which a caller's safe-area padding (or none) moves, so
+ * the split is taken from where they land.
+ */
+@Composable
+fun FoldPanes(
+    layout: WindowLayout,
+    modifier: Modifier = Modifier,
+    first: @Composable () -> Unit,
+    second: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    var startPx by remember { mutableFloatStateOf(0f) }
+    TwoPane(
+        vertical = false,
+        split = (layout.splitDp.dp - with(density) { startPx.toDp() }).coerceAtLeast(0.dp),
+        hinge = layout.hingeDp.dp,
+        modifier = modifier.onPlaced { startPx = it.positionInWindow().x },
+        first = first,
+        second = second,
+    )
+}

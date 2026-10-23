@@ -64,7 +64,6 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.AddRow
 import app.onlyshots.core.designsystem.component.Arriving
-import app.onlyshots.core.designsystem.component.BluetoothBlue
 import app.onlyshots.core.designsystem.component.CgButton
 import app.onlyshots.core.designsystem.component.CgButtonKind
 import app.onlyshots.core.designsystem.component.CgIcon
@@ -741,12 +740,12 @@ private fun SectionLabel(text: String) {
     Text(text.caps(), style = CgTheme.type.labelStrong, color = CgColors.Text.Secondary)
 }
 
-/** The colour the graph draws this quantity in, so a tile reads as its line. */
+/** The colour the graph draws this quantity in, so a tile reads as its line (as the record screen's tiles do). */
 private fun ReadingKind.color(): Color =
     when (this) {
-        ReadingKind.Temperature -> CgColors.Status.Warning
-        ReadingKind.Pressure -> CgColors.Brand.Signal
-        ReadingKind.Weight -> BluetoothBlue
+        ReadingKind.Temperature -> CgColors.Series.Temperature
+        ReadingKind.Pressure -> CgColors.Series.Pressure
+        ReadingKind.Weight -> CgColors.Series.Weight
         ReadingKind.Flow -> CgColors.Series.Flow
         ReadingKind.WeightFlow -> CgColors.Series.WeightFlow
     }

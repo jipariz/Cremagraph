@@ -22,9 +22,8 @@ import app.onlyshots.home.HomeBody
 import app.onlyshots.home.HomeUiState
 import app.onlyshots.home.NextTake
 import app.onlyshots.home.SavedSource
-import app.onlyshots.layout.LayoutKind
 import app.onlyshots.layout.LocalWindowLayout
-import app.onlyshots.layout.WindowLayout
+import app.onlyshots.layout.wideLayout
 import app.onlyshots.sources.ConnectionState
 import uk.co.fractalmotion.mugshot.annotations.Mugshot
 import uk.co.fractalmotion.mugshot.annotations.MugshotDevice
@@ -38,7 +37,8 @@ import uk.co.fractalmotion.mugshot.annotations.MugshotDevices
 
 /**
  * An 800 × 1280 tablet held upright, drawn at 0.625 of its size so it fits Mugshot's 1280 × 800 canvas. The window
- * layout and the window's size are handed over directly: the real ones measure the canvas, which lies on its side.
+ * layout ([wideLayout], as `windowLayout` decides a medium window) and the window's size are handed over directly: the
+ * real ones measure the canvas, which lies on its side.
  */
 @Composable
 private fun PortraitTablet(content: @Composable () -> Unit) = CgTheme {
@@ -48,18 +48,20 @@ private fun PortraitTablet(content: @Composable () -> Unit) = CgTheme {
     val upright =
         object : WindowInfo by window {
             override val containerSize: IntSize =
-                IntSize((800 * scaled.density).toInt(), (1280 * scaled.density).toInt())
+                IntSize((UPRIGHT_W * scaled.density).toInt(), (UPRIGHT_H * scaled.density).toInt())
         }
     CompositionLocalProvider(
         LocalDensity provides scaled,
         LocalWindowInfo provides upright,
-        LocalWindowLayout provides WindowLayout(LayoutKind.Wide, splitDp = 560f),
+        LocalWindowLayout provides wideLayout(UPRIGHT_W.toFloat(), UPRIGHT_H.toFloat()),
     ) {
-        Box(Modifier.size(800.dp, 1280.dp)) { content() }
+        Box(Modifier.size(UPRIGHT_W.dp, UPRIGHT_H.dp)) { content() }
     }
 }
 
 private const val PORTRAIT_SCALE = 0.625f
+private const val UPRIGHT_W = 800
+private const val UPRIGHT_H = 1280
 
 /** The editor on a video of [format], the graph put down so the panel shows the video's settings. */
 @Composable

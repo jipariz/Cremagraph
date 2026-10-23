@@ -409,12 +409,12 @@ internal fun FlexPanel(take: TakeInputs, modifier: Modifier = Modifier) {
     }
 }
 
-/** The colour the graph draws this quantity in. */
+/** The colour the graph draws this quantity in (as Home's "next take" tiles do). */
 private fun Quantity.color(): Color =
     when (this) {
         Quantity.Pressure -> CgColors.Series.Pressure
         Quantity.Flow -> CgColors.Series.Flow
-        Quantity.Weight -> CgColors.Text.Primary
+        Quantity.Weight -> CgColors.Series.Weight
         Quantity.WeightFlow -> CgColors.Series.WeightFlow
         Quantity.Temperature -> CgColors.Series.Temperature
     }

@@ -478,8 +478,8 @@ fun EditBody(
         Box(Modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding().then(keys)) {
             TwoPane(
                 vertical = true,
-                splitDp = layout.splitDp.dp,
-                hingeDp = layout.hingeDp.dp,
+                split = layout.splitDp.dp,
+                hinge = layout.hingeDp.dp,
                 first = {
                     PlayerHalf(
                         ui = ui,

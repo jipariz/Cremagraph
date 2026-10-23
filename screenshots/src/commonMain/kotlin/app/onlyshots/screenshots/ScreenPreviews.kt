@@ -131,7 +131,6 @@ internal fun Record(
         actions = RecordActions.None,
         onBack = {},
         onStyleEditor = {},
-        sampleLuma = { _, _, _, _ -> null },
         picture = { modifier, _ -> picture(modifier) },
         capture = capture,
         live = { state.shot.samples.lastOrNull() },

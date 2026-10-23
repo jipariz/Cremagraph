@@ -64,12 +64,15 @@ class MachineShotsViewModel(
         startSearching()
     }
 
-    /** Back from the machine pane: from a machine's shots to the machines, from the machines to the steps. */
-    fun back() {
+    /**
+     * Back from a machine's shots to the machines: true when that is where it went. From the machines there is nothing
+     * to go back to here (false), and the screen leaves.
+     */
+    fun back(): Boolean {
+        if (state.value.machine == null) return false
         loading?.cancel()
-        val s = state.value
-        if (s.machine != null) state.update { it.copy(machine = null, shots = null, busy = null, message = null) }
-        else closeMachines()
+        state.update { it.copy(machine = null, shots = null, busy = null, message = null) }
+        return true
     }
 
     fun closeMachines() {

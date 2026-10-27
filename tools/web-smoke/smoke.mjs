@@ -1,15 +1,19 @@
-// Smoke test of the built web editor in headless Chromium: the site the deploy ships
+// Smoke test of the built web editor in headless Chromium and WebKit: the site the deploy ships
 // (`:app:webApp:composeCompatibilityBrowserDistribution`), served as is, once on the wasm build and once on the
 // Kotlin/JS fallback that browsers without WasmGC get.
 //
 //   ./gradlew :app:webApp:composeCompatibilityBrowserDistribution
-//   cd tools/web-smoke && npm ci && npx playwright install chromium && node smoke.mjs
+//   cd tools/web-smoke && npm ci && npx playwright install chromium webkit && node smoke.mjs
 //
 // Each run checks that the page's splash hands over (the app calls onlyshotsReady, which removes #splash), that the
 // editor paints its canvas (more than the background colour), and that nothing is logged as an error. The flows
 // themselves are the editor's UI tests (`:uitests:desktopTest`); Compose on the web draws to a canvas, so this checks
 // what only the browser can break: loading, the wasm/JS pick, Skia, the page's own script.
-import { chromium } from "playwright";
+//
+// WebKit is here because Safari is the one engine nobody runs by accident, and every Safari-only break has reached
+// users first. It is Playwright's own build rather than Safari itself, so it catches engine faults and not whatever
+// a real iPhone does with memory or a GPU.
+import { chromium, webkit } from "playwright";
 import { createServer } from "node:http";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { extname, join, normalize, resolve } from "node:path";
@@ -35,7 +39,12 @@ const TYPES = {
 
 // Errors that are known and not the app's: Kotlin/wasm's notice that a dependency (Compose's) still reads memory
 // through `wasmExports`; the app's own code uses `wasmMemory` (WebMemory.wasmJs.kt). Drop it once Compose updates.
-const KNOWN = [/^Accessing `memory` via `wasmExports` is deprecated/];
+// The second is Skiko asking WebGL which GPU it is on: Chrome answers, Safari does not expose the extension and logs
+// the refusal. It says nothing about whether Skia drew, which the colour count below actually checks.
+const KNOWN = [
+    /^Accessing `memory` via `wasmExports` is deprecated/,
+    /WEBGL_debug_renderer_info not enabled/,
+];
 
 // The editor's first screen, the splash's hand-over and the first frames: well within this on a CI machine.
 const READY_MS = 60_000;
@@ -57,7 +66,7 @@ function serve(root) {
     return new Promise((done) => server.listen(0, "127.0.0.1", () => done(server)));
 }
 
-async function run(browser, url, build) {
+async function run(browser, url, build, label) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     const errors = [];
     page.on("console", (m) => {
@@ -79,7 +88,7 @@ async function run(browser, url, build) {
     await page.goto(url);
     await page.waitForFunction(() => !document.getElementById("splash"), null, { timeout: READY_MS });
     const want = build === "js" ? "/originJsOnlyshots.js" : "/originWasmOnlyshots.js";
-    if (!loaded.includes(want)) throw new Error(`${build}: ${want} not loaded (loaded: ${loaded.join(", ")})`);
+    if (!loaded.includes(want)) throw new Error(`${label}: ${want} not loaded (loaded: ${loaded.join(", ")})`);
     // The first frame comes before the strings and fonts have loaded: wait until two frames in a row are the same.
     let shot = await page.screenshot();
     for (let waited = 0; waited < READY_MS; waited += 1000) {
@@ -89,7 +98,7 @@ async function run(browser, url, build) {
         shot = next;
     }
     // Set SHOTS to a folder to keep what each build drew.
-    if (process.env.SHOTS) await writeFile(join(process.env.SHOTS, `web-${build}.png`), shot);
+    if (process.env.SHOTS) await writeFile(join(process.env.SHOTS, `web-${label.replace("/", "-")}.png`), shot);
     // A canvas that is only the background is an editor that failed to draw; the Open screen has well over 100.
     const colours = await page.evaluate(async (png) => {
         const img = new Image();
@@ -102,24 +111,29 @@ async function run(browser, url, build) {
         for (let i = 0; i < d.length; i += 4 * 97) seen.add((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
         return seen.size;
     }, shot.toString("base64"));
-    if (colours < 100) throw new Error(`${build}: the page painted ${colours} colours; the editor did not draw`);
-    if (errors.length) throw new Error(`${build}: errors on the page:\n  ${errors.join("\n  ")}`);
-    console.log(`${build}: ready, ${colours} colours, no errors`);
+    if (colours < 100) throw new Error(`${label}: the page painted ${colours} colours; the editor did not draw`);
+    if (errors.length) throw new Error(`${label}: errors on the page:\n  ${errors.join("\n  ")}`);
+    console.log(`${label}: ready, ${colours} colours, no errors`);
     await page.close();
 }
 
 const server = await serve(site);
 const url = `http://127.0.0.1:${server.address().port}/`;
-const browser = await chromium.launch();
 let failed = false;
-for (const build of ["wasm", "js"]) {
-    try {
-        await run(browser, url, build);
-    } catch (e) {
-        failed = true;
-        console.error(String(e.message ?? e));
+for (const [engine, type] of [
+    ["chromium", chromium],
+    ["webkit", webkit],
+]) {
+    const browser = await type.launch();
+    for (const build of ["wasm", "js"]) {
+        try {
+            await run(browser, url, build, `${engine}/${build}`);
+        } catch (e) {
+            failed = true;
+            console.error(String(e.message ?? e));
+        }
     }
+    await browser.close();
 }
-await browser.close();
 server.close();
 process.exit(failed ? 1 : 0);

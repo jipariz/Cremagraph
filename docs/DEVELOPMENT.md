@@ -247,6 +247,13 @@ apart. A GaggiMate `.slog` is binary and known by its first four bytes; the rest
 
 Missing series left out, not guessed. All shots read from the visualizer or Beanconqueror are `SourceKind.VISUALIZER`.
 
+**Caching the web build.** `app/webApp/vercel.json` caches a wasm file for a year as `immutable`, and that rule has
+to match **content-hashed names only** (`/:hash([0-9a-f]{8,}).wasm`). The wasm build's bundles carry their hash, so a
+deploy writes a new name and the stale one is never asked for. `skiko.wasm`, which the Kotlin/JS build loads through
+`skiko.mjs`, keeps its name forever: caching it as immutable pairs a year-old wasm with a freshly revalidated loader,
+Skia never starts and the page is blank for exactly the people who visited before. Everything unmatched falls back to
+Vercel's `max-age=0, must-revalidate`, which is what `skiko.mjs` and both JS bundles already get.
+
 **Visualizer.** `:visualizer` fetches a shared shot: a share code (four letters from the shot page's Share, valid about an
 hour) via `GET /api/shots/shared?code=X&with_data=1` (without `with_data` no readings), or a link / id via
 `GET /api/shots/{id}`. No account. CORS allows any origin, so the web editor fetches too (Ktor `Js` engine). 429 past 50

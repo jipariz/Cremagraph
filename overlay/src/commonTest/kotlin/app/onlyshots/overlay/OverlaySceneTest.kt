@@ -615,6 +615,23 @@ class OverlaySceneTest {
     }
 
     @Test
+    fun everySeriesSwitchedOnIsNamedInTheLegend() {
+        // The legend used to cap at three entries and silently drop the rest, so switching weight flow or temperature
+        // on changed the curves but not the legend, which reads as the switch doing nothing.
+        val all = Series.entries.toSet()
+        fun named(selected: Set<Series>): List<String> {
+            val sc = scene(25.0, settings = OverlaySettings(series = selected))
+            val texts = sc.texts().map { it.lowercase() }
+            return visibleSeries(shot, selected).map { EnglishLabels.series(it).lowercase() }.filter { it in texts }
+        }
+        for (selected in
+            listOf(OverlaySettings.DefaultSeries, OverlaySettings.DefaultSeries + Series.WEIGHT_FLOW, all)) {
+            val expected = visibleSeries(shot, selected).map { EnglishLabels.series(it).lowercase() }
+            assertEquals(expected, named(selected), "legend does not name every drawn curve for $selected")
+        }
+    }
+
+    @Test
     fun phaseLabelsThatWouldCollideAreDropped() {
         val crowded = shot.copy(phaseStartsUs = listOf(0L, 6_000_000L, 6_200_000L, 20_000_000L))
 

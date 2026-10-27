@@ -75,6 +75,9 @@ object OverlayMetrics {
      */
     const val AXIS_FLOW_CEILING = 20f
 
+    /** How far the legend's lettering may shrink to keep every drawn curve named before any entry is given up. */
+    const val LEGEND_MIN_SCALE = 0.7f
+
     const val AXIS_HEADROOM = 1.1f
     const val TEMP_PAD = 2.5f
 
@@ -446,9 +449,6 @@ private class SceneBuilder(
     fun drawHeader(box: Box) {
         // The title row keeps its own height; the recipe, when there is one, sits under it.
         val header = if (hasRecipe) Box(box.left, box.top, box.right, box.top + OverlayMetrics.HEADER * u) else box
-        val legendSize = OverlayMetrics.LEGEND_SIZE * u
-        val swatch = OverlayMetrics.LEGEND_SWATCH * u
-        val entryGap = 7f * u
         val entries = buildList {
             if (!settings.legend) return@buildList
             series.forEach { add(LegendEntry(labels.series(it).lettered(), seriesColor(it), dashed = false)) }
@@ -456,16 +456,31 @@ private class SceneBuilder(
                 add(LegendEntry(labels.series(Series.TARGETS).lettered(), targetTextColor, dashed = true))
         }
             .toMutableList()
-        fun entryWidth(e: LegendEntry) = swatch + 3f * u + metrics.width(e.label, legendSize, 400)
-        fun legendWidth() =
-            entries.sumOf { entryWidth(it).toDouble() }.toFloat() + entryGap * (entries.size - 1).coerceAtLeast(0)
         val maxLegend = header.width * 0.62f
-        while (entries.isNotEmpty() && legendWidth() > maxLegend) {
+        // The legend says which curves are drawn, so every one of them has to be in it: a series switched on that
+        // never shows up reads as the switch doing nothing. Crowding shrinks the lettering instead of dropping
+        // entries, and only a legend that will not fit even at its smallest gives one up.
+        fun widthAt(scale: Float): Float {
+            val size = OverlayMetrics.LEGEND_SIZE * u * scale
+            val bar = OverlayMetrics.LEGEND_SWATCH * u * scale
+            val gap = 7f * u
+            return entries.sumOf { (bar + 3f * u + metrics.width(it.label, size, 400)).toDouble() }.toFloat() +
+                gap * (entries.size - 1).coerceAtLeast(0)
+        }
+        var scale = 1f
+        while (scale > OverlayMetrics.LEGEND_MIN_SCALE && widthAt(scale) > maxLegend) {
+            scale = (scale - 0.05f).coerceAtLeast(OverlayMetrics.LEGEND_MIN_SCALE)
+        }
+        while (entries.isNotEmpty() && widthAt(scale) > maxLegend) {
             // Keep the single target entry as long as any curve entry is left to drop.
             val dropAt = if (entries.size > 1 && entries.last().dashed) entries.size - 2 else entries.size - 1
             entries.removeAt(dropAt)
         }
-        val legendW = legendWidth().coerceAtLeast(0f)
+        val legendSize = OverlayMetrics.LEGEND_SIZE * u * scale
+        val swatch = OverlayMetrics.LEGEND_SWATCH * u * scale
+        val entryGap = 7f * u
+        fun entryWidth(e: LegendEntry) = swatch + 3f * u + metrics.width(e.label, legendSize, 400)
+        val legendW = widthAt(scale).coerceAtLeast(0f)
 
         val titleSize = OverlayMetrics.TITLE_SIZE * u
         val titleMax = header.width - legendW - if (entries.isEmpty()) 0f else 8f * u

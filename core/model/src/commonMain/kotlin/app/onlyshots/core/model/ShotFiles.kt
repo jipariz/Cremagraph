@@ -14,16 +14,26 @@ class NotAShotFile(message: String) : IllegalArgumentException(message)
 
 /**
  * Every shot file the app reads, told apart by shape: a Gaggiuino's own (`datapoints`, [GaggiuinoShotFile]), a
- * visualizer.coffee shot (`timeframe` + `data`, [VisualizerShot]) and a Beanconqueror brew (`brewFlow`, on its own or
- * under the visualizer's `brewdata`, [BeanconquerorShot]).
+ * GaggiMate export (`samples`, [GaggiMateShotFile]), a visualizer.coffee shot (`timeframe` + `data`, [VisualizerShot])
+ * and a Beanconqueror brew (`brewFlow`, on its own or under the visualizer's `brewdata`, [BeanconquerorShot]). A
+ * GaggiMate's own storage is binary rather than JSON, so it is told apart by its first four bytes instead
+ * ([GaggiMateShotLog]).
  */
 object ShotFiles {
     internal val json = Json { ignoreUnknownKeys = true }
 
     /**
+     * The file as it sits on disk. A GaggiMate `.slog` is binary; everything else is JSON text, so anything that is not
+     * a shot log is read as UTF-8 and told apart by shape.
+     *
      * @param fallbackId used when the file carries no id of its own.
      * @param now stamps a file with no start time, so the shot still sorts somewhere sensible.
      */
+    fun parse(bytes: ByteArray, fallbackId: String, now: () -> Instant = { Clock.System.now() }): Shot =
+        if (GaggiMateShotLog.looksLike(bytes)) GaggiMateShotLog.parse(bytes, fallbackId, now)
+        else parse(bytes.decodeToString(), fallbackId, now)
+
+    /** The file's text, when the caller already has it as a string (a service's response body). */
     fun parse(text: String, fallbackId: String, now: () -> Instant = { Clock.System.now() }): Shot {
         val root =
             try {
@@ -38,6 +48,7 @@ object ShotFiles {
         when {
             VisualizerShot.looksLike(root) -> VisualizerShot.parse(root, fallbackId, now)
             BeanconquerorShot.looksLike(root) -> BeanconquerorShot.parse(root, fallbackId, now)
+            GaggiMateShotFile.looksLike(root) -> GaggiMateShotFile.parse(root, fallbackId, now)
             else -> GaggiuinoShotFile.parse(root, fallbackId, now)
         }
 }

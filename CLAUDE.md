@@ -180,9 +180,9 @@ desktop `Notification`. A tap opens the editor through `OpenRequests`. Words res
 
 **Live data.** Every machine or scale = `ShotSource` in `:sources`. Network machines over WebSocket; scales = pure
 `BleProtocol` over Kable. Network machine = `NetworkMachine` (`sources/.../machine/`) in `NetworkMachines.all`
-(today only Gaggiuino). Home, saved settings, machine log go through registry. `NetworkScan` finds machines (mDNS on
-Android, /24 sweep, fixed `.local` names last), confirms each with `identify`. `SourceKind.GAGGIMATE/DECENT` stay on
-purpose: old sidecars and settings name them. Each decoder pinned to upstream commit in doc comment: check before
+(Gaggiuino, GaggiMate). Home, saved settings, machine log go through registry. `NetworkScan` finds machines (mDNS on
+Android, /24 sweep, fixed `.local` names last), confirms each with `identify`. `SourceKind.DECENT` stays on
+purpose: old sidecars and settings name it. Each decoder pinned to upstream commit in doc comment: check before
 changing format. `SourceHolder` swaps live source under every screen. Every build starts disconnected. Only
 Home's "try a sample shot" switches to the Zer0 replay (`SourceHolder.useSample`, any build, how App Review tries app),
 for one take: saving it or recording without data ends it (`endSample`). **Simulate shot** only then.

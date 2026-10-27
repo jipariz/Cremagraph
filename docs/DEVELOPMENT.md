@@ -268,6 +268,30 @@ All seven milestones done: spike, foundations, record, editor, share, more sourc
   line on card, pressure sensors.
 - **Android 14 and older:** export service runs as `dataSync` (`mediaProcessing` from Android 15 only).
 
+**Play Console quality cards (1.0.0, assessed Oct 27, 2026).** Both are advisory, neither blocks a release, and in
+both cases the API Play names is one the app never calls.
+
+- **"Edge-to-edge may not display for all users".** The display is right: every screen root applies
+  `safeDrawingPadding()`, no theme sets a bar colour, and there is no deprecated window call in app code. The flagged
+  `Window.setStatusBarColor` / `setNavigationBarColor` are inside `androidx.activity`'s `enableEdgeToEdge`, which
+  still sets them in `EdgeToEdgeApi26`, `Api29` and `Api35`. `MainActivity` now calls it only below API 35, where
+  those setters are not deprecated and are what makes the bars transparent at all; from 35 the window is edge to edge
+  by itself and only the icon colours are set, through `WindowCompat`. **The card is expected to stay** while
+  `minSdk = 26`: Play scans the merged DEX, the legacy branch keeps those androidx classes, and clearing it entirely
+  would mean giving up edge to edge on Android 8 to 14. The split was checked on an API 35 emulator against the
+  previous code, in both system themes, by reading `vsysui` out of `dumpsys window`: identical either way, so it is
+  a deprecation change and nothing else.
+- **Pre-existing, found while checking the above:** on API 35 under a *light* system theme the window comes up with
+  `vsysui=LIGHT_NAVIGATION_BAR`, i.e. dark navigation icons, although the app is `#0B0B0B` whatever the system does
+  and `MainActivity` asks for light ones. Same before and after the change, so `enableEdgeToEdge`'s
+  `SystemBarStyle.dark` is not winning on 35. Not chased yet; it is a thin gesture handle on most devices.
+- **"Improve your app's performance with bitmap downsampling".** The app calls `BitmapFactory` nowhere; the card is
+  most likely Compose's `decodeToImageBitmap` (a `BitmapFactory.decodeByteArray` underneath) or androidx.core. The
+  real problem it pointed at was ours though, and is fixed: `MediaMetadataRetriever.getFrameAtTime` decodes at the
+  source's own resolution, 33 MB a frame at 4 K, and `lumaAt` was doing that every 250 ms of a take to read twelve
+  pixels. Both Android call sites now go through `scaledFrameAt` (`video/.../ScaledFrame.kt`), which hands the size
+  to the decoder as iOS and the web already did. Whether the card clears is only visible after an upload.
+
 **App Store:**
 
 - `PrivacyInfo.xcprivacy` lists API reasons (`C617.1`, `E174.1`, `CA92.1`). Check with `nm -u` after new deps.

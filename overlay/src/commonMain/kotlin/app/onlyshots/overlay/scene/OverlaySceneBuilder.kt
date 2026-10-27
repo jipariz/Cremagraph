@@ -64,6 +64,17 @@ object OverlayMetrics {
      * [WEIGHT_MAX]: never below this, so the first drops are not blown up across the whole chart.
      */
     const val WEIGHT_FLOOR = 10f
+
+    /**
+     * How far weight flow may stretch the pressure and flow axis. A scale reads g/s in the same range as pressure and
+     * flow, so it shares their axis, a scale-only shot is sized by it, and a real gusher past [PRESSURE_FLOW_MAX] still
+     * has to draw as a peak rather than a clipped plateau. But it is the one curve a knock or a tare throws to absurd
+     * values, and one such reading sizing the axis presses every other curve flat for the whole shot (a real GaggiMate
+     * export carries a lone 100 g/s). This sits above anything a cup can actually fill at and below that noise; past it
+     * the reading is clipped like any other out-of-range value.
+     */
+    const val AXIS_FLOW_CEILING = 20f
+
     const val AXIS_HEADROOM = 1.1f
     const val TEMP_PAD = 2.5f
 
@@ -234,8 +245,12 @@ private class SceneBuilder(
                 sample.weight?.let { weight = maxOf(weight, it) }
                 sample.pressure?.let { pressureFlow = maxOf(pressureFlow, it) }
                 sample.flow?.let { pressureFlow = maxOf(pressureFlow, it) }
-                // Weight flow is drawn on this axis too: a scale's, with no pressure or flow, sizes it alone.
-                sample.weightFlow?.let { pressureFlow = maxOf(pressureFlow, it) }
+                // Weight flow is drawn on this axis too: a scale's, with no pressure or flow, sizes it alone. It is
+                // the one curve a bad reading can throw far out of range, so it never stretches the axis past the
+                // default: a knock on the bench reads as 100 g/s, which would otherwise flatten the whole shot.
+                sample.weightFlow?.let {
+                    pressureFlow = maxOf(pressureFlow, it.coerceAtMost(OverlayMetrics.AXIS_FLOW_CEILING))
+                }
             }
             // Targets are drawn ahead of the curve, up to the window's end.
             sample.targetPressure?.let { pressureFlow = maxOf(pressureFlow, it) }
@@ -250,7 +265,9 @@ private class SceneBuilder(
                 head.weight?.let { weight = maxOf(weight, it) }
                 head.pressure?.let { pressureFlow = maxOf(pressureFlow, it) }
                 head.flow?.let { pressureFlow = maxOf(pressureFlow, it) }
-                head.weightFlow?.let { pressureFlow = maxOf(pressureFlow, it) }
+                head.weightFlow?.let {
+                    pressureFlow = maxOf(pressureFlow, it.coerceAtMost(OverlayMetrics.AXIS_FLOW_CEILING))
+                }
             }
         }
         // With a target the scale is the machine's (the target and 60 g); without one the axis follows the weight, so a

@@ -104,7 +104,7 @@ Each format from public source. Pinned to commit read (see decoder doc comment).
 | Source | Live data | Shot start / end | History |
 | --- | --- | --- | --- |
 | Gaggiuino (`release/stm32-blackpill`) | `ws://host/ws` JSON, ~10 Hz brewing | `receivedAt − timeInShot`; last `timeInShot` | none |
-| Gaggiuino, newer (core `6ea560e`) | `ws://host/ws` binary protobuf, `d_sensor_snap` ~3 Hz | first/last snapshot with `brewActive` | HTTP: `GET /api/shots/latest`, then `/api/shots/{id}` down (`GaggiuinoHistory`) |
+| Gaggiuino, newer (core `6ea560e`) | `ws://host/ws` binary protobuf: `d_sensor_snap` ~3 Hz for the readings, `d_shot_snap` for the targets | first/last snapshot with `brewActive` | HTTP: `GET /api/shots/latest`, then `/api/shots/{id}` down (`GaggiuinoHistory`) |
 | GaggiMate (master `b78beee`) | `ws://host/ws` JSON `evt:status`, 2 Hz, partial frames merged | `process.a` 1 then 0; time from `process.e` | HTTP: `GET /api/history/recent.bin`, then `<id>.slog` (`GaggiMateHistory`) |
 | Scale only | Bluetooth | first drops (> 0.3 g after tare); stop rule ends | recordings made in app |
 

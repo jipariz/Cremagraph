@@ -1,5 +1,6 @@
 package app.onlyshots.video
 
+import android.graphics.BitmapFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import app.onlyshots.core.model.PumpOnsetDetector
@@ -35,6 +36,19 @@ class AndroidVideoProbeTest {
         val out = File(target.cacheDir, "thumb.jpg").toOkioPath()
         probe.writeThumbnail(clip.toOkioPath(), atUs = 0, out = out)
         assertTrue(File(out.toString()).length() > 0)
+    }
+
+    /**
+     * The size asked for is the size that comes back, whether the decoder scaled it (API 27 and up) or the bitmap
+     * was shrunk afterwards. The 1080-wide clip has to come down for either path to have done anything.
+     */
+    @Test fun aThumbnailIsNoWiderThanAsked() = runBlocking {
+        val out = File(target.cacheDir, "thumb-108.jpg")
+        probe.writeThumbnail(clip.toOkioPath(), atUs = 0, out = out.toOkioPath(), maxWidthPx = 108)
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(out.toString(), bounds)
+        assertTrue("thumbnail is ${bounds.outWidth} px wide", bounds.outWidth in 1..108)
+        assertEquals(16f / 9f, bounds.outHeight.toFloat() / bounds.outWidth, 0.2f)
     }
 
     @Test fun decodesAudioTheOnsetDetectorCanRead() = runBlocking {

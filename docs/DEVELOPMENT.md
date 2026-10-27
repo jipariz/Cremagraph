@@ -261,6 +261,12 @@ All seven milestones done: spike, foundations, record, editor, share, more sourc
   (`Tiny`): only by resizing. iPhone Duo tabletop and camera.
 - **Gaggiuino:** binary firmware seen on real machine (Oct 18, 2026). Scan and identify tested on fakes, not real
   machine on phone.
+- **Gaggiuino temperature, on purpose:** binary firmware pushes two streams. `d_sensor_snap` carries the machine's
+  thermocouple, which climbs through an extraction; `d_shot_snap` reports the setpoint as its `temperature`, which is
+  what the machine's own charts and its shot files show as a flat line (in a shot file `temperature` equals
+  `targetTemperature` on every sample, the machine having no temperature profiling). The graph keeps the
+  thermocouple, because it is the measurement; `d_shot_snap` is read only for the targets, which the sensor stream
+  does not carry at all. Expect the curve to disagree with the machine's web UI, and that to be right.
 - **GaggiMate:** written from upstream source (master `b78beee`, Oct 18, 2026) and tested against captured frame
   shapes and hand-built `.slog` bytes. Not yet run against a real machine, and the pressure gate on `cp` is untested
   on a Standard.

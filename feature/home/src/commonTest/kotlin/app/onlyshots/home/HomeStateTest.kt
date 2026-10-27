@@ -10,6 +10,7 @@ import app.onlyshots.core.resources.home_action_open_camera
 import app.onlyshots.core.resources.home_action_scale_caption
 import app.onlyshots.core.resources.home_action_without_data
 import app.onlyshots.core.resources.home_auto_start_brew_switch
+import app.onlyshots.core.resources.home_auto_start_process_start
 import app.onlyshots.core.resources.home_bluetooth_off
 import app.onlyshots.core.resources.home_found
 import app.onlyshots.core.resources.home_record
@@ -35,6 +36,7 @@ import app.onlyshots.core.resources.source_scale
 import app.onlyshots.core.resources.text
 import app.onlyshots.sources.ConnectionState
 import app.onlyshots.sources.machine.FoundMachine
+import app.onlyshots.sources.machine.GaggiMate
 import app.onlyshots.sources.machine.Gaggiuino
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -113,6 +115,33 @@ class HomeStateTest {
     @Test
     fun signalStrengthBecomesFourBars() {
         assertEquals(listOf(4, 3, 2, 1), listOf(-50, -65, -75, -95).map(::signalBars))
+    }
+
+    @Test
+    fun twoKindsOfMachineOnTheWifiAreTwoRows() {
+        val gaggimate = FoundMachine(GaggiMate, "192.168.1.9", 80, hostname = "gaggimate.local")
+        val s =
+            HomeUiState(
+                machines = listOf(found, gaggimate),
+                saved = SavedSource(SourceKind.GAGGIMATE, "192.168.1.9", null, null),
+                connection = ConnectionState.Connected,
+            )
+        val rows = machineRows(s)
+        assertEquals(listOf(SourceKind.GAGGIMATE, SourceKind.GAGGIUINO), rows.map { it.kind })
+        // The saved one leads and is the selected row, whichever machine the registry lists first.
+        assertTrue(rows.first().selected)
+        assertFalse(rows.last().selected)
+    }
+
+    @Test
+    fun aGaggiMateSaysTheMachineStartsTheShot() {
+        val s =
+            HomeUiState(
+                saved = SavedSource(SourceKind.GAGGIMATE, "gaggimate.local", null, null),
+                connection = ConnectionState.Connected,
+            )
+        assertEquals(Res.string.home_action_open_camera.text("GaggiMate".raw()), recordAction(s).text)
+        assertEquals(Res.string.home_auto_start_process_start.text(), recordAction(s).caption)
     }
 
     @Test

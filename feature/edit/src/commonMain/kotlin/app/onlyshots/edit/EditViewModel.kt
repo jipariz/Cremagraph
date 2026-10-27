@@ -373,7 +373,7 @@ class EditViewModel(
         viewModelScope.launch {
             val shot =
                 withContext(work) {
-                    runCatching { ShotFiles.parse(fs.read(path) { readUtf8() }, fallbackId = "file-$id") }
+                    runCatching { ShotFiles.parse(fs.read(path) { readByteArray() }, fallbackId = "file-$id") }
                         .also { fs.delete(path, mustExist = false) }
                         .getOrNull()
                 }

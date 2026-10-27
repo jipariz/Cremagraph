@@ -15,6 +15,7 @@ import app.onlyshots.core.resources.home_action_pick_source
 import app.onlyshots.core.resources.home_action_scale_caption
 import app.onlyshots.core.resources.home_action_without_data
 import app.onlyshots.core.resources.home_auto_start_brew_switch
+import app.onlyshots.core.resources.home_auto_start_process_start
 import app.onlyshots.core.resources.home_bluetooth_off
 import app.onlyshots.core.resources.home_found
 import app.onlyshots.core.resources.home_record
@@ -254,6 +255,7 @@ fun recordAction(s: HomeUiState, nextTake: RecordingSettings? = null): RecordAct
 fun autoStartHint(autoStart: AutoStart): StringResource =
     when (autoStart) {
         AutoStart.BREW_SWITCH -> Res.string.home_auto_start_brew_switch
+        AutoStart.PROCESS_START -> Res.string.home_auto_start_process_start
     }
 
 /** Four bars from an advertisement's signal strength. */

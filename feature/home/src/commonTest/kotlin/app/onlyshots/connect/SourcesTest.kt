@@ -14,14 +14,16 @@ class SourcesTest {
     fun aMachineBuildsFromItsAddress() {
         assertNotNull(factoryFor(SourceKind.GAGGIUINO, "gaggiuino.local", null, client))
         assertNotNull(factoryFor(SourceKind.GAGGIUINO, "192.168.1.9:8080", null, client))
+        assertNotNull(factoryFor(SourceKind.GAGGIMATE, "gaggimate.local", null, client))
+        assertNotNull(factoryFor(SourceKind.GAGGIMATE, "192.168.1.9:8080", null, client))
+        assertNotNull(sourceFactory(AppSettings(source = SourceKind.GAGGIMATE, host = "gaggimate.local"), client))
     }
 
     @Test
     fun machinesThisVersionDropsBuildNothing() {
         // Settings saved by an older version still name them; the app starts disconnected instead.
-        assertNull(factoryFor(SourceKind.GAGGIMATE, "192.168.1.9", null, client))
         assertNull(factoryFor(SourceKind.DECENT, "192.168.1.20:8080", null, client))
-        assertNull(sourceFactory(AppSettings(source = SourceKind.GAGGIMATE, host = "gaggimate.local"), client))
+        assertNull(sourceFactory(AppSettings(source = SourceKind.DECENT, host = "10.0.1.5"), client))
     }
 
     @Test

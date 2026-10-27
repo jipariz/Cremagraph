@@ -333,6 +333,9 @@ class OverlaySceneTest {
 
     private fun Double.us() = (this * 1_000_000).toLong()
 
+    /** 0 to 7 bar over the first four seconds, so a pressure curve has a height the axis can squash. */
+    private fun ramp(t: Double) = (t / 4.0 * 7).coerceAtMost(7.0).toFloat()
+
     private fun curve(sc: app.onlyshots.overlay.scene.OverlayScene, color: Int): FloatArray =
         sc.prims
             .filterIsInstance<PolylinePrim>()
@@ -620,6 +623,54 @@ class OverlaySceneTest {
 
         assertEquals(listOf("phase 2", "phase 4"), labels.map { it.text }, "the crowded label is dropped")
         assertTrue(lines.isNotEmpty(), "every phase still draws its line")
+    }
+
+    @Test
+    fun oneAbsurdWeightFlowReadingDoesNotFlattenEveryOtherCurve() {
+        // A real GaggiMate export (shot 000040) carries a single vf of 100 g/s where the cup was knocked. Before the
+        // ceiling that one reading took the shared axis from 12 to 110 and pressed the whole 0-7 bar curve into the
+        // bottom of the chart.
+        val knocked = synthetic { t ->
+            Sample(
+                t.us(),
+                pressure = ramp(t),
+                flow = 2f,
+                weightFlow = if (t > 6.8 && t < 7.1) 100f else 1.8f,
+                weight = (t * 1.3).toFloat(),
+            )
+        }
+        val clean = synthetic { t ->
+            Sample(t.us(), pressure = ramp(t), flow = 2f, weightFlow = 1.8f, weight = (t * 1.3).toFloat())
+        }
+        val settings = OverlaySettings(series = setOf(Series.PRESSURE, Series.FLOW, Series.WEIGHT_FLOW))
+        val pressure = GraphStyles.Gaggiuino.series.pressure
+        fun rise(s: app.onlyshots.core.model.Shot) =
+            curve(scene(30.0, settings, s = s), pressure)
+                .filterIndexed { i, _ -> i % 2 == 1 }
+                .let { it.max() - it.min() }
+
+        // The spike still widens the axis, but the 0-7 bar curve keeps most of its height instead of a ninth of it.
+        assertTrue(
+            rise(knocked) > 0.4f * rise(clean),
+            "pressure rose ${rise(knocked)} px against ${rise(clean)} px without the knock",
+        )
+    }
+
+    @Test
+    fun aScaleOnlyShotIsStillSizedByItsWeightFlow() {
+        // The ceiling must not stop weight flow sizing the axis for a scale with no pressure or flow at all: those
+        // shots are drawn against the same default, and every real g/s sits under it.
+        val settings = OverlaySettings(series = setOf(Series.WEIGHT, Series.WEIGHT_FLOW))
+        val flow = GraphStyles.Gaggiuino.series.weightFlow
+        fun heightAt(gPerS: Float): Float {
+            val s = synthetic { t -> Sample(t.us(), weight = (t * 1.2).toFloat(), weightFlow = gPerS) }
+            return curve(scene(30.0, settings, s = s), flow)[1]
+        }
+
+        // y grows downwards, so a faster pour draws higher up the chart. Every real g/s is under the ceiling, so the
+        // ceiling changes nothing here.
+        assertTrue(heightAt(11f) < heightAt(4f), "11 g/s must draw above 4 g/s")
+        assertTrue(heightAt(4f) < heightAt(2f), "4 g/s must draw above 2 g/s")
     }
 
     @Test

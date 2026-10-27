@@ -228,10 +228,17 @@ bundle, sideloaded). Rotate either key? Update it there.
 
 Check after deploy: `adb shell pm get-app-links dev.parez.onlyshots`, Apple's AASA validator.
 
-**Shot files.** "from a file" goes through `ShotFiles.parse`, which tells three shapes apart:
+**Shot files.** "from a file" goes through `ShotFiles.parse`, which takes the file's bytes and tells five shapes
+apart. A GaggiMate `.slog` is binary and known by its first four bytes; the rest are JSON, told apart by shape:
 
 - Gaggiuino `.shot` JSON (`datapoints`): what `GET /api/shots/{id}` and baristagiuino give. `GaggiuinoShotFile`. Older
   firmware: parallel arrays, time in deciseconds, values ×10. Newer: one object per reading, real units, ms.
+- GaggiMate `.slog` (magic `SHOT`): the machine's own binary log, also what `GET /api/history/<id>.slog` serves.
+  `GaggiMateShotLog`. Little-endian, 128- or 512-byte header then fixed-width samples; `fieldsMask` says which fields
+  a sample carries and the record size tells a v6 index stamp from a v6 millisecond one. Same file parses the `SIDX`
+  index behind `recent.bin`.
+- GaggiMate export JSON (`samples` of `{t, ct, cp, …}`): what the machine's Shot Analyzer hands out.
+  `GaggiMateShotFile`. Real units, time in ms.
 - visualizer.coffee's normalized shot (`timeframe` + `data.espresso_*`): any machine's, as the visualizer kept it (it
   keeps no upload). `VisualizerShot`. A Decent's values arrive as strings, its missing goals as -1; phases are where
   `espresso_state_change` flips sign.
@@ -254,6 +261,9 @@ All seven milestones done: spike, foundations, record, editor, share, more sourc
   (`Tiny`): only by resizing. iPhone Duo tabletop and camera.
 - **Gaggiuino:** binary firmware seen on real machine (Oct 18, 2026). Scan and identify tested on fakes, not real
   machine on phone.
+- **GaggiMate:** written from upstream source (master `b78beee`, Oct 18, 2026) and tested against captured frame
+  shapes and hand-built `.slog` bytes. Not yet run against a real machine, and the pressure gate on `cp` is untested
+  on a Standard.
 - **Home spec not built yet:** machine + scale together, remembered machines offline, rename/forget, live reading
   line on card, pressure sensors.
 - **Android 14 and older:** export service runs as `dataSync` (`mediaProcessing` from Android 15 only).

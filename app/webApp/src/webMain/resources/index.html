@@ -2,6 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!-- WebKit 27.2 has a regression that breaks Skiko's WebGL canvas rendering over https, so the editor loads to
+         a white screen. It is one engine across Apple's platforms, so this is every browser on an iPhone or iPad on
+         27.2 and Safari 27.2 on a Mac. Nothing in the page can feature-detect it: the context is created and then
+         draws nothing. Turn those visitors away here, before any of the app is fetched, and leave a way past for
+         anyone this matched wrongly.
+         First in the head for that reason. Delete this block and unsupported/ together when the fix ships. -->
+    <script>
+      (function () {
+        var ua = navigator.userAgent;
+        // iOS and iPadOS in mobile mode carry "OS 27_2 like Mac OS X". A Mac, and an iPad in desktop mode, report
+        // "Version/27.2" instead. Chrome, Edge and Firefox emit no Version/ token at all, so only WebKit matches.
+        if (!/ OS 27_2(_\d+)? like Mac OS X/.test(ua) && !/Version\/27\.2(\.\d+)?\b/.test(ua)) return;
+        // sessionStorage throws when site data is blocked; a throw here must not take the page with it.
+        try { if (sessionStorage.getItem('webkit272') === 'ok') return; } catch (e) {}
+        if (/[?&]webkit272=ok/.test(location.search)) {
+          // Remember the override, so a refresh does not bounce back out of the editor.
+          try { sessionStorage.setItem('webkit272', 'ok'); } catch (e) {}
+          return;
+        }
+        location.replace('/unsupported/');
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>OnlyShots — web editor</title>
     <!-- From design/logo/kit/web/head-snippet.html. -->

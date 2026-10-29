@@ -47,18 +47,37 @@ with Dynamic Island (medium) and, since the app runs on iPad, one iPad 13-inch; 
 resolution, which App Store Connect scales the smaller slots down from. Duo is required from April 2027 on
 iOS 27.1+ (docs/DEVELOPMENT.md). Apple allows ten per slot.
 
-| Folder | Size | App Store slot | Screen |
-| --- | --- | --- | --- |
-| `iphone-6.9/01–06.png` | 1320 × 2868 | iPhone, Dynamic Island, large | phone board |
-| `iphone-6.1/01–06.png` | 1179 × 2556 | iPhone, Dynamic Island, medium — **required** | phone board |
-| `ipad-13/01–04.png` | 2064 × 2752 | iPad 13-inch, portrait — **required** | `-M` board |
-| `ipad-13-landscape/01–04.png` | 2752 × 2064 | iPad 13-inch, landscape | `-B` board |
-| `duo-outer/01–06.png` | 1398 × 2034 | iPhone Duo, outer display | phone board |
-| `duo-inner/01–04.png` | 2007 × 2853 | iPhone Duo, inner display | `-M` board |
+Sizes are the ones the App Store template's artwork is drawn for, all on Apple's accepted list.
 
-No artboards of their own: a device box keeps its board's aspect and bleeds off the frame's bottom edge, so any
-frame size can hold an existing board. Duo's outer display is phone-shaped and its inner one is the larger, squarer
-screen, so they take the phone and `-M` boards. The frames carry the Play headlines of the same screens.
+| Folder | Size | App Store slot | Screen | Frame |
+| --- | --- | --- | --- | --- |
+| `iphone/01–06.png` | 1206 × 2622 | Dynamic Island, medium — **required** | phone board | iPhone 18 Pro |
+| `ipad-13/01–04.png` | 2048 × 2732 | iPad 13-inch, portrait — **required** | `-M` board | hairline |
+| `ipad-13-landscape/01–04.png` | 2732 × 2048 | iPad 13-inch, landscape | `-B` board | hairline |
+| `ipad-11/01–04.png` | 1668 × 2420 | iPad 11-inch, portrait | `-M` board | iPad Pro 11 |
+| `ipad-11-landscape/01–04.png` | 2420 × 1668 | iPad 11-inch, landscape | `-B` board | iPad Pro 11 |
+| `duo-outer/01–03.png` | 1398 × 2034 | iPhone Duo, outer | **simulator capture** | Duo cover |
+| `duo-inner/01–03.png` | 2853 × 2007 | iPhone Duo, inner | **simulator capture** | Duo inner |
+
+No 6.9-inch set: Apple scales the larger iPhone slots down from the medium one, and the template draws no 6.9-inch
+device to frame it with.
+
+**Device frames** live in `frames/`, exported from the App Store template's Figma file
+(`tR7IFIYoSGarqgLDOsF8re`, pages *iPhone*, *iPad …*, *iPhone Duo …*; each page carries a `… device / …` symbol
+whose raw image is the bezel with its screen cut out). `compose.py`'s `Device` table holds each one's pixel size
+and the cut-out inside it, so nothing is rescaled. The iPhone's is the whole component rather than a cut-out, so
+its picture is drawn over the placeholder screen instead, with a corner radius to match.
+
+A screen that is not the frame's shape letterboxes onto ink rather than cropping: on an ink UI the bars cannot be
+seen, and no part of the app is lost. That is what the two iPad frames need, their screen being 1210 × 834 against
+the boards' 1280 × 800.
+
+**The 13-inch slots keep the hairline frame.** The only iPad the template draws is an 11-inch, and framing a
+13-inch shot with it would stretch the hardware; the 11-inch slots are framed at their own native size instead.
+
+**The Duo slots use real simulator captures**, not artboards: its side column is iOS's own bar on a hinged device
+and exists in no artboard. Run `tools/ios-screenshots/capture.sh` first — the pictures are git-ignored, and these
+two slots are skipped with a message when they are not there.
 
 `compose.py`'s `APPSTORE` table holds one row per slot; `frame w × scale` has to equal Apple's pixel size exactly,
 and `shoot` asserts that on every write, because a wrong scale is otherwise only caught by App Store Connect

@@ -316,6 +316,12 @@ both cases the API Play names is one the app never calls.
 - Reviewers have no machine: tell them about "try a sample shot" and **simulate shot**.
 - **iPhone Duo:** screenshots needed from April 2027. Scene manifest in `Info.plist` must stay (else unfold kicks
   app out). Fold comes from Swift `ComposeHostController` (`NativeShell.swift`).
+- **Media.** Screenshots are built by `design/store/` (`appstore/`, its README has the slot table). The product
+  page header, a 21:9 video slot Apple added on 5 October 2026, is built by `design/header/` from a real recording
+  exported at 16:9 / 4K; it is marketing art with no device-capture rule, it loops, and it is muted by default.
+  The app preview (886 x 1920, 15-30 s) **is** device capture, so it is a screen recording off the phone;
+  `design/header/README.md` holds its spec and shot list. Sizes come from Apple's own pages, which the
+  third-party guides disagree with.
 
 ## Open questions
 

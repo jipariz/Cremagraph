@@ -90,7 +90,8 @@ fold() {
 }
 
 failed=0
-for pose in closed open half-open; do
+# DUO_POSES narrows the run while working on one of them.
+for pose in ${DUO_POSES:-closed open half-open}; do
     echo "· $pose"
     fold "$([[ "$pose" == closed ]] && echo folded || echo "$pose")"
     sleep 2

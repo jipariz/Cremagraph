@@ -59,6 +59,20 @@ final class DuoCaptureTests: XCTestCase {
         waitFor("screen.start")
     }
 
+    // No editor screen here, and no record screen either.
+    //
+    // Record cannot be reached at all: the rail's record key is `enabled = !take.state.noCamera`
+    // (TakeWidgets.kt), and a simulator has no camera.
+    //
+    // The editor can only be reached through "compose a video", which needs a clip picked from the system picker,
+    // and XCUITest cannot drive that picker here. Everything the app does works — the action sheet opens, Photos
+    // presents PHPicker with the clip in it, Files presents the document browser — but taps into those
+    // out-of-process views are ignored: PHPicker's grid items (`PXGGridLayout-Info` images) swallow a tap and a
+    // coordinate tap alike, and the document browser stays on Recents however often its Browse tab is tapped.
+    // In-app controls and the alert's own buttons tap normally, so this is the picker, not the app.
+    //
+    // The Open screen below is captured instead, and shows the same flow with its shot already fetched.
+
     // MARK: - Pictures
 
     private func shoot(_ screenName: String) {

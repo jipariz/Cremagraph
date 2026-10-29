@@ -47,7 +47,7 @@
          video. -->
     <key>BGTaskSchedulerPermittedIdentifiers</key>
     <array>
-        <string>app.onlyshots.export.*</string>
+        <string>$(PRODUCT_BUNDLE_IDENTIFIER).export.*</string>
     </array>
     <!-- No encryption beyond the system's: the app only talks plain HTTP and WebSocket on the local network. -->
     <key>ITSAppUsesNonExemptEncryption</key>

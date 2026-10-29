@@ -33,6 +33,7 @@ okio = "3.18.2"
 kotlinx-browser = "0.5.0"
 koin = "4.2.2"
 kable = "0.45.0"
+kermit = "2.2.0"
 ksp = "2.3.12"
 mugshot = "3.4.2"
 ktfmt = "0.27.0"
@@ -77,6 +78,7 @@ koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", ver
 
 
 kable-core = { module = "com.juul.kable:kable-core", version.ref = "kable" }
+kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-multiplatform" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose-multiplatform" }

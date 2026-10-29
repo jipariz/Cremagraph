@@ -8,6 +8,7 @@ kotlin {
             implementation(projects.storage)
             implementation(projects.sources)
             implementation(projects.camera)
+            implementation(libs.kermit)
         }
     }
 }

@@ -20,11 +20,13 @@ import org.jetbrains.skia.Surface
 import platform.CoreVideo.CVPixelBufferGetBaseAddress
 import platform.CoreVideo.CVPixelBufferGetBytesPerRow
 import platform.CoreVideo.CVPixelBufferGetHeight
+import platform.CoreVideo.CVPixelBufferGetPixelFormatType
 import platform.CoreVideo.CVPixelBufferGetWidth
 import platform.CoreVideo.CVPixelBufferLockBaseAddress
 import platform.CoreVideo.CVPixelBufferRef
 import platform.CoreVideo.CVPixelBufferUnlockBaseAddress
 import platform.CoreVideo.kCVPixelBufferLock_ReadOnly
+import platform.CoreVideo.kCVPixelFormatType_32BGRA
 
 /**
  * BGRA pixel buffers (camera frames, player frames) as small Compose bitmaps: on iOS the native preview layers cannot
@@ -32,10 +34,25 @@ import platform.CoreVideo.kCVPixelBufferLock_ReadOnly
  */
 object PixelBuffers {
     private val sampling = FilterMipmap(FilterMode.LINEAR, MipmapMode.NONE)
+
+    /**
+     * The pixel buffer attributes asking for BGRA, for a capture output or a player output. Written as the exporter
+     * writes them, the key as its string and the format as an Int: `kCVPixelBufferPixelFormatTypeKey` is a CFString and
+     * `kCVPixelFormatType_32BGRA` a UInt, and Kotlin boxes those as objects AVFoundation does not read, so it quietly
+     * hands over its default two-plane YUV instead.
+     */
+    val bgraAttributes: Map<Any?, Any?> = mapOf("PixelFormatType" to kCVPixelFormatType_32BGRA.toInt())
+
+    /** Only BGRA can be read as pixels here; anything else (a YUV frame) is skipped, not misread. */
+    private fun isBgra(buffer: CVPixelBufferRef): Boolean =
+        CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA &&
+            CVPixelBufferGetBytesPerRow(buffer).toInt() >= CVPixelBufferGetWidth(buffer).toInt() * 4
+
     private val owner = Data.makeUninitialized(1)
 
     /** [buffer] scaled to at most [maxWidth] px wide; null when it is empty. */
     fun toImageBitmap(buffer: CVPixelBufferRef, maxWidth: Int): ImageBitmap? {
+        if (!isBgra(buffer)) return null
         CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly)
         try {
             val w = CVPixelBufferGetWidth(buffer).toInt()
@@ -72,6 +89,7 @@ object PixelBuffers {
      * any part of the picture is without keeping the frame.
      */
     fun lumaGrid(buffer: CVPixelBufferRef, cols: Int, rows: Int): FloatArray? {
+        if (!isBgra(buffer)) return null
         CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly)
         try {
             val w = CVPixelBufferGetWidth(buffer).toInt()

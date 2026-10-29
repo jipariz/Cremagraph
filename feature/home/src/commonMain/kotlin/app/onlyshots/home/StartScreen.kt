@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +36,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgIcons
@@ -47,8 +51,10 @@ import app.onlyshots.core.designsystem.component.BarIcon
 import app.onlyshots.core.designsystem.component.BluetoothBlue
 import app.onlyshots.core.designsystem.component.CgSheet
 import app.onlyshots.core.designsystem.component.ChoiceCard
+import app.onlyshots.core.designsystem.component.HeaderBack
 import app.onlyshots.core.designsystem.component.IconCircleButton
 import app.onlyshots.core.designsystem.component.LocalNativeChrome
+import app.onlyshots.core.designsystem.component.LocalNativeScreen
 import app.onlyshots.core.designsystem.component.NativeBarItem
 import app.onlyshots.core.designsystem.component.NativeItems
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
@@ -101,8 +107,19 @@ fun StartScreen(onRecord: () -> Unit, onEdit: () -> Unit, onPrivacy: (() -> Unit
     ) { id ->
         if (id == TestTags.StartHelp) help = true else onPrivacy?.invoke()
     }
-    // On a book foldable the help takes the right page, in place of the choices; elsewhere it is a sheet.
+    // On a book foldable the help takes the right page, in place of the choices; elsewhere it is a sheet. Where the
+    // bars are native it is a page closed with the bar's back key, as Privacy is: a sheet's done key would sit under
+    // the system's column.
     val fold = LocalWindowLayout.current.fold
+    if (help && LocalNativeChrome.current != null) {
+        val page: @Composable (Modifier) -> Unit = { modifier -> HelpPage(title, { help = false }, modifier, content) }
+        if (!fold) {
+            page(Modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding())
+            return
+        }
+        StartBody(onRecord = onRecord, onEdit = onEdit, helpPage = { page(Modifier.fillMaxSize()) })
+        return
+    }
     StartBody(
         onRecord = onRecord,
         onEdit = onEdit,
@@ -122,6 +139,18 @@ fun StartScreen(onRecord: () -> Unit, onEdit: () -> Unit, onPrivacy: (() -> Unit
             },
     )
     if (help && !fold) CgSheet(title = title, onDismiss = { help = false }) { content() }
+}
+
+/** The help as a page of its own, under the screen's back key; it hands the native bar a back key of its own. */
+@Composable
+private fun HelpPage(title: String, onClose: () -> Unit, modifier: Modifier, content: @Composable () -> Unit) {
+    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None)) { onClose() }
+    CompositionLocalProvider(LocalNativeScreen provides remember { Any() }) {
+        Column(modifier) {
+            HeaderBack(title, onBack = onClose, modifier = Modifier.padding(vertical = CgSpace.S8))
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(CgSpace.S16)) { content() }
+        }
+    }
 }
 
 /**

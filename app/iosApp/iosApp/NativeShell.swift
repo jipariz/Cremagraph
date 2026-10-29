@@ -149,7 +149,8 @@ final class ComposeHostController: UIViewController {
         item.accessibilityLabel = spec.title
         if spec.prominent {
             item.style = .prominent
-            item.tintColor = ShellColors.signal
+            // Stopping a take is the record red, as the record key's own stop is; every other prominent item signal.
+            item.tintColor = spec.icon == "Stop" ? ShellColors.record : ShellColors.signal
         }
         switch spec.priority {
         case "High": item.visibilityPriority = .high
@@ -202,6 +203,7 @@ enum ShellSymbols {
         case "Help": "questionmark.circle"
         case "Privacy": "hand.raised"
         case "Record": "record.circle"
+        case "Stop": "stop.fill"
         case "Settings": "slider.horizontal.3"
         case "Add": "plus"
         case "File": "doc"
@@ -212,8 +214,9 @@ enum ShellSymbols {
     }
 }
 
-/** The Instrument colours the bar's items take (Tokens.kt: Brand.Bone, Brand.Signal). */
+/** The Instrument colours the bar's items take (Tokens.kt: Brand.Bone, Brand.Signal, Status.Record). */
 enum ShellColors {
     static let bone = UIColor(red: 0xE8 / 255.0, green: 0xE6 / 255.0, blue: 0xE1 / 255.0, alpha: 1)
     static let signal = UIColor(red: 0xFF / 255.0, green: 0x5A / 255.0, blue: 0x1F / 255.0, alpha: 1)
+    static let record = UIColor(red: 0xDC / 255.0, green: 0x1B / 255.0, blue: 0x34 / 255.0, alpha: 1)
 }

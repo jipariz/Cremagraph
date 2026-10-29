@@ -7,7 +7,9 @@ import app.onlyshots.core.model.ShotHistory
 import app.onlyshots.core.model.VideoFormat
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.edit_export_failed
 import app.onlyshots.core.resources.edit_no_pump_at_zero
+import app.onlyshots.core.resources.raw
 import app.onlyshots.core.resources.text
 import app.onlyshots.export.ExportManager
 import app.onlyshots.platform.BackgroundWork
@@ -41,10 +43,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeout
 import okio.Path
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
@@ -70,6 +74,17 @@ private object NoExporter : VideoExporter {
         out: Path,
         alignmentBarcode: Boolean,
     ): Flow<ExportProgress> = emptyFlow()
+}
+
+/** An exporter that gives up at once, as AVFoundation does on a recording with no frames. */
+private object FailingExporter : VideoExporter {
+    override fun export(
+        item: VideoItem,
+        quality: Quality,
+        withSound: Boolean,
+        out: Path,
+        alignmentBarcode: Boolean,
+    ): Flow<ExportProgress> = flowOf(ExportProgress.Rendering(0f), ExportProgress.Failed("no frames"))
 }
 
 private const val DURATION_US = 20_000_000L
@@ -126,14 +141,19 @@ class EditViewModelAttachTest {
             recordedAt = recordedAt,
         )
 
-    private fun viewModel(item: VideoItem, sound: MonoPcm?, fourK: Boolean = false): EditViewModel {
+    private fun viewModel(
+        item: VideoItem,
+        sound: MonoPcm?,
+        fourK: Boolean = false,
+        exporter: VideoExporter = NoExporter,
+    ): EditViewModel {
         library.save(item)
         val settings = AppSettingsRepo(SettingsStore(fs, "/library/settings.json".toPath()))
         val styles = StyleLibrary(settings)
         val exports =
             ExportManager(
                 store = store,
-                exporter = NoExporter,
+                exporter = exporter,
                 temp = ShareTempFiles(fs, "/cache/share".toPath()),
                 share =
                     object : PlatformShare {
@@ -149,6 +169,7 @@ class EditViewModelAttachTest {
                     },
                 nowMs = { 0L },
                 scope = CoroutineScope(Dispatchers.Unconfined),
+                words = { "shot" },
             )
         return EditViewModel(
             id = item.id,
@@ -256,6 +277,23 @@ class EditViewModelAttachTest {
         assertEquals(before.overlay.rect.refit(VideoFormat.PORTRAIT_9_16, VideoFormat.SQUARE_1_1), square.overlay.rect)
         vm.undo()
         assertEquals(before, vm.ui.value.item)
+    }
+
+    @Test
+    fun anExportThatFailsAtOnceTakesTheCoverDownAndSaysWhy() = runTest {
+        val vm = viewModel(video(), sound = null, exporter = FailingExporter)
+        vm.ui.first { it.item != null }
+        vm.saveAndExport(Quality.HD_1080, withSound = false, ExportManager.Destination.GALLERY)
+        val ui = withTimeout(5_000) { vm.ui.first { it.exporting == null } }
+        assertEquals(Res.string.edit_export_failed.text("no frames".raw()), ui.message)
+    }
+
+    @Test
+    fun anExportThatEndsWithoutAFileTakesTheCoverDown() = runTest {
+        val vm = viewModel(video(), sound = null)
+        vm.ui.first { it.item != null }
+        vm.saveAndExport(Quality.HD_1080, withSound = false, ExportManager.Destination.GALLERY)
+        withTimeout(5_000) { vm.ui.first { it.exporting == null } }
     }
 }
 

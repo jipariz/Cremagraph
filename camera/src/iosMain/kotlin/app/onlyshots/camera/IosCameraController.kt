@@ -195,10 +195,7 @@ class IosCameraController(
         }
         // BGRA, not the default YUV: the writer takes either, and BGRA can be drawn and measured directly for the
         // Compose preview a blur style needs and for "adapt to video".
-        videoOut.videoSettings =
-            mapOf<Any?, Any?>(
-                platform.CoreVideo.kCVPixelBufferPixelFormatTypeKey to platform.CoreVideo.kCVPixelFormatType_32BGRA
-            )
+        videoOut.videoSettings = PixelBuffers.bgraAttributes
         if (session.canAddOutput(videoOut)) session.addOutput(videoOut)
         applyRotation()
         session.commitConfiguration()

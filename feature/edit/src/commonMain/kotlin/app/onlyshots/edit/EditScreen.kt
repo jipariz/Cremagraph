@@ -449,20 +449,26 @@ fun EditBody(
     }
 
     val layout = LocalWindowLayout.current
-    // The way out, at the bottom of a wide editor's panel whichever page it shows.
-    val exportBar =
-        @Composable {
-            if (video != null) {
-                ExportBar(
-                    video,
-                    galleryQuality = ui.galleryQuality,
-                    shareQuality = ui.shareQuality,
-                    qualities = ui.qualities,
-                    sound = sound,
-                    onSave = export,
-                    onShare = share,
-                    onQuality = actions::pickQuality,
-                )
+    // The way out, at the bottom of a wide editor's panel whichever page it shows. Where the bars are native saving is
+    // their item: the panel keeps a footer only for what is left to choose there (share, the quality).
+    val exportInPanel =
+        LocalNativeChrome.current == null || LocalExportWording.current.share != null || ui.qualities.size > 1
+    val exportBar: (@Composable () -> Unit)? =
+        if (!exportInPanel) null
+        else {
+            {
+                if (video != null) {
+                    ExportBar(
+                        video,
+                        galleryQuality = ui.galleryQuality,
+                        shareQuality = ui.shareQuality,
+                        qualities = ui.qualities,
+                        sound = sound,
+                        onSave = export,
+                        onShare = share,
+                        onQuality = actions::pickQuality,
+                    )
+                }
             }
         }
     EditNativeBar(ui, actions, player, onExport = if (layout.kind == LayoutKind.Phone) null else export)
@@ -1179,7 +1185,8 @@ private fun WideTopBar(ui: EditUiState, onBack: () -> Unit, player: PlayerState)
 @Composable
 private fun EditNativeBar(ui: EditUiState, actions: EditActions, player: PlayerState, onExport: (() -> Unit)?) {
     val video = ui.item
-    val export = stringResource(Res.string.edit_export)
+    // On a wide editor the item saves straight away, as the panel's button did: it is called what that button was.
+    val export = stringResource(if (onExport != null) LocalExportWording.current.save else Res.string.edit_export)
     val undo = stringResource(Res.string.edit_undo)
     val redo = stringResource(Res.string.edit_redo)
     val sound = stringResource(if (player.muted) Res.string.edit_muted else Res.string.edit_sound)
@@ -1262,7 +1269,7 @@ private fun VideoPanel(
     reframing: Boolean,
     onReframing: (Boolean) -> Unit,
     onPickShotFile: () -> Unit,
-    footer: @Composable () -> Unit,
+    footer: (@Composable () -> Unit)?,
 ) {
     // The machine's shots, for the list under the file.
     LaunchedEffect(ui.hasShotHistory) { if (ui.hasShotHistory) actions.loadShots() }
@@ -1342,7 +1349,7 @@ private fun VideoPanel(
                 }
             }
         }
-        PanelFooter(footer)
+        footer?.let { PanelFooter(it) }
     }
 }
 
@@ -1582,7 +1589,7 @@ private fun EditPanel(
     /** The graph's quick tools beside "done": how much of its background shows, and a reset of its place and size. */
     tools: @Composable () -> Unit,
     /** Pinned under the pages: the export. */
-    footer: @Composable () -> Unit = {},
+    footer: (@Composable () -> Unit)? = {},
     content: @Composable () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().topRule()) {
@@ -1619,7 +1626,7 @@ private fun EditPanel(
         ) {
             content()
         }
-        PanelFooter(footer)
+        footer?.let { PanelFooter(it) }
     }
 }
 

@@ -3,6 +3,7 @@ package app.onlyshots
 import android.app.Application
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -20,6 +21,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import app.onlyshots.di.initKoin
 import app.onlyshots.platform.ExportNotifications
 import app.onlyshots.platform.OpenRequests
@@ -57,10 +59,23 @@ class MainActivity : ComponentActivity() {
         // First: it swaps the starting theme for the app's before anything (edge to edge) builds the window from it.
         val system = installSplashScreen()
         // The app is dark whatever the system's theme: light icons, and no light scrim behind three-button navigation.
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-        )
+        //
+        // From API 35 the window is edge to edge on its own, because the app targets past it, and all that is left to
+        // say is how the bars' icons look. Saying only that keeps the deprecated colour setters inside
+        // `enableEdgeToEdge` off every modern device; below 35 they are not deprecated and are what makes the bars
+        // transparent at all, so that path is unchanged.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            window.isNavigationBarContrastEnforced = false
+            WindowCompat.getInsetsController(window, window.decorView).run {
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = false
+            }
+        } else {
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+                navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            )
+        }
         super.onCreate(savedInstanceState)
         // The system splash has drawn the shot; the app holds the finished mark where it was and carries on with the
         // pulse and the hand-off once the system's animation is over (never cut short, never waited on beyond it).

@@ -6,8 +6,19 @@ enum class PanePlacement {
     Below,
 }
 
-/** The side panel's width: the desk layout's 380 dp, narrower on a medium window, where every dp of picture counts. */
-fun sidePanelWidthDp(widthDp: Float): Float = if (widthDp >= EXPANDED_WIDTH_DP) 380f else 340f
+/**
+ * The side panel's width beside a picture: the desk layout's [PANEL_WIDTH_DP], narrower on a medium window, where every
+ * dp of picture counts.
+ */
+fun sidePanelWidthDp(widthDp: Float): Float =
+    if (widthDp >= EXPANDED_WIDTH_DP) PANEL_WIDTH_DP else MEDIUM_PANEL_WIDTH_DP
+
+/**
+ * [WidePanes]' side panel when the screen asks for no width: half a medium window less the gap (as the adaptive
+ * scaffold splits it: a list beside a form both need the room), and [PANEL_WIDTH_DP] on an expanded one.
+ */
+fun defaultPanelWidthDp(widthDp: Float, gapDp: Float): Float =
+    if (widthDp < EXPANDED_WIDTH_DP) (widthDp - gapDp) / 2f else PANEL_WIDTH_DP
 
 /** The largest [ratio] (width over height) frame that fits [widthDp] × [heightDp]; zero when either is not positive. */
 fun fitRatio(widthDp: Float, heightDp: Float, ratio: Float): Pair<Float, Float> {
@@ -48,8 +59,3 @@ fun belowPanelHeightDp(widthDp: Float, heightDp: Float, frameRatio: Float, chrom
 }
 
 private fun area(size: Pair<Float, Float>) = size.first * size.second
-
-private const val EXPANDED_WIDTH_DP = 840f
-
-/** The least picture pane worth having: under it, the other placement wins whatever its area. */
-private const val MIN_MAIN_DP = 240f

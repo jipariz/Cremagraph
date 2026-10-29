@@ -97,7 +97,7 @@ class PhoneAppTest {
         await(TestTags.ScreenOpen)
         tap(TestTags.OpenPickVideo)
         tap(TestTags.OpenPickShot)
-        // The phones offer a file or the machine.
+        // The phones offer a file, the machine or Visualizer.
         tap(TestTags.OpenFromFile)
         tap(TestTags.OpenEditor)
         await(TestTags.ScreenEdit)

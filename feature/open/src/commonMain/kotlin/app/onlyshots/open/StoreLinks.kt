@@ -66,6 +66,18 @@ internal enum class Store {
 }
 
 /**
+ * The one store a phone's browser offers: its own (Google Play, unless only the App Store has the app for it), the key
+ * that opens it (null where neither has), and whether the banner still shows it.
+ */
+internal data class PhoneStore(val store: Store, val open: (() -> Unit)?, val banner: Boolean)
+
+internal fun StoreLinks.phoneStore(): PhoneStore {
+    val store = if (onAppStore != null && onPlay == null) Store.AppStore else Store.Play
+    val open = if (store == Store.Play) onPlay else onAppStore
+    return PhoneStore(store, open, banner = open != null && !bannerDismissed)
+}
+
+/**
  * A store's key, as the stores ask it to be drawn: black, a hairline edge, the store's mark and its two lines ("GET IT
  * ON / Google Play", "Download on the / App Store"). Square, like every key here.
  */

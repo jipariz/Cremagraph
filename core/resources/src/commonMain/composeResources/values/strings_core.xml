@@ -6,6 +6,7 @@
     <string name="core_record">record</string>
     <string name="core_stop">stop</string>
     <string name="core_done">done</string>
+    <string name="core_dismiss">Dismiss</string>
     <string name="core_cancel">cancel</string>
 
     <!-- The wide editor's export -->

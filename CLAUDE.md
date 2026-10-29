@@ -182,9 +182,9 @@ desktop `Notification`. A tap opens the editor through `OpenRequests`. Words res
 
 **Live data.** Every machine or scale = `ShotSource` in `:sources`. Network machines over WebSocket; scales = pure
 `BleProtocol` over Kable. Network machine = `NetworkMachine` (`sources/.../machine/`) in `NetworkMachines.all`
-(today only Gaggiuino). Home, saved settings, machine log go through registry. `NetworkScan` finds machines (mDNS on
-Android, /24 sweep, fixed `.local` names last), confirms each with `identify`. `SourceKind.GAGGIMATE/DECENT` stay on
-purpose: old sidecars and settings name them. Each decoder pinned to upstream commit in doc comment: check before
+(Gaggiuino, GaggiMate). Home, saved settings, machine log go through registry. `NetworkScan` finds machines (mDNS on
+Android, /24 sweep, fixed `.local` names last), confirms each with `identify`. `SourceKind.DECENT` stays on
+purpose: old sidecars and settings name it. Each decoder pinned to upstream commit in doc comment: check before
 changing format. `SourceHolder` swaps live source under every screen. Every build starts disconnected. Only
 Home's "try a sample shot" switches to the Zer0 replay (`SourceHolder.useSample`, any build, how App Review tries app),
 for one take: saving it or recording without data ends it (`endSample`). **Simulate shot** only then.
@@ -209,15 +209,27 @@ alias of browser `File` on web.
 
 **Adaptive layout.** One function: `windowLayout(info, widthDp, heightDp, density)` → `Phone`/`Wide`/`Stacked`/`Tiny`
 + split. Input: `currentWindowAdaptiveInfo()` (size classes, Android hinges). iOS: `platformWindowAdaptiveInfo()` adds
-foldable iPhone fold from `IosHinge`, fed by Swift `ComposeHostController` (`NativeShell.swift`; Kotlin UIKit bindings
-lack iOS 27.1 hinge API). Every adaptive branch goes through it (`LocalWindowLayout`). No ad hoc size checks.
+foldable iPhone fold from `IosHinge`, fed by Swift `ComposeHostController` (`NativeShell.swift`; Kotlin UIKit bindings lack
+iOS 27.1 hinge API). Every adaptive branch goes through it (`LocalWindowLayout`). No ad hoc size checks: every breakpoint lives in
+`core/ui/.../layout/Breakpoints.kt`; orientation is `WindowLayout.landscape`. `BoxWithConstraints` in a feature only fits
+content (a frame, a toolbar row), never picks a layout.
 
-- **`Wide`:** `WidePanes`. On fold (`WindowLayout.fold`): two pages meeting at fold. Else picture beside panel or
-  above it, whichever gives picture more room (`placePanel`), where phone's bottom sheets go.
-- **Record screen:** no panes. `Phone` and `Wide` = camera fills window, `FloatingControls` over it, settings and
-  graph pages in bottom sheets. Graph kept where screen shows it (`OverlayEditLayer(bounds)`).
-- **Foldables:** follow "OnlyShots Foldables" canvas. Previews in `screenshots/.../FoldablePreviews.kt` hand posture
-  directly. `TwoPane` only for tabletop (`Stacked`). Remaining bottom sheets capped 640 dp.
+- **One file per layout.** Each screen: `<Screen>Screen.kt` (stateful entry), `<Screen>Body.kt` (stateless, `when
+  (layout.kind)`), `<Screen><Kind>Layout.kt` per variant it has (fold/tabletop/landscape are sub-composables inside
+  the variant's file, picked by an enum), shared parts in their own files, and the decisions (what shows, where, which
+  words) in a pure file tested in `commonTest`: `EditChrome`, `RecordChrome`, `StyleEditorRules`, `HomeState`/
+  `StartChrome`/`MachineShotsChrome`, `OpenState`/`OpenSteps`. Non-UI work (decoding, loading, sampling) is in the
+  view model, not a `LaunchedEffect`.
+- **Postures.** `windowLayout` builds its result with `wideLayout`/`bookLayout`/`stackedLayout`/`tinyLayout`/
+  `phoneLayout`; previews and UI tests build the postures a test window can't have with the same factories.
+- **`Wide`:** `WidePanes`. On fold (`WindowLayout.fold`): `FoldPanes`, two pages meeting at fold (split taken from where
+  the panes land, so callers don't subtract insets). Else picture beside panel or above it, whichever gives picture
+  more room (`placePanel`), where phone's bottom sheets go. A sheet on a fold is a `FoldPage` beside a `FoldScrim`.
+- **Record screen:** no panes. `Phone` and `Wide` = camera fills window, floating controls over it (one composable per
+  `ControlsPlacement`), settings and graph pages in bottom sheets. Graph kept where screen shows it
+  (`OverlayEditLayer(bounds)`, `RecordActions.keepGraphWithin`).
+- **Foldables:** follow "OnlyShots Foldables" canvas. Previews in `screenshots/.../FoldablePreviews.kt`. `TwoPane` only
+  for tabletop (`Stacked`). Remaining bottom sheets capped at `SHEET_MAX_WIDTH`, `SHEET_HEIGHT_FRACTION` tall.
 - **iPhone Duo native shell** (iOS 27.1, Figma "OnlyShots · iPhone Duo"): Swift `ShellNavigationController` around
   the one Compose screen. Where there is a hinge, system shows each screen's bar (side column on outer and inner
   landscape, top bar on inner portrait); elsewhere bar hidden, screens draw their own. Screens hand bar over via
@@ -276,7 +288,9 @@ and `editor/.../EditorApp.kt` (desktop, web). Web ties back stack to browser his
 - **Start** (`feature/home/.../StartScreen.kt`) offers two flows.
   - **Record live:** Home → Record → Edit (save + export) → Record.
   - **Edit by hand:** `OpenScreen` (`feature/open/`, also desktop/web start). Pick video + shot, both required. Shot
-    from file, or (phones, desktop; not web) machine's recent shots over HTTP via `MachineShotsRoute`
+    from file (`ShotFiles.parse`: Gaggiuino, visualizer.coffee, Beanconqueror), from Visualizer by share code or link
+    (`:visualizer`, every platform, web too; `VisualizerFetchForm` in `:core:ui`), or (phones, desktop; not web)
+    machine's recent shots over HTTP via `MachineShotsRoute`
     (`feature/home/MachineShotsScreen.kt`, `GaggiuinoHistory`), back through `NavResults.pickedShot` → Edit. Shot saved
     unplaced; editor lines it up. `EditRoute.manual` sends back/export to picking screen.
 - **Home** (`feature/home/`): searches machines and scales while in front (stops via `LifecycleStartEffect`). User

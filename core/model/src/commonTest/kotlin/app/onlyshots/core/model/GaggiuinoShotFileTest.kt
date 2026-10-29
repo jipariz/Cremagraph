@@ -120,11 +120,9 @@ class GaggiuinoShotFileTest {
 
     @Test
     fun somethingElseEntirelyIsRefused() {
-        assertFailsWith<GaggiuinoShotFile.NotAShotFile> { GaggiuinoShotFile.parse("not json", "f") { now } }
-        assertFailsWith<GaggiuinoShotFile.NotAShotFile> { GaggiuinoShotFile.parse("""{"a":1}""", "f") { now } }
-        assertFailsWith<GaggiuinoShotFile.NotAShotFile> {
-            GaggiuinoShotFile.parse("""{"datapoints":{"timeInShot":[]}}""", "f") { now }
-        }
+        assertFailsWith<NotAShotFile> { GaggiuinoShotFile.parse("not json", "f") { now } }
+        assertFailsWith<NotAShotFile> { GaggiuinoShotFile.parse("""{"a":1}""", "f") { now } }
+        assertFailsWith<NotAShotFile> { GaggiuinoShotFile.parse("""{"datapoints":{"timeInShot":[]}}""", "f") { now } }
     }
 
     /** The newer download: one object per reading, real units, milliseconds, the profile's name under `profile`. */

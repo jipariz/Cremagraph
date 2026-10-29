@@ -24,6 +24,7 @@ import app.onlyshots.home.HomeScreen
 import app.onlyshots.home.MachineShotsScreen
 import app.onlyshots.home.StartScreen
 import app.onlyshots.layout.ProvideWindowLayout
+import app.onlyshots.open.OpenEntry
 import app.onlyshots.open.OpenScreen
 import app.onlyshots.platform.OpenRequests
 import app.onlyshots.privacy.PrivacyScreen
@@ -99,7 +100,7 @@ private fun Graph(nav: NavBackStack<NavKey>) {
                     TaggedScreen(TestTags.ScreenOpen) {
                         OpenScreen(
                             onOpen = { id -> nav.go(EditRoute(id, manual = true)) },
-                            onBack = { nav.back() },
+                            entry = OpenEntry.PhoneApp(onBack = { nav.back() }),
                             onFromMachine = { nav.go(MachineShotsRoute) },
                             pickedShot = results.pickedShot,
                             onPickedShotUsed = { results.pickedShot.value = null },

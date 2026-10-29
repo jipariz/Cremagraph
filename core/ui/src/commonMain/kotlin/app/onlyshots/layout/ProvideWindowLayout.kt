@@ -12,7 +12,9 @@ import androidx.compose.ui.platform.LocalDensity
 /**
  * Decides the [WindowLayout] for the space [content] gets, from the adaptive library's window classes and posture
  * (hinges on Android foldables, the fold the host reports on iOS), and provides it as [LocalWindowLayout]. Every app
- * shell and the screenshot previews go through this, so a preview at tablet size lays out exactly as a tablet would.
+ * shell and the phone and tablet screenshot previews go through this, so a preview at tablet size lays out exactly as a
+ * tablet would; the postures a canvas can't have (a fold, a tabletop, an upright tablet) are built by the same
+ * factories [windowLayout] uses ([bookLayout], [stackedLayout], [tinyLayout], [wideLayout]).
  */
 @Composable
 fun ProvideWindowLayout(content: @Composable () -> Unit) {

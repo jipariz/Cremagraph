@@ -11,4 +11,5 @@ fun machineColor(kind: SourceKind): Color =
         SourceKind.GAGGIMATE -> CgColors.Machine.Gaggimate
         SourceKind.DECENT -> CgColors.Machine.Decent
         SourceKind.SCALE -> CgColors.Machine.Scale
+        SourceKind.VISUALIZER -> CgColors.Machine.Visualizer
     }

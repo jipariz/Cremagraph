@@ -5,7 +5,7 @@ import okio.Path
 
 /**
  * Returns a function that opens the system file picker and calls [onPicked] with a copy of the chosen file in the cache
- * directory. Used for a Gaggiuino `.shot` file exported from SproFiler, the visualizer, or the machine itself. Under a
+ * directory. Used for a Gaggiuino `.shot` file exported from the visualizer or the machine itself. Under a
  * [LocalPickerOverride] (UI tests) the override answers instead of the system picker.
  */
 @Composable

@@ -5,9 +5,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.runDesktopComposeUiTest
-import app.onlyshots.layout.LayoutKind
 import app.onlyshots.layout.LocalWindowLayoutOverride
 import app.onlyshots.layout.WindowLayout
+import app.onlyshots.layout.bookLayout
+import app.onlyshots.layout.stackedLayout
+import app.onlyshots.layout.tinyLayout
 import app.onlyshots.platform.LocalPickerOverride
 import app.onlyshots.platform.PickerOverride
 import kotlin.time.Duration.Companion.minutes
@@ -28,15 +30,10 @@ enum class Device(
     PhoneLandscape(923, 411),
     TabletLandscape(1280, 800),
     TabletPortrait(800, 1280),
-    BookFold(701, 841, { w, _ -> WindowLayout(LayoutKind.Wide, splitDp = w / 2f, fold = true) }),
-    Tabletop(
-        1280,
-        800,
-        { w, h -> WindowLayout(LayoutKind.Stacked, splitDp = h / 2f, onItsSide = w > h) },
-        edits = false,
-    ),
-    Flex(411, 923, { w, h -> WindowLayout(LayoutKind.Stacked, splitDp = h / 2f, onItsSide = w > h) }, edits = false),
-    Cover(360, 420, { _, _ -> WindowLayout(LayoutKind.Tiny) }, edits = false),
+    BookFold(701, 841, { w, h -> bookLayout(w, h) }),
+    Tabletop(1280, 800, { w, h -> stackedLayout(w, h) }, edits = false),
+    Flex(411, 923, { w, h -> stackedLayout(w, h) }, edits = false),
+    Cover(360, 420, { w, h -> tinyLayout(w, h) }, edits = false),
 }
 
 /** Runs [block] in a desktop test window of [device]'s size and posture, with [pickers] answering the app's pickers. */

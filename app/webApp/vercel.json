@@ -3,7 +3,7 @@
   "framework": null,
   "headers": [
     {
-      "source": "/(.*)\\.(wasm|ttf)",
+      "source": "/:hash([0-9a-f]{8,}).wasm",
       "headers": [
         {
           "key": "Cache-Control",

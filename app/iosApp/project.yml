@@ -6,8 +6,8 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "10000"
+    MARKETING_VERSION: "1.1.0"
+    CURRENT_PROJECT_VERSION: "10100"
     # Kotlin builds no iosX64: Swift export refuses an Xcode request for it ("Any iOS Simulator Device").
     "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
 targets:

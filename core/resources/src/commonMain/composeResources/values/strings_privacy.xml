@@ -2,14 +2,16 @@
 <!-- The privacy policy inside the app: the same words as app/webApp/src/webMain/resources/privacy.html. Change both together. -->
 <resources>
     <string name="privacy_title">privacy</string>
-    <string name="privacy_updated">Last updated October 19, 2026 · applies to the OnlyShots apps for iPhone, iPad, Android and the desktop, and the web editor.</string>
+    <string name="privacy_updated">Last updated October 22, 2026 · applies to the OnlyShots apps for iPhone, iPad, Android and the desktop, and the web editor.</string>
     <string name="privacy_lead">OnlyShots collects no personal data.</string>
     <string name="privacy_lead_detail">There is no account, no analytics, no advertising and no tracking. Your videos, shots and settings stay on your device, and nothing is sent to us or to anyone else.</string>
     <string name="privacy_uses_title">What the app uses, and why</string>
     <string name="privacy_use_camera">Camera and microphone</string>
     <string name="privacy_use_camera_why">to film your espresso shot with its sound. The video is saved on your device; you can mute the sound in the editor.</string>
     <string name="privacy_use_network">Local network</string>
-    <string name="privacy_use_network_why">to read the shot from your own espresso machine (for example a Gaggiuino) on your home Wi‑Fi. The app talks only to the machine you pick.</string>
+    <string name="privacy_use_network_why">to read the shot from your own espresso machine (for example a Gaggiuino or GaggiMate) on your home Wi‑Fi. The app talks only to the machine you pick.</string>
+    <string name="privacy_use_internet">Internet</string>
+    <string name="privacy_use_internet_why">only when you fetch a shot from visualizer.coffee: the app sends the share code or link you typed and gets that shot back. Nothing of yours is uploaded.</string>
     <string name="privacy_use_bluetooth">Bluetooth</string>
     <string name="privacy_use_bluetooth_why">to read weight from your own Bluetooth scale.</string>
     <string name="privacy_use_photos">Photos</string>

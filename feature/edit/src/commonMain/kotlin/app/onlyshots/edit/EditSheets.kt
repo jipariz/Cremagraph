@@ -35,7 +35,6 @@ import app.onlyshots.connect.color
 import app.onlyshots.connect.label
 import app.onlyshots.connect.labelRes
 import app.onlyshots.core.designsystem.CgColors
-import app.onlyshots.core.designsystem.CgIcons
 import app.onlyshots.core.designsystem.CgMotion.tick
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.CgStroke
@@ -70,11 +69,9 @@ import app.onlyshots.core.resources.edit_file
 import app.onlyshots.core.resources.edit_from_machine
 import app.onlyshots.core.resources.edit_from_machine_detail
 import app.onlyshots.core.resources.edit_graph
-import app.onlyshots.core.resources.edit_graph_start
 import app.onlyshots.core.resources.edit_keep_open
 import app.onlyshots.core.resources.edit_legend
 import app.onlyshots.core.resources.edit_machine
-import app.onlyshots.core.resources.edit_match_by_clock
 import app.onlyshots.core.resources.edit_no_sound
 import app.onlyshots.core.resources.edit_not_in_shot
 import app.onlyshots.core.resources.edit_number_phases
@@ -95,13 +92,18 @@ import app.onlyshots.core.resources.edit_status_recorded
 import app.onlyshots.core.resources.edit_time_left
 import app.onlyshots.core.resources.edit_title
 import app.onlyshots.core.resources.edit_use_another_shot
+import app.onlyshots.core.resources.edit_visualizer
 import app.onlyshots.core.resources.edit_with_sound
 import app.onlyshots.core.resources.edit_working_out
 import app.onlyshots.core.resources.unit_grams
+import app.onlyshots.core.resources.visualizer_from
+import app.onlyshots.core.resources.visualizer_from_detail
 import app.onlyshots.export.ExportManager
 import app.onlyshots.label
 import app.onlyshots.machineLabel
 import app.onlyshots.overlayTitleText
+import app.onlyshots.visualizer.VisualizerFetchForm
+import app.onlyshots.visualizer.VisualizerFetchState
 import kotlin.math.roundToInt
 import kotlin.time.TimeSource
 import org.jetbrains.compose.resources.StringResource
@@ -246,7 +248,21 @@ fun ShotSheetContent(
     onUnlock: () -> Unit = {},
     /** The host can reach machines on the network (the phones): a recent shot from one, picked on its own screen. */
     onFromMachine: (() -> Unit)? = null,
+    /** A shot shared on visualizer.coffee: turns the sheet to [visualizer]'s form. */
+    onVisualizer: (() -> Unit)? = null,
+    /** Non-null while the sheet shows the Visualizer's code-or-link form, in place of the ways in. */
+    visualizer: VisualizerFetchState? = null,
+    onFetchVisualizer: (String) -> Unit = {},
 ) {
+    if (visualizer != null) {
+        Text(
+            stringResource(Res.string.visualizer_from).caps(),
+            style = CgTheme.type.labelStrong,
+            color = CgColors.Text.Secondary,
+        )
+        VisualizerFetchForm(visualizer, onFetch = onFetchVisualizer)
+        return
+    }
     val shot = item.shot
     if (shot != null) {
         ShotCard(item, shot, onMatchByClock = onMatchByClock, onUnlock = onUnlock)
@@ -264,6 +280,13 @@ fun ShotSheetContent(
             )
             Pill(stringResource(Res.string.edit_file), onClick = onFile)
             if (onFromMachine != null) Pill(stringResource(Res.string.edit_machine), onClick = onFromMachine)
+            if (onVisualizer != null) {
+                Pill(
+                    stringResource(Res.string.edit_visualizer),
+                    onClick = onVisualizer,
+                    modifier = Modifier.testTag(TestTags.ShotFromVisualizer),
+                )
+            }
         }
     } else {
         ListRow(
@@ -276,6 +299,14 @@ fun ShotSheetContent(
                 stringResource(Res.string.edit_from_machine),
                 stringResource(Res.string.edit_from_machine_detail),
                 onClick = onFromMachine,
+            )
+        }
+        if (onVisualizer != null) {
+            ListRow(
+                stringResource(Res.string.visualizer_from),
+                stringResource(Res.string.visualizer_from_detail),
+                onClick = onVisualizer,
+                modifier = Modifier.testTag(TestTags.ShotFromVisualizer),
             )
         }
     }
@@ -305,21 +336,13 @@ fun ShotSheetContent(
 private fun ShotCard(item: VideoItem, shot: Shot, onMatchByClock: () -> Unit, onUnlock: () -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S12)) {
         Column(Modifier.fillMaxWidth().border(CgStroke.Hairline, CgColors.Line.Hairline)) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
-                horizontalArrangement = Arrangement.spacedBy(CgSpace.S12),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(Modifier.width(4.dp).height(36.dp).background(machineColor(shot.source)))
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(shot.profileName.caps(), style = CgTheme.type.cardTitle)
-                    Text(
-                        machineLabel(shot.source).caps(),
-                        style = CgTheme.type.data,
-                        color = CgColors.Text.Secondary,
-                    )
-                }
-            }
+            ShotSummaryRow(
+                color = machineColor(shot.source),
+                title = shot.profileName,
+                subtitle = machineLabel(shot.source).caps(),
+                titleStyle = CgTheme.type.cardTitle,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = CgSpace.S16, vertical = CgSpace.S12),
+            )
             Rule()
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                 ShotNumber(stringResource(Res.string.edit_number_time), clock(shot.durationUs))
@@ -349,14 +372,7 @@ private fun ShotCard(item: VideoItem, shot: Shot, onMatchByClock: () -> Unit, on
                 Text(stringResource(shotStatus(item)), style = CgTheme.type.bodySmall, color = tone)
             }
         }
-        // The machine or scale may have started the take a little early or late: the start can still be moved.
-        // The camera's clock and the machine's agree on where the shot starts: one tap lines it up.
-        when {
-            item.syncLocked ->
-                Pill(stringResource(Res.string.edit_graph_start), onClick = onUnlock, icon = CgIcons.Lock)
-            item.shotStartByClock() != null ->
-                Pill(stringResource(Res.string.edit_match_by_clock), onClick = onMatchByClock)
-        }
+        ShotStartPill(item, onUnlock = onUnlock, onMatchByClock = onMatchByClock)
     }
 }
 

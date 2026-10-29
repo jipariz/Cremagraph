@@ -3,9 +3,13 @@ package app.onlyshots.edit
 import app.onlyshots.core.model.Origin
 import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.Quality
+import app.onlyshots.core.model.Shot
+import app.onlyshots.core.model.ShotFiles
 import app.onlyshots.core.model.ShotHistory
+import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.VideoFormat
 import app.onlyshots.core.model.VideoItem
+import app.onlyshots.core.model.sample.SampleShots
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.edit_export_failed
 import app.onlyshots.core.resources.edit_no_pump_at_zero
@@ -27,6 +31,12 @@ import app.onlyshots.video.MonoPcm
 import app.onlyshots.video.VideoExporter
 import app.onlyshots.video.VideoInfo
 import app.onlyshots.video.VideoProbe
+import app.onlyshots.visualizer.Visualizer
+import app.onlyshots.visualizer.VisualizerError
+import app.onlyshots.visualizer.VisualizerException
+import app.onlyshots.visualizer.VisualizerFetchState
+import app.onlyshots.visualizer.VisualizerRef
+import app.onlyshots.visualizer.text
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.random.Random
@@ -146,6 +156,7 @@ class EditViewModelAttachTest {
         sound: MonoPcm?,
         fourK: Boolean = false,
         exporter: VideoExporter = NoExporter,
+        visualizer: Visualizer? = null,
     ): EditViewModel {
         library.save(item)
         val settings = AppSettingsRepo(SettingsStore(fs, "/library/settings.json".toPath()))
@@ -186,6 +197,7 @@ class EditViewModelAttachTest {
                 object : FrameSampler {
                     override suspend fun lumaAt(file: Path, atUs: Long, points: List<Pair<Float, Float>>) = null
                 },
+            visualizer = visualizer,
             work = main,
         )
     }
@@ -294,6 +306,102 @@ class EditViewModelAttachTest {
         vm.ui.first { it.item != null }
         vm.saveAndExport(Quality.HD_1080, withSound = false, ExportManager.Destination.GALLERY)
         withTimeout(5_000) { vm.ui.first { it.exporting == null } }
+    }
+
+    @Test
+    fun aPickedShotHandedOverAsJsonIsAttachedOnceTheVideoIsIn() = runTest {
+        val vm = viewModel(video(), sound = null)
+        vm.attachPickedShot(SidecarCodec.json.encodeToString(Shot.serializer(), SampleShots.zer0))
+        val item = vm.ui.first { it.item?.shot != null && it.busy == null }.item!!
+        assertEquals(SampleShots.zer0.id, item.shot?.id)
+        assertEquals(0L, item.shotStartInVideoUs)
+    }
+
+    @Test
+    fun aPickedShotThatIsNotAShotIsDropped() = runTest {
+        val vm = viewModel(video(), sound = null)
+        vm.ui.first { it.item != null }
+        vm.attachPickedShot("not a shot")
+        assertNull(vm.ui.value.item?.shot)
+    }
+
+    @Test
+    fun theGraphPageFollowsTheGraphsSheetsAndStaysForTheOthers() = runTest {
+        val vm = viewModel(video(), sound = null)
+        vm.ui.first { it.item != null }
+        vm.openSheet(EditSheet.DATA)
+        vm.openSheet(EditSheet.EXPORT)
+        assertEquals(EditSheet.DATA, vm.ui.value.graphPage)
+        vm.closeSheet()
+        assertEquals(EditSheet.DATA, vm.ui.value.graphPage)
+    }
+
+    /** A visualizer holding one shot, under the code ABCD; any other code has expired. */
+    private class FakeVisualizer : Visualizer {
+        val asked = mutableListOf<VisualizerRef>()
+
+        override suspend fun fetch(ref: VisualizerRef): Shot {
+            asked += ref
+            if (ref != VisualizerRef.Code("ABCD")) throw VisualizerException(VisualizerError.NOT_FOUND)
+            return ShotFiles.parse(
+                """{ "id": "832f7109", "profile_title": "Zer0", "timeframe": [0, 5],
+                      "data": { "espresso_pressure": [0.5, 9] } }""",
+                fallbackId = "v",
+            )
+        }
+    }
+
+    @Test
+    fun withoutAVisualizerTheWayIsHidden() = runTest {
+        val vm = viewModel(video(), sound = null)
+        assertEquals(false, vm.ui.first { it.item != null }.hasVisualizer)
+    }
+
+    @Test
+    fun aShareCodeAttachesTheVisualizersShot() = runTest {
+        val visualizer = FakeVisualizer()
+        val vm = viewModel(video(), sound = null, visualizer = visualizer)
+        vm.ui.first { it.item != null }
+        vm.openSheet(EditSheet.SHOT)
+        vm.openVisualizer()
+        assertEquals(VisualizerFetchState(), vm.ui.value.visualizer)
+
+        vm.fetchFromVisualizer(" abcd ")
+
+        val item = vm.ui.first { it.item?.shot != null && it.busy == null }.item!!
+        assertEquals(listOf<VisualizerRef>(VisualizerRef.Code("ABCD")), visualizer.asked)
+        assertEquals("visualizer-832f7109", item.shot!!.id)
+        assertNull(vm.ui.value.sheet)
+        assertNull(vm.ui.value.visualizer)
+    }
+
+    @Test
+    fun anExpiredCodeIsSaidInTheForm() = runTest {
+        val vm = viewModel(video(), sound = null, visualizer = FakeVisualizer())
+        vm.ui.first { it.item != null }
+        vm.openSheet(EditSheet.SHOT)
+        vm.openVisualizer()
+
+        vm.fetchFromVisualizer("ZZZZ")
+
+        val form = vm.ui.first { it.visualizer?.error != null }.visualizer!!
+        assertEquals(VisualizerError.NOT_FOUND.text(), form.error)
+        assertEquals(EditSheet.SHOT, vm.ui.value.sheet)
+        assertNull(vm.ui.value.item!!.shot)
+    }
+
+    @Test
+    fun somethingElseIsNotAsked() = runTest {
+        val visualizer = FakeVisualizer()
+        val vm = viewModel(video(), sound = null, visualizer = visualizer)
+        vm.ui.first { it.item != null }
+        vm.openSheet(EditSheet.SHOT)
+        vm.openVisualizer()
+
+        vm.fetchFromVisualizer("not a code")
+
+        assertTrue(vm.ui.value.visualizer?.error != null)
+        assertEquals(emptyList(), visualizer.asked)
     }
 }
 

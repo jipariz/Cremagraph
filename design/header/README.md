@@ -31,15 +31,46 @@ clock".
 
 ## 2. Export the master
 
-The desktop editor does this; there is no separate tool.
+Either way, it goes through the app's own exporter, so the art is what the app makes.
+`Quality.size(format)` (`core/model/.../Video.kt`) fixes output to one of eight sizes and none of them is 21:9,
+which is why the master is 16:9 and the 21:9 framing happens in `build.py`.
+
+**By hand**, when you have a recording the app made:
 
 ```
 ./gradlew :app:desktopApp:run
 ```
 
 Open → the recording and its shot → format 16:9, quality 4K → check the graph sits in the middle band → export.
-`Quality.size(format)` (`core/model/.../Video.kt`) fixes output to one of eight sizes and none of them is 21:9,
-which is why the master is 16:9 and the 21:9 framing happens in `build.py`.
+
+**Headless**, for a loose video plus a shot file — a camera roll clip and a visualizer.coffee shot, say:
+
+```
+./gradlew :video:desktopTest --tests '*HeaderMasterTest' \
+  -Donlyshots.header.video=IMG_7462.MOV \
+  -Donlyshots.header.shot=shot.json \
+  -Donlyshots.header.out=master.mp4 \
+  -Donlyshots.header.shotStartUs=1000000 \
+  -Donlyshots.header.durationUs=19498333
+```
+
+`HeaderMasterTest` (`video/src/desktopTest/`) builds a `VideoItem` and runs `FfmpegVideoExporter`, in the
+`liquidglass` style with the graph placed in the band the 21:9 crop keeps. It skips without
+`onlyshots.header.video`, so `./gradlew :video:desktopTest` stays green. Any shot `ShotFiles.parse` reads works;
+fetch a Visualizer one with `curl -s https://visualizer.coffee/api/shots/<id>?with_data=1 -o shot.json`.
+
+### Lining the shot up
+
+`shotStartUs` is where the shot begins in the video. The two clocks give it: the video's `creation_time` and the
+shot's `start_time`, which is what `VideoItem.shotStartByClock()` does in the app.
+
+```
+ffprobe -v error -show_entries format_tags=creation_time -of default=nw=1 video.MOV
+python3 -c "import json;print(json.load(open('shot.json'))['start_time'])"
+```
+
+Check it against the picture rather than trusting it: find the first shot sample where `espresso_weight` rises off
+zero, add the offset, and the first liquid should reach the cup at that moment in the video.
 
 ## 3. Compose
 

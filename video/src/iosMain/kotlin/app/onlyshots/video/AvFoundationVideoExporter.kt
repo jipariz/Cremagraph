@@ -19,6 +19,7 @@ import app.onlyshots.overlay.compose.OverlayFrameRenderer
 import app.onlyshots.overlay.compose.overlayLabels
 import app.onlyshots.overlay.scene.BackdropPrim
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.math.atan2
 import kotlin.math.roundToInt
 import kotlinx.cinterop.BetaInteropApi
@@ -268,15 +269,23 @@ class AvFoundationVideoExporter(
         val totalUs = (item.trimOutUs - item.trimInUs).coerceAtLeast(1)
         val drawer = FrameDrawer(size.width, size.height, rotation, item.reframe)
 
+        // AVFoundation calls the block on its own queue, outside any coroutine: an exception thrown there would end the
+        // app. So it stops once the export is cancelled (the writer may be gone, its pixel buffer pool with it), and
+        // anything a frame throws is handed back to the export, which fails with it.
         suspend fun pump(input: AVAssetWriterInput, label: String, next: () -> Boolean) =
             suspendCancellableCoroutine { cont ->
                 input.requestMediaDataWhenReadyOnQueue(dispatch_queue_create("onlyshots.export.$label", null)) {
-                    while (input.readyForMoreMediaData) {
-                        if (!next()) {
-                            input.markAsFinished()
-                            if (cont.isActive) cont.resume(Unit)
-                            break
+                    try {
+                        while (input.readyForMoreMediaData) {
+                            if (!cont.isActive || !next()) {
+                                input.markAsFinished()
+                                if (cont.isActive) cont.resume(Unit)
+                                break
+                            }
                         }
+                    } catch (e: Throwable) {
+                        input.markAsFinished()
+                        if (cont.isActive) cont.resumeWithException(e)
                     }
                 }
             }

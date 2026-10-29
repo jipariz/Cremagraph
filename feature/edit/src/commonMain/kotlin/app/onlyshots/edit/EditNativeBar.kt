@@ -22,7 +22,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun EditNativeBar(ui: EditUiState, actions: EditActions, player: PlayerState, onExport: (() -> Unit)?) {
     val video = ui.item
-    val export = stringResource(Res.string.edit_export)
+    // On a wide editor the item saves straight away, as the panel's button did: it is called what that button was.
+    val export = stringResource(if (onExport != null) LocalExportWording.current.save else Res.string.edit_export)
     val undo = stringResource(Res.string.edit_undo)
     val redo = stringResource(Res.string.edit_redo)
     val sound = stringResource(if (player.muted) Res.string.edit_muted else Res.string.edit_sound)

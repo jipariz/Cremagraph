@@ -19,6 +19,7 @@ enum class BarIcon {
     Help,
     Privacy,
     Record,
+    Stop,
     Settings,
     Add,
     File,

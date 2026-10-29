@@ -207,7 +207,7 @@ private fun EditPanel(
     /** The graph's quick tools beside "done": how much of its background shows. */
     tools: @Composable () -> Unit,
     /** Pinned under the pages: the export. */
-    footer: @Composable () -> Unit,
+    footer: (@Composable () -> Unit)?,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -245,7 +245,7 @@ private fun EditPanel(
         ) {
             content()
         }
-        PanelFooter(footer)
+        footer?.let { PanelFooter(it) }
     }
 }
 
@@ -262,7 +262,7 @@ private fun VideoPanel(
     reframing: Boolean,
     onReframing: (Boolean) -> Unit,
     onPickShotFile: () -> Unit,
-    footer: @Composable () -> Unit,
+    footer: (@Composable () -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     var changingShot by remember { mutableStateOf(false) }
@@ -325,7 +325,7 @@ private fun VideoPanel(
                 }
             }
         }
-        PanelFooter(footer)
+        footer?.let { PanelFooter(it) }
     }
 }
 

@@ -1,7 +1,10 @@
 package app.onlyshots.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -11,9 +14,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import app.onlyshots.TestTags
+import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.CgSpace
 import app.onlyshots.core.designsystem.component.BarIcon
 import app.onlyshots.core.designsystem.component.CgSheet
+import app.onlyshots.core.designsystem.component.LocalNativeChrome
 import app.onlyshots.core.designsystem.component.NativeBarItem
 import app.onlyshots.core.designsystem.component.NativeItems
 import app.onlyshots.core.resources.Res
@@ -52,8 +57,19 @@ fun StartScreen(onRecord: () -> Unit, onEdit: () -> Unit, onPrivacy: (() -> Unit
     ) { id ->
         if (id == TestTags.StartHelp) help = true else onPrivacy?.invoke()
     }
-    // On a book foldable the help takes the right page, in place of the choices; elsewhere it is a sheet.
+    // On a book foldable the help takes the right page, in place of the choices; elsewhere it is a sheet. Where the
+    // bars are native it is a page closed with the bar's back key, as Privacy is: a sheet's done key would sit under
+    // the system's column.
     val fold = LocalWindowLayout.current.fold
+    if (help && LocalNativeChrome.current != null) {
+        val page: @Composable (Modifier) -> Unit = { modifier -> HelpPage(title, { help = false }, modifier, content) }
+        if (!fold) {
+            page(Modifier.fillMaxSize().background(CgColors.Surface.Base).safeDrawingPadding())
+            return
+        }
+        StartBody(onRecord = onRecord, onEdit = onEdit, helpPage = { page(Modifier.fillMaxSize()) })
+        return
+    }
     StartBody(
         onRecord = onRecord,
         onEdit = onEdit,

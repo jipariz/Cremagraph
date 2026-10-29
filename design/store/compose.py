@@ -19,13 +19,14 @@ from render import CHROMES
 HERE = pathlib.Path(__file__).parent
 SCREENS = HERE / "screens"
 PLAY = HERE / "play"
+APPSTORE_DIR = HERE / "appstore"
 LOGO = HERE.parent / "logo" / "kit"
 
 INK, BONE, SIGNAL, LINE, MUTE, BLUE = "#0B0B0B", "#E8E6E1", "#FF5A1F", "#3A3A38", "#A3A19B", "#7FA7B8"
 
 PHONE = [
     ("Main", "01 / START", "FILM THE SHOT.\nKEEP THE DATA.", "Film espresso with its live graph from your machine and scale."),
-    ("Home-Found", "02 / CONNECT", "FINDS YOUR\nMACHINE AND SCALE", "Gaggiuino over Wi-Fi, scales over Bluetooth."),
+    ("Home-Found", "02 / CONNECT", "FINDS YOUR\nMACHINE AND SCALE", "Gaggiuino and GaggiMate over Wi-Fi, scales over Bluetooth."),
     ("Rec-Recording", "03 / RECORD", "STARTS WHEN\nTHE SHOT DOES", "Recording follows the brew switch."),
     ("Rec-Graph", "04 / PLACE", "THE GRAPH WHERE\nYOU WANT IT", "Drag it, resize it, pick what it shows."),
     ("Edit-Idle", "05 / EDIT", "LINE IT UP AFTER", "Any video, any shot file. Trim and export."),
@@ -34,8 +35,28 @@ PHONE = [
 TABLET = [
     ("Rec-Recording", "01 / RECORD", "STARTS WHEN\nTHE SHOT DOES", "Recording follows the brew switch, with the graph drawn live."),
     ("Edit-Idle", "02 / EDIT", "LINE IT UP AFTER", "Any video, any shot file. Trim, frame and export."),
-    ("Home-Found", "03 / CONNECT", "FINDS YOUR\nMACHINE AND SCALE", "Gaggiuino over Wi-Fi, scales over Bluetooth."),
+    ("Home-Found", "03 / CONNECT", "FINDS YOUR\nMACHINE AND SCALE", "Gaggiuino and GaggiMate over Wi-Fi, scales over Bluetooth."),
     ("Rec-Style", "04 / STYLE", "SIX STYLES,\nOR YOUR OWN", "Every export matches the preview."),
+]
+
+# The App Store slots, from Apple's own spec
+# (developer.apple.com/help/app-store-connect/reference/screenshot-specifications/, read 2026-10-29). Required are
+# one iPhone with Dynamic Island (medium) and, since the app runs on iPad, one iPad 13-inch; the large iPhone set is
+# the highest resolution, which App Store Connect scales down from. Duo is required from April 2027 on iOS 27.1+.
+#
+# Each is laid out at 1x and shot at the scale that gives Apple's pixel size exactly. No new artboards: the device
+# box keeps its board's aspect and bleeds off the frame's bottom edge, as the Play frames do. Duo's two displays
+# take the phone and the medium board — the outer display is phone-shaped, the inner one is the larger, squarer
+# screen.
+#
+#   (directory, frames, screen suffix, frame w, h, grid cell, scale, copy(x, y, w, …, hs), device(x, y, sw, sh, pad, tick))
+APPSTORE = [
+    ("iphone-6.9", PHONE, "", 440, 956, 29, 3, (29, 39, 367, 31), (66, 259, 288, 625, 10, 12)),
+    ("iphone-6.1", PHONE, "", 393, 852, 26, 3, (26, 35, 328, 27), (59, 231, 258, 558, 9, 11)),
+    ("ipad-13", TABLET, "-M", 1032, 1376, 55, 2, (69, 83, 894, 62), (110, 516, 791, 1266, 14, 21)),
+    ("ipad-13-landscape", TABLET, "-B", 1376, 1032, 34, 2, (56, 186, 354, 44), (458, 242, 840, 525, 11, 15)),
+    ("duo-outer", PHONE, "", 466, 678, 31, 3, (31, 41, 388, 32), (112, 272, 225, 487, 8, 12)),
+    ("duo-inner", TABLET, "-M", 669, 951, 45, 3, (45, 58, 557, 46), (119, 330, 415, 664, 8, 16)),
 ]
 
 HEAD = f"""<!doctype html><meta charset="utf-8">
@@ -129,6 +150,12 @@ def shoot(chrome: str, page: str, w: int, h: int, scale: float, out: pathlib.Pat
             check=True, capture_output=True,
         )
     drop_alpha(out)
+    want = f"{round(w * scale)}x{round(h * scale)}"
+    got = subprocess.run(
+        ["magick", "identify", "-format", "%wx%h", out], check=True, capture_output=True, text=True
+    ).stdout
+    if got != want:
+        raise SystemExit(f"{out.name}: wrote {got}, wanted {want}")
 
 
 def drop_alpha(path: pathlib.Path) -> None:
@@ -152,6 +179,11 @@ def main() -> None:
         body = copy(64, 96, 360, *c, 44) + device(472, 152, 736, 460, 10, 14, SCREENS / f"{scr}-B.png")
         jobs.append((frame(1280, 800, 32, body), 1280, 800, 2, PLAY / "tablet-10" / f"{i:02}.png"))
     jobs.append((feature(), 1024, 500, 1, PLAY / "feature-graphic-1024x500.png"))
+    for d, frames, suffix, fw, fh, cell, scale, (cx, cy, cw, hs), (dx, dy, sw, sh, pad, tick) in APPSTORE:
+        (APPSTORE_DIR / d).mkdir(parents=True, exist_ok=True)
+        for i, (scr, *c) in enumerate(frames, 1):
+            body = copy(cx, cy, cw, *c, hs) + device(dx, dy, sw, sh, pad, tick, SCREENS / f"{scr}{suffix}.png")
+            jobs.append((frame(fw, fh, cell, body), fw, fh, scale, APPSTORE_DIR / d / f"{i:02}.png"))
     for page, w, h, scale, out in jobs:
         shoot(chrome, page, w, h, scale, out)
         print(out.relative_to(HERE))

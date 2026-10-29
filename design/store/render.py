@@ -18,7 +18,17 @@ HERE = pathlib.Path(__file__).parent
 SRC = HERE / "src"
 OUT = HERE / "screens"
 
-CHROMES = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "google-chrome", "chromium"]
+# Playwright keeps a full Chrome build, and this repo already installs one for tools/web-smoke, so the art can be
+# made on a machine with no Chrome of its own. A real Chrome still wins: these go last.
+_PLAYWRIGHT = pathlib.Path.home() / "Library" / "Caches" / "ms-playwright"
+CHROMES = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "google-chrome", "chromium"] + [
+    str(c)
+    for pattern in (
+        "chromium-*/chrome-*/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+        "chromium-*/chrome-linux/chrome",
+    )
+    for c in sorted(_PLAYWRIGHT.glob(pattern), reverse=True)
+]
 SCALE = {(390, 844): 3, (800, 1280): 1.5, (1280, 800): 2, (1280, 860): 2}
 
 # The drawn camera frame swapped for a real shot on the Gaggiuino (photos/, metadata stripped). Board name prefix ->

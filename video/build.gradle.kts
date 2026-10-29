@@ -170,7 +170,7 @@ tasks
             "onlyshots.spikeClip",
             layout.projectDirectory.file("testdata/spike_alignment.mp4").asFile.absolutePath,
         )
-        for (name in listOf("video", "shot", "out", "shotStartUs", "durationUs", "style", "rect")) {
+        for (name in listOf("video", "shot", "out", "shotStartUs", "durationUs", "rect", "title")) {
             providers.systemProperty("onlyshots.header.$name").orNull?.let {
                 systemProperty("onlyshots.header.$name", it)
             }

@@ -24,9 +24,17 @@ with some air under it — pass `-Donlyshots.header.rect=x,y,w,h` to put it ther
 What the current header uses:
 
 ```
--Donlyshots.header.rect=0.52,0.33,0.42,0.34     # right half, clear of the copy, 199 px above the band's foot
+./gradlew :video:desktopTest --tests '*HeaderMasterTest' \
+  -Donlyshots.header.video=IMG_7462.MOV -Donlyshots.header.shot=shot.json \
+  -Donlyshots.header.out=master.mp4 \
+  -Donlyshots.header.shotStartUs=1000000 -Donlyshots.header.durationUs=19498333 \
+  -Donlyshots.header.rect=0.52,0.28,0.42,0.34 \
+  "-Donlyshots.header.title=Flimsy Light 0.3"
 python3 design/header/build.py master.mp4 --in 0 --out 19.4 --top 0
 ```
+
+`title` is worth setting: left alone the graph reads `"<profile> · <machine>"` (`overlayTitle`,
+`core/model/.../Names.kt`), which overruns the header row and ellipsises.
 
 ## 1. Record the shot
 

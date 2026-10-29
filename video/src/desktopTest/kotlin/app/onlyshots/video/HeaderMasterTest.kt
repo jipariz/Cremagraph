@@ -7,6 +7,9 @@ import app.onlyshots.core.model.Quality
 import app.onlyshots.core.model.ShotFiles
 import app.onlyshots.core.model.VideoFormat
 import app.onlyshots.core.model.VideoItem
+import app.onlyshots.core.model.style.GraphStyle
+import app.onlyshots.core.model.style.TargetLook
+import app.onlyshots.overlay.GraphStyles
 import app.onlyshots.overlay.compose.OverlayFonts
 import java.io.File
 import kotlin.test.Test
@@ -32,6 +35,37 @@ import okio.Path.Companion.toOkioPath
  * shot begins in the video, which the editor would work out from the two clocks; see design/header/README.md.
  */
 class HeaderMasterTest {
+    /**
+     * Liquid Glass pushed towards what the system material does on a phone, for a 3840-wide frame where the built-in's
+     * restraint reads as timidity: the lens bent as far as it goes with a wider colour split and a brighter rim, no
+     * border around the readings, their values at regular weight, thinner curves and targets that stay out of the way.
+     *
+     * A copy kept with the video ([OverlaySettings.style]), not an edit to the built-in: it is one marketing frame's
+     * taste, and the built-in is what users and the screenshot goldens see.
+     */
+    private val HEADER_STYLE: GraphStyle =
+        GraphStyles.LiquidGlass.let { base ->
+            base.copy(
+                id = "header-glass",
+                name = "Header Glass",
+                builtIn = false,
+                panel =
+                    base.panel.copy(
+                        glass =
+                            base.panel.glass.copy(
+                                frost = 1f,
+                                refraction = 0.5f,
+                                curve = 0.45f,
+                                edge = 0.08f,
+                                saturation = 1.3f,
+                                dispersion = 0.5f,
+                            )
+                    ),
+                lines = base.lines.copy(main = 2.2f, targets = TargetLook.FAINT, targetOpacity = 0.3f),
+                cells = base.cells.copy(border = 0, valueWeight = 400),
+            )
+        }
+
     private fun prop(name: String): String? = System.getProperty("onlyshots.header.$name")?.takeIf { it.isNotBlank() }
 
     /** `x,y,w,h` as fractions of the frame. */
@@ -66,7 +100,13 @@ class HeaderMasterTest {
                 // The header keeps a 1646 px band of a 4K 16:9 frame, so the default bottom-left placement would
                 // lose its lower edge. The default here sits in the right half, clear of the furniture's copy, and
                 // inside the band; `rect` moves it when the band does.
-                overlay = OverlaySettings(styleId = prop("style") ?: "liquidglass", rect = rect()),
+                overlay =
+                    OverlaySettings(
+                        styleId = HEADER_STYLE.id,
+                        style = HEADER_STYLE,
+                        rect = rect(),
+                        title = prop("title"),
+                    ),
                 format = VideoFormat.LANDSCAPE_16_9,
             )
 

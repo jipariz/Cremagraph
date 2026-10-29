@@ -27,6 +27,10 @@ from render import CHROMES  # noqa: E402  the same Chrome discovery the store ar
 
 W, H, FPS = 3840, 1646, 30
 MIN_S, MAX_S = 5, 30
+# Apple sets the header no bitrate, only 500 MB. 45 Mbps is what the app's own 4K export writes, so the
+# compose pass stops throwing three quarters of it away; 30 s of it is about 170 MB. The 10-12 Mbps in the
+# app preview spec is for an 886-wide clip and has no business here.
+MAX_BYTES = 500_000_000
 
 
 def chrome() -> str:
@@ -65,8 +69,8 @@ def compose(
     subprocess.run(
         ["ffmpeg", "-y", "-ss", f"{start}", "-to", f"{end}", "-i", master, "-i", layer,
          "-filter_complex", chain, "-map", "[o]", "-map", "0:a?",
-         "-c:v", "libx264", "-profile:v", "high", "-level", "4.0", "-preset", "slow",
-         "-b:v", "12M", "-maxrate", "14M", "-bufsize", "24M", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+         "-c:v", "libx264", "-profile:v", "high", "-preset", "slow",
+         "-b:v", "45M", "-maxrate", "55M", "-bufsize", "90M", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
          "-c:a", "aac", "-b:a", "256k", "-ac", "2", "-ar", "48000", out],
         check=True, capture_output=True,
     )
@@ -77,6 +81,8 @@ def compose(
     # A wrong size is otherwise caught only by App Store Connect refusing the upload.
     if probe != f"{W}x{H}":
         raise SystemExit(f"{out.name}: wrote {probe}, wanted {W}x{H}")
+    if out.stat().st_size > MAX_BYTES:
+        raise SystemExit(f"{out.name}: {out.stat().st_size / 1e6:.0f} MB, over Apple's 500 MB")
 
 
 def main() -> None:

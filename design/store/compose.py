@@ -10,6 +10,7 @@ Each frame is laid out at 1x and shot with headless Chrome at the scale that giv
 
 import html
 import pathlib
+import typing
 import shutil
 import subprocess
 import tempfile
@@ -20,6 +21,10 @@ HERE = pathlib.Path(__file__).parent
 SCREENS = HERE / "screens"
 PLAY = HERE / "play"
 APPSTORE_DIR = HERE / "appstore"
+FRAMES = HERE / "frames"
+# The iPhone Duo simulator captures (tools/ios-screenshots/capture.sh); git-ignored, so the Duo slots are
+# skipped when they are not there.
+DUO_SHOTS = HERE.parent.parent / "app" / "iosApp" / "build" / "duo-screenshots"
 LOGO = HERE.parent / "logo" / "kit"
 
 INK, BONE, SIGNAL, LINE, MUTE, BLUE = "#0B0B0B", "#E8E6E1", "#FF5A1F", "#3A3A38", "#A3A19B", "#7FA7B8"
@@ -39,25 +44,66 @@ TABLET = [
     ("Rec-Style", "04 / STYLE", "SIX STYLES,\nOR YOUR OWN", "Every export matches the preview."),
 ]
 
-# The App Store slots, from Apple's own spec
-# (developer.apple.com/help/app-store-connect/reference/screenshot-specifications/, read 2026-10-29). Required are
-# one iPhone with Dynamic Island (medium) and, since the app runs on iPad, one iPad 13-inch; the large iPhone set is
-# the highest resolution, which App Store Connect scales down from. Duo is required from April 2027 on iOS 27.1+.
-#
-# Each is laid out at 1x and shot at the scale that gives Apple's pixel size exactly. No new artboards: the device
-# box keeps its board's aspect and bleeds off the frame's bottom edge, as the Play frames do. Duo's two displays
-# take the phone and the medium board — the outer display is phone-shaped, the inner one is the larger, squarer
-# screen.
-#
-#   (directory, frames, screen suffix, frame w, h, grid cell, scale, copy(x, y, w, …, hs), device(x, y, sw, sh, pad, tick))
-APPSTORE = [
-    ("iphone-6.9", PHONE, "", 440, 956, 29, 3, (29, 39, 367, 31), (66, 259, 288, 625, 10, 12)),
-    ("iphone-6.1", PHONE, "", 393, 852, 26, 3, (26, 35, 328, 27), (59, 231, 258, 558, 9, 11)),
-    ("ipad-13", TABLET, "-M", 1032, 1376, 55, 2, (69, 83, 894, 62), (110, 516, 791, 1266, 14, 21)),
-    ("ipad-13-landscape", TABLET, "-B", 1376, 1032, 34, 2, (56, 186, 354, 44), (458, 242, 840, 525, 11, 15)),
-    ("duo-outer", PHONE, "", 466, 678, 31, 3, (31, 41, 388, 32), (112, 272, 225, 487, 8, 12)),
-    ("duo-inner", TABLET, "-M", 669, 951, 45, 3, (45, 58, 557, 46), (119, 330, 415, 664, 8, 16)),
+# The device frames of Apple's App Store template, exported from the Figma file as transparent art
+# (design/store/frames). `w`/`h` are the art's own pixels, `screen` the cut-out inside it; `over` marks the one
+# frame whose screen is not cut out, so the picture is drawn on top of it instead.
+class Device(typing.NamedTuple):
+    art: str
+    w: int
+    h: int
+    screen: tuple[int, int, int, int]
+    over: bool = False
+    #: Corner radius of the screen in the art's own pixels; only needed when `over` leaves it unmasked.
+    radius: float = 0
+
+
+IPHONE = Device("iphone-18-pro-black.png", 1319, 2748, (57, 63, 1206, 2622), over=True, radius=160)
+IPAD_P = Device("ipad-portrait.png", 1880, 2640, (106, 110, 1668, 2420))
+IPAD_L = Device("ipad-landscape.png", 2640, 1880, (110, 106, 2420, 1668))
+DUO_OUTER = Device("duo-outer.png", 1574, 2194, (88, 80, 1398, 2034))
+DUO_INNER = Device("duo-inner-landscape.png", 3093, 2247, (120, 120, 2853, 2007))
+
+# The Duo's side column is iOS's own bar on a hinged device, so it exists in no artboard: these frames take the
+# simulator captures instead (tools/ios-screenshots/capture.sh), named <pose>-<way up>-<screen>.png.
+DUO = [
+    ("home", "01 / CONNECT", "FINDS YOUR\nMACHINE AND SCALE", "Gaggiuino and GaggiMate over Wi-Fi, scales over Bluetooth."),
+    ("start", "02 / START", "FILM THE SHOT.\nKEEP THE DATA.", "Film espresso with its live graph from your machine and scale."),
+    ("open", "03 / EDIT", "LINE IT UP AFTER", "Any video, any shot file. Trim and export."),
 ]
+
+# The App Store slots, from Apple's own spec
+# (developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications/, read
+# 2026-10-29) at the sizes the template's artwork is drawn for, all of them on Apple's accepted list. Required are
+# one iPhone with Dynamic Island (medium, 1206 x 2622) and, since the app runs on iPad, one iPad 13-inch. Duo is
+# required from April 2027 on iOS 27.1+. Apple scales the larger iPhone slots down from the medium one, so no 6.9"
+# set is made: the template draws no 6.9" device to frame it with.
+#
+# The 13-inch slots keep the hairline frame: the only iPad the template draws is an 11-inch, whose screen is a
+# different shape (1210 x 834 against 1366 x 1024), so framing a 13-inch shot with it would stretch the hardware.
+#
+#   (directory, frames, screen suffix, frame w, h, grid cell, scale, copy(x, y, w, hs), device(x, y, sw, sh, pad, tick))
+APPSTORE = [
+    ("ipad-13", TABLET, "-M", 1024, 1366, 55, 2, (68, 82, 888, 62), (109, 512, 785, 1256, 14, 21)),
+    ("ipad-13-landscape", TABLET, "-B", 1366, 1024, 34, 2, (56, 184, 352, 44), (455, 240, 834, 521, 11, 15)),
+]
+
+# The framed slots: (directory, frames, how to find the screen, frame w, h, grid cell, scale, copy, device x/y/w)
+DEVICE_OF = {
+    "iphone": IPHONE,
+    "ipad-11": IPAD_P,
+    "ipad-11-landscape": IPAD_L,
+    "duo-outer": DUO_OUTER,
+    "duo-inner": DUO_INNER,
+}
+
+FRAMED = [
+    ("iphone", PHONE, lambda n: SCREENS / f"{n}.png", 402, 874, 26, 3, (27, 36, 336, 28), (60, 232, 282)),
+    ("ipad-11", TABLET, lambda n: SCREENS / f"{n}-M.png", 834, 1210, 44, 2, (56, 68, 722, 50), (96, 430, 642)),
+    ("ipad-11-landscape", TABLET, lambda n: SCREENS / f"{n}-B.png", 1210, 834, 30, 2, (50, 150, 310, 39), (404, 118, 760)),
+    ("duo-outer", DUO, lambda n: DUO_SHOTS / f"closed-portrait-{n}.png", 466, 678, 31, 3, (31, 41, 388, 32), (106, 262, 253)),
+    ("duo-inner", DUO, lambda n: DUO_SHOTS / f"open-landscape-{n}.png", 951, 669, 34, 3, (46, 60, 392, 34), (470, 167, 460)),
+]
+
 
 HEAD = f"""<!doctype html><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400&display=swap">
@@ -89,6 +135,29 @@ def device(x: int, y: int, sw: int, sh: int, pad: int, tick: int, src: pathlib.P
         f'<img src="{src.as_uri()}" style="left:{pad - 1}px;top:{pad - 1}px;width:{sw}px;height:{sh}px">'
         f"{ticks(w - 2, h - 2, tick)}</div>"
     )
+
+
+def framed(x: float, y: float, w: float, shot: pathlib.Path, dev: "Device") -> str:
+    """A screenshot inside one of the template's device frames (design/store/frames), drawn `w` wide at 1x.
+
+    The bezels come out of the App Store template with their screens cut out, so the picture goes under the frame
+    and shows through. The iPhone's is the whole component, placeholder screen and all, so there the picture goes
+    over it instead; `over` says which. A screen that is not the frame's shape is cover-cropped, as the editor
+    crops a clip into a format.
+    """
+    k = w / dev.w
+    sx, sy, sw, sh = (v * k for v in dev.screen)
+    # Ink under the picture and `contain` over it: a screen that is not the frame's shape then letterboxes onto the
+    # app's own ground instead of losing its edges to a crop, which on an ink UI cannot be seen.
+    screen = (
+        f'<div style="position:absolute;left:{sx:.1f}px;top:{sy:.1f}px;width:{sw:.1f}px;height:{sh:.1f}px;'
+        f'background:{INK};overflow:hidden;border-radius:{dev.radius * k:.1f}px">'
+        f'<img src="{shot.as_uri()}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain">'
+        f"</div>"
+    )
+    bezel = f'<img src="{(FRAMES / dev.art).as_uri()}" style="position:absolute;left:0;top:0;width:{w:.1f}px">'
+    inner = bezel + screen if dev.over else screen + bezel
+    return f'<div style="position:absolute;left:{x:.1f}px;top:{y:.1f}px;width:{w:.1f}px">{inner}</div>'
 
 
 def copy(x: int, y: int, w: int, label: str | None, head: str, sub: str, hs: int) -> str:
@@ -183,6 +252,17 @@ def main() -> None:
         (APPSTORE_DIR / d).mkdir(parents=True, exist_ok=True)
         for i, (scr, *c) in enumerate(frames, 1):
             body = copy(cx, cy, cw, *c, hs) + device(dx, dy, sw, sh, pad, tick, SCREENS / f"{scr}{suffix}.png")
+            jobs.append((frame(fw, fh, cell, body), fw, fh, scale, APPSTORE_DIR / d / f"{i:02}.png"))
+    for d, frames, find, fw, fh, cell, scale, (cx, cy, cw, hs), (dx, dy, dw) in FRAMED:
+        dev = DEVICE_OF[d]
+        shots = [(scr, c, find(scr)) for scr, *c in frames]
+        missing = [s.name for _, _, s in shots if not s.exists()]
+        if missing:
+            print(f"{d}: skipped, no {', '.join(missing)}")
+            continue
+        (APPSTORE_DIR / d).mkdir(parents=True, exist_ok=True)
+        for i, (_, c, shot) in enumerate(shots, 1):
+            body = copy(cx, cy, cw, *c, hs) + framed(dx, dy, dw, shot, dev)
             jobs.append((frame(fw, fh, cell, body), fw, fh, scale, APPSTORE_DIR / d / f"{i:02}.png"))
     for page, w, h, scale, out in jobs:
         shoot(chrome, page, w, h, scale, out)

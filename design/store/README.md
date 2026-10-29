@@ -1,4 +1,4 @@
-# Store art: Play Store, Instrument redesign
+# Store art: Play Store and App Store, Instrument redesign
 
 The Play listing art in the Instrument look (logo: `design/logo`, screens: the redesign canvas
 https://claude.ai/artifact/LTQSexsdusFXLmyuTFNVSa).
@@ -6,9 +6,10 @@ https://claude.ai/artifact/LTQSexsdusFXLmyuTFNVSa).
 - **Figma** (layout source, and the template's Play listing mockup with our icon and screenshots):
   https://www.figma.com/design/C3IXXAYvSHQ0TEgwTijgFc, page *Play Store Template*. Phone screenshots are the
   `Pixel Preview01`–`06` components; tablets and the feature graphic sit to their right.
-- **Build:** `python3 design/store/render.py && python3 design/store/compose.py` (Google Chrome, ImageMagick,
-  network for IBM Plex). `render.py` shoots the artboards in `src/` to `screens/`; `compose.py` lays out the same
-  frames as Figma and writes `play/`. Change copy in `compose.py` and in Figma together.
+- **Build:** `python3 design/store/render.py && python3 design/store/compose.py` (Google Chrome or the one
+  Playwright keeps for `tools/web-smoke`, ImageMagick, network for IBM Plex). `render.py` shoots the artboards in
+  `src/` to `screens/`; `compose.py` lays out the same frames as Figma and writes `play/` and `appstore/`. Change
+  copy in `compose.py` and in Figma together.
 
 ## Files in `play/`
 
@@ -38,5 +39,27 @@ The camera frame in the record and edit screens is a real shot on the Gaggiuino 
 location stripped): `armed.jpg` for Armed and the style sheet, `pouring.jpg` for Recording, `poured.jpg` for the
 editor. `render.py` (`PHOTOS`) swaps it in for the canvas's drawn camera.
 
-The screens show the redesign, not the shipping app: re-shoot them from the app once the Instrument theme lands in
-`core/designsystem`.
+## Files in `appstore/`
+
+Sizes from Apple's own spec, which the third-party guides disagree with:
+<https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications/>. Required are one iPhone
+with Dynamic Island (medium) and, since the app runs on iPad, one iPad 13-inch; the large iPhone set is the highest
+resolution, which App Store Connect scales the smaller slots down from. Duo is required from April 2027 on
+iOS 27.1+ (docs/DEVELOPMENT.md). Apple allows ten per slot.
+
+| Folder | Size | App Store slot | Screen |
+| --- | --- | --- | --- |
+| `iphone-6.9/01–06.png` | 1320 × 2868 | iPhone, Dynamic Island, large | phone board |
+| `iphone-6.1/01–06.png` | 1179 × 2556 | iPhone, Dynamic Island, medium — **required** | phone board |
+| `ipad-13/01–04.png` | 2064 × 2752 | iPad 13-inch, portrait — **required** | `-M` board |
+| `ipad-13-landscape/01–04.png` | 2752 × 2064 | iPad 13-inch, landscape | `-B` board |
+| `duo-outer/01–06.png` | 1398 × 2034 | iPhone Duo, outer display | phone board |
+| `duo-inner/01–04.png` | 2007 × 2853 | iPhone Duo, inner display | `-M` board |
+
+No artboards of their own: a device box keeps its board's aspect and bleeds off the frame's bottom edge, so any
+frame size can hold an existing board. Duo's outer display is phone-shaped and its inner one is the larger, squarer
+screen, so they take the phone and `-M` boards. The frames carry the Play headlines of the same screens.
+
+`compose.py`'s `APPSTORE` table holds one row per slot; `frame w × scale` has to equal Apple's pixel size exactly,
+and `shoot` asserts that on every write, because a wrong scale is otherwise only caught by App Store Connect
+refusing the upload.

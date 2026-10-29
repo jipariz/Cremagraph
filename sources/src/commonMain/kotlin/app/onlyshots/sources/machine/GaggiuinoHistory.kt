@@ -22,10 +22,9 @@ import kotlinx.serialization.json.contentOrNull
  * by [GaggiuinoShotFile]), and `GET /api/shots/latest` names the newest id. Shots are numbered one after another, so
  * the recent ones are the ids counting down from the newest.
  *
- * ponytail: `/api/shots/{id}` is the body SproFiler and the web UI's download hand out; the shape of
- * `/api/shots/latest` was not seen from a machine, so [latestId] takes `[{"lastShotId": "121"}]`, `{"lastShotId": 121}`
- * or a bare number. The release firmware (`release/stm32-blackpill`) has neither: there every call fails and the list
- * is empty.
+ * ponytail: `/api/shots/{id}` is the body the web UI's download hands out; the shape of `/api/shots/latest` was not
+ * seen from a machine, so [latestId] takes `[{"lastShotId": "121"}]`, `{"lastShotId": 121}` or a bare number. The
+ * release firmware (`release/stm32-blackpill`) has neither: there every call fails and the list is empty.
  */
 class GaggiuinoHistory(private val client: HttpClient, private val host: String, private val port: Int = 80) :
     MachineHistory {

@@ -58,6 +58,8 @@ import app.onlyshots.core.resources.privacy_use_bluetooth
 import app.onlyshots.core.resources.privacy_use_bluetooth_why
 import app.onlyshots.core.resources.privacy_use_camera
 import app.onlyshots.core.resources.privacy_use_camera_why
+import app.onlyshots.core.resources.privacy_use_internet
+import app.onlyshots.core.resources.privacy_use_internet_why
 import app.onlyshots.core.resources.privacy_use_network
 import app.onlyshots.core.resources.privacy_use_network_why
 import app.onlyshots.core.resources.privacy_use_photos
@@ -163,6 +165,7 @@ private fun LeadAndUses() {
     Section(stringResource(Res.string.privacy_uses_title), framed = true) {
         Use(stringResource(Res.string.privacy_use_camera), stringResource(Res.string.privacy_use_camera_why))
         Use(stringResource(Res.string.privacy_use_network), stringResource(Res.string.privacy_use_network_why))
+        Use(stringResource(Res.string.privacy_use_internet), stringResource(Res.string.privacy_use_internet_why))
         Use(stringResource(Res.string.privacy_use_bluetooth), stringResource(Res.string.privacy_use_bluetooth_why))
         Use(
             stringResource(Res.string.privacy_use_photos),

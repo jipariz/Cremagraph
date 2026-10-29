@@ -120,4 +120,23 @@ class WindowLayoutTest {
         // Nothing separating on a closed book, and that is the right answer: one column.
         assertEquals(LayoutKind.Phone, layout(390f, 844f, Posture(false, emptyList())).kind)
     }
+
+    @Test
+    fun theLayoutKnowsWhichWayTheWindowStands() {
+        assertTrue(layout(1280f, 800f).landscape)
+        assertFalse(layout(800f, 1280f).landscape)
+        assertTrue(layout(844f, 390f).landscape, "a phone on its side")
+        assertFalse(layout(390f, 844f).landscape)
+    }
+
+    @Test
+    fun thePostureFactoriesAgreeWithTheDecision() {
+        assertEquals(layout(800f, 1280f), wideLayout(800f, 1280f).copy(directive = layout(800f, 1280f).directive))
+        val book = bookLayout(700f, 840f)
+        assertTrue(book.fold)
+        assertEquals(350f, book.splitDp)
+        assertTrue(stackedLayout(1280f, 800f).onItsSide, "tabletop")
+        assertFalse(stackedLayout(411f, 923f).onItsSide, "a flip in flex mode")
+        assertFalse(wideLayout(1280f, 800f).onItsSide, "only a stacked layout lies on its side")
+    }
 }

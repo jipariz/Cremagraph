@@ -36,6 +36,7 @@ import app.onlyshots.edit.ExportWording
 import app.onlyshots.edit.LocalExportWording
 import app.onlyshots.go
 import app.onlyshots.layout.ProvideWindowLayout
+import app.onlyshots.open.OpenEntry
 import app.onlyshots.open.OpenHost
 import app.onlyshots.open.OpenScreen
 import app.onlyshots.open.StoreLinks
@@ -115,9 +116,7 @@ private fun EditorGraph(
                             onFromMachine = fromMachine,
                             pickedShot = results.pickedShot,
                             onPickedShotUsed = { results.pickedShot.value = null },
-                            host = host,
-                            stores = stores,
-                            onPrivacy = { nav.go(PrivacyRoute) },
+                            entry = OpenEntry.Desk(host, stores, onPrivacy = { nav.go(PrivacyRoute) }),
                         )
                     }
                 }

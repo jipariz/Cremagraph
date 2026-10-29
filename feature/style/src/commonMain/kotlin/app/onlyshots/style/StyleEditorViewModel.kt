@@ -1,6 +1,5 @@
 package app.onlyshots.style
 
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.onlyshots.core.model.OverlaySettings
@@ -58,8 +57,11 @@ class StyleEditorViewModel(
     val video: StateFlow<VideoItem?>
         field = MutableStateFlow(null)
 
-    /** Frames of the user's video to preview on; empty until loaded, or for good when there is no video. */
-    val frames: StateFlow<List<ImageBitmap>>
+    /**
+     * Frames of the user's video to preview on, each with its brightness; empty until loaded, or for good when there is
+     * no video.
+     */
+    val frames: StateFlow<List<PreviewFrame>>
         field = MutableStateFlow(emptyList())
 
     /** Unsaved changes, or a new style not saved yet: leaving asks first. */
@@ -107,22 +109,24 @@ class StyleEditorViewModel(
             } ?: return
         if (video.id == videoId) this.video.value = video
         val dir = cacheDir / "style-frames" / video.id
-        val list = ArrayList<ImageBitmap>(FRAMES)
+        val list = ArrayList<PreviewFrame>(FRAMES)
         for (i in 0 until FRAMES) {
             // Frames from the middle of the clip: the shot, not the idle head or the empty tail.
             val atUs = video.trimInUs + ((i + 0.5) / FRAMES * (video.trimOutUs - video.trimInUs)).toLong()
-            val bitmap =
+            val frame =
                 withContext(Dispatchers.Default) {
                     runCatching {
                         fs.createDirectories(dir)
                         val out = dir / "$i.jpg"
                         if (!fs.exists(out))
                             probe.writeThumbnail(store.videoPath(video), atUs, out, maxWidthPx = WIDTH_PX)
-                        fs.read(out) { readByteArray() }.decodeToImageBitmap()
+                        val image = fs.read(out) { readByteArray() }.decodeToImageBitmap()
+                        // Measured once here, off the main thread, rather than each time the frame is shown.
+                        PreviewFrame(image, averageLuma(image))
                     }
                         .getOrNull()
                 } ?: return
-            list += bitmap
+            list += frame
             frames.value = list.toList()
         }
     }

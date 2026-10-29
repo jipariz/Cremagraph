@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import app.onlyshots.TestTags
@@ -61,6 +62,35 @@ class EditorAppTest {
             await(TestTags.ScreenOpen)
         }
 
+    /** The shot shared on Visualizer: its code, mistyped and then right, and the editor opens on it. */
+    @Test
+    fun aShotFromVisualizer() =
+        onDevice(Device.TabletLandscape, app.pickers, { EditorApp() }) {
+            await(TestTags.ScreenOpen)
+            tap(TestTags.OpenPickVideo)
+            tap(TestTags.OpenPickShot)
+            tap(TestTags.ShotFromVisualizer)
+            await(TestTags.VisualizerInput).performTextInput("ZZZZ")
+            tap(TestTags.VisualizerFetch)
+            await(TestTags.VisualizerError)
+            await(TestTags.VisualizerInput).performTextClearance()
+            await(TestTags.VisualizerInput).performTextInput(SHARED_CODE.lowercase())
+            tap(TestTags.VisualizerFetch)
+            awaitGone(TestTags.VisualizerInput)
+            tap(TestTags.OpenEditor)
+            await(TestTags.ScreenEdit)
+            // The editor lines the fetched shot up and saves it; done once its sidecar says where it starts.
+            waitUntil(timeoutMillis = TIMEOUT) {
+                (app.root / "library" / "videos").toFile().listFiles().orEmpty().any {
+                    it.name.endsWith(".onlyshots.json") &&
+                        it.readText().let { text ->
+                            "visualizer-832f7109" in text &&
+                                Regex("\"shotStartInVideoUs\":\\s*\\d").containsMatchIn(text)
+                        }
+                }
+            }
+        }
+
     private fun editAndExport(device: Device) =
         onDevice(device, app.pickers, { EditorApp() }) {
             openTheEditor()
@@ -90,6 +120,7 @@ fun ComposeUiTest.openTheEditor() {
     await(TestTags.ScreenOpen)
     tap(TestTags.OpenPickVideo)
     tap(TestTags.OpenPickShot)
+    tap(TestTags.OpenFromFile)
     tap(TestTags.OpenEditor)
     await(TestTags.ScreenEdit)
 }

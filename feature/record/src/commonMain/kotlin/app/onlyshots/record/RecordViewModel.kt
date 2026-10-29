@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.onlyshots.camera.CameraController
 import app.onlyshots.camera.CameraState
+import app.onlyshots.core.model.NormRect
 import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.RecordingSettings
 import app.onlyshots.core.model.Sample
@@ -29,6 +30,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -39,6 +41,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -90,6 +94,28 @@ class RecordViewModel(
             }
             .stateIn(viewModelScope, SharingStarted.Eagerly, settingsRepo.value.recording)
 
+    /** The camera may be used: the last answer about it. */
+    private val cameraGranted = MutableStateFlow(false)
+
+    /** Where the screen shows the graph, in the frame's fractions; null until the screen has measured its frame. */
+    private val graphBounds = MutableStateFlow<NormRect?>(null)
+
+    /**
+     * How bright the picture is behind the graph, for a style that adapts to the video: sampled twice a second and
+     * smoothed so it does not flicker; null while the style does not adapt or there is no picture.
+     */
+    val backdropLuma: StateFlow<Float?> =
+        combine(settings, state.map { it.sourceKind }.distinctUntilChanged(), cameraGranted, styles.customStyles) {
+                recording,
+                kind,
+                granted,
+                _ ->
+                granted && style(recording.overlay, kind).adapt.enabled
+            }
+            .distinctUntilChanged()
+            .flatMapLatest { sampling -> if (sampling) sampledLuma() else flowOf(null) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     /** The newest reading from the source, for the tiles before a take starts. */
     val live: StateFlow<Sample?> =
         source.live.map<Sample, Sample?> { it }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -133,6 +159,34 @@ class RecordViewModel(
                 }
                 .distinctUntilChanged()
                 .collect { if (!state.value.recording) _session.value = newSession() }
+        }
+        viewModelScope.launch {
+            // A graph the screen would cut off is moved where it shows, and kept there: the video draws it as placed.
+            combine(graphBounds.filterNotNull(), settings, state) { bounds, recording, take ->
+                    bounds.takeIf { graphOutside(recording.overlay.rect, it, take.recording, take.hasData) }
+                }
+                .filterNotNull()
+                .collect { bounds -> updateOverlay { it.copy(rect = it.rect.within(bounds)) } }
+        }
+    }
+
+    override fun keepGraphWithin(bounds: NormRect) {
+        graphBounds.value = bounds
+    }
+
+    /**
+     * Samples the picture where the graph is, at the rect it is at on each pass: a drag moves it every frame, and
+     * following it by restarting would sample at frame rate.
+     */
+    private fun sampledLuma(): Flow<Float?> = flow {
+        var luma: Float? = null
+        while (true) {
+            val at = settings.value.overlay.rect.let { rect -> graphBounds.value?.let(rect::within) ?: rect }
+            camera.sampleLuma(at.x, at.y, at.w, at.h)?.let { now ->
+                luma = smoothLuma(luma, now)
+                emit(luma)
+            }
+            delay(LUMA_SAMPLE_MS)
         }
     }
 
@@ -199,6 +253,7 @@ class RecordViewModel(
 
     /** The answer about the camera, from the prompt or from a check on coming back from the system settings. */
     fun cameraAccess(granted: Boolean) {
+        cameraGranted.value = granted
         noCamera = !granted
         _session.value.noCamera = noCamera
     }
@@ -330,6 +385,15 @@ class RecordViewModel(
         sessionScope = null
     }
 }
+
+/** How often a style that adapts to the video samples the picture behind the graph. */
+private const val LUMA_SAMPLE_MS = 500L
+
+/** How far each luma sample moves the smoothed one towards itself, so the graph does not flicker. */
+internal const val LUMA_SMOOTHING = 0.5f
+
+/** The smoothed luma after a sample of [now]: the first sample as it is. */
+internal fun smoothLuma(previous: Float?, now: Float): Float = previous?.let { it + (now - it) * LUMA_SMOOTHING } ?: now
 
 /** A pause this long after the last drag frame counts as the gesture settled. */
 private const val OVERLAY_SAVE_DELAY_MS = 400L

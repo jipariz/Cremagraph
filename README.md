@@ -50,7 +50,8 @@ to share. Filmed already? Bring any video and a shot file, and OnlyShots lines t
 
 - Pick any video and a shot file, and line them up by the video's clock, by the pump's sound, or by hand.
 - Trim, frame it in 9:16, 4:5, 1:1 or 16:9, and move the crop. Undo and redo every change.
-- Import shots from your Gaggiuino's history, or from `.shot` files (SproFiler, visualizer.coffee).
+- Import shots from your Gaggiuino's history, from `.shot` files, or from [Visualizer](https://visualizer.coffee) by
+  share code or link: any machine's shot there, or a Beanconqueror brew.
 
 <p align="center">
   <img src="./assets/readme/edit.webp" width="100%" alt="The editor on a tablet: the video with its graph, the timeline with trim handles, and the export panel.">
@@ -85,7 +86,8 @@ to share. Filmed already? Bring any video and a shot file, and OnlyShots lines t
 Pressure, flow and temperature come from machines with a network API; weight comes from a Bluetooth scale. Home
 finds both by itself; pick one and record.
 
-- **Machines:** Gaggiuino (the public release and newer firmware).
+- **Machines:** Gaggiuino (the public release and newer firmware) and GaggiMate. A GaggiMate Standard has no pressure
+  sensor, so it draws flow and temperature; a Pro draws pressure too.
 - **Scales:** Acaia, Bookoo, Decent Scale, DiFluid, Eclair, EspressiScale, Felicita, iKape, Insmart, MyScale, Precisa,
   Tencent, Timemore, Varia, WeighMyBru and Wilfa.
 
@@ -102,13 +104,14 @@ Each format from public source. Pinned to commit read (see decoder doc comment).
 | Source | Live data | Shot start / end | History |
 | --- | --- | --- | --- |
 | Gaggiuino (`release/stm32-blackpill`) | `ws://host/ws` JSON, ~10 Hz brewing | `receivedAt − timeInShot`; last `timeInShot` | none |
-| Gaggiuino, newer (core `6ea560e`) | `ws://host/ws` binary protobuf, `d_sensor_snap` ~3 Hz | first/last snapshot with `brewActive` | HTTP: `GET /api/shots/latest`, then `/api/shots/{id}` down (`GaggiuinoHistory`) |
+| Gaggiuino, newer (core `6ea560e`) | `ws://host/ws` binary protobuf: `d_sensor_snap` ~3 Hz for the readings, `d_shot_snap` for the targets | first/last snapshot with `brewActive` | HTTP: `GET /api/shots/latest`, then `/api/shots/{id}` down (`GaggiuinoHistory`) |
+| GaggiMate (master `b78beee`) | `ws://host/ws` JSON `evt:status`, 2 Hz, partial frames merged | `process.a` 1 then 0; time from `process.e` | HTTP: `GET /api/history/recent.bin`, then `<id>.slog` (`GaggiMateHistory`) |
 | Scale only | Bluetooth | first drops (> 0.3 g after tare); stop rule ends | recordings made in app |
 
 - **Finding:** `NetworkScan` = mDNS (`_http._tcp`, Android), sweep of own /24, fixed `.local` names last. Each
   candidate confirmed with `identify`. Probe closes fast: ESP32 takes ~3 clients. **add by address** for networks
   scan can't see.
-- **Old kinds:** `SourceKind.GAGGIMATE`, `DECENT` stay. Old sidecars name them. Saved ones start disconnected.
+- **Old kinds:** `SourceKind.DECENT` stays. Old sidecars name it. Saved ones start disconnected.
 - **Scales:** ported from MIT `Zer0-bit/esp-arduino-ble-scales` (ee17c40) and Bookoo's protocols. Acaia, Bookoo,
   Decent Scale, EspressiScale, DiFluid, Eclair, Felicita, iKape, Insmart, MyScale, Precisa, Tencent, Timemore, Varia,
   WeighMyBru, Wilfa. Zer0-bit ones tested only against upstream byte layouts. One connection at a time: scale's own
@@ -142,8 +145,8 @@ store them by name. Compiler then flags every `when` to fill:
   or `MachineMessage.Brew` (start/end). `reset` clears state.
 - **Machine:** object implementing `NetworkMachine`:
   - `kind`, `name`, `defaultPort`, `hostnames` (fixed `.local` names).
-  - `autoStart`: what starts recording. Only `AutoStart.BREW_SWITCH` now. New way? New value + wording in
-    `autoStartHint` (`feature/home/.../HomeState.kt`).
+  - `autoStart`: what starts recording. `AutoStart.BREW_SWITCH` or `PROCESS_START` today. New way? New value +
+    wording in `autoStartHint` (`feature/home/.../HomeState.kt`).
   - `matchesService`: cheap mDNS filter. `identify` decides.
   - `identify`: fast probe. Close connection right away.
   - `source(...)`: return unstarted `WebSocketShotSource` with your decoder.
@@ -154,10 +157,12 @@ store them by name. Compiler then flags every `when` to fill:
 
 **4. Optional:**
 
-- **Shot files:** parser beside `GaggiuinoShotFile` (`core/model`). Wire into import in `OpenViewModel` and
-  `EditViewModel`.
+- **Shot files:** parser beside `GaggiuinoShotFile` (`core/model`), routed by shape in `ShotFiles.parse`, which
+  every import goes through. A binary format is told apart by its first bytes instead (`GaggiMateShotLog`). This is
+  the only part of a machine the web editor can use: it cannot reach a machine on the network at all. A machine whose
+  shots reach Visualizer needs nothing: its normalized form is read already.
 - **Own look:** built-in style in `GraphStyles.matching(source)`. Else Metro.
-- **Style editor:** add machine to source list in `StyleEditorScreen.kt`.
+- **Style editor:** add machine to the source list in `StyleSaveSheet.kt`.
 - **Words:** user text goes in `core/resources/.../values/strings_<area>.xml`. Machine name stays code.
 
 **5. Tests.** Mirror Gaggiuino's:

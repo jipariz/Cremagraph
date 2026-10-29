@@ -5,6 +5,7 @@ import androidx.compose.material3.adaptive.HingeInfo
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth
+import androidx.compose.runtime.Immutable
 import androidx.window.core.layout.WindowSizeClass
 
 enum class LayoutKind {
@@ -25,6 +26,7 @@ enum class LayoutKind {
  * What the window can hold. The handover's table has seven rows but only three layouts; the difference between a tablet
  * and a book foldable is where the split goes, not what is in it.
  */
+@Immutable
 data class WindowLayout(
     val kind: LayoutKind,
     /** Size of the first pane, in dp from the start or top edge. */
@@ -41,18 +43,16 @@ data class WindowLayout(
      * each screen gives them equal weight, picture on one side and its controls on the other.
      */
     val fold: Boolean = false,
+    /** The window is wider than tall. */
+    val landscape: Boolean = false,
+) {
     /**
      * `Stacked` with the window wider than tall: a book foldable resting on its side (tabletop), where a landscape
      * picture fills the upper half. Otherwise a flip in flex mode, whose upper half stands tall.
      */
-    val onItsSide: Boolean = false,
-)
-
-/** Neither pane may be squeezed below this, whatever a stale posture claims. */
-const val MIN_PANE_DP = 120f
-
-/** Narrower than this with a compact height, and only the viewfinder and a stop button fit. */
-const val TINY_WIDTH_DP = 400f
+    val onItsSide: Boolean
+        get() = kind == LayoutKind.Stacked && landscape
+}
 
 /**
  * The one decision every adaptive branch goes through, from the adaptive library's view of the window
@@ -72,34 +72,87 @@ fun windowLayout(info: WindowAdaptiveInfo, widthDp: Float, heightDp: Float, dens
     // A hinge that is being folded, lying flat across the window: camera above it, controls below.
     if (hinge != null && !hinge.isVertical && (info.windowPosture.isTabletop || !hinge.isFlat)) {
         val (start, end) = hinge.span(density)
-        return WindowLayout(
-            LayoutKind.Stacked,
-            splitDp = clampSplit(start, heightDp, end - start),
-            hingeDp = end - start,
-            directive = directive,
-            onItsSide = widthDp > heightDp,
-        )
+        return stackedLayout(widthDp, heightDp, splitDp = start, hingeDp = end - start, directive = directive)
     }
     // A book foldable held open, flat or half open: the hinge is the divider, so nothing sits on top of it.
     val book = hinge?.takeIf { it.isVertical } ?: flatFold
     if (book != null && medium) {
         val (start, end) = book.span(density)
-        return WindowLayout(
-            LayoutKind.Wide,
-            splitDp = clampSplit(start, widthDp, end - start),
-            hingeDp = end - start,
-            directive = directive,
-            fold = true,
-        )
+        return bookLayout(widthDp, heightDp, splitDp = start, hingeDp = end - start, directive = directive)
     }
-    if (medium) {
-        val share = if (expanded) 0.62f else 0.7f
-        return WindowLayout(LayoutKind.Wide, splitDp = clampSplit(widthDp * share, widthDp, 0f), directive = directive)
-    }
+    if (medium) return wideLayout(widthDp, heightDp, expanded, directive)
     val shortHeight = !size.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
-    if (shortHeight && widthDp < TINY_WIDTH_DP) return WindowLayout(LayoutKind.Tiny, directive = directive)
-    return WindowLayout(LayoutKind.Phone, directive = directive)
+    if (shortHeight && widthDp < TINY_WIDTH_DP) return tinyLayout(widthDp, heightDp, directive)
+    return phoneLayout(widthDp, heightDp, directive)
 }
+
+/*
+ * One layout per posture, as [windowLayout] decides them. The screenshot previews and the UI tests build their postures
+ * (a fold, a tabletop, a cover screen) with these too, since a test window can't fold, so they lay out as the real
+ * decision would.
+ */
+
+/** A medium or expanded window without a fold: the first pane takes [MEDIUM_SPLIT] or [EXPANDED_SPLIT] of it. */
+fun wideLayout(
+    widthDp: Float,
+    heightDp: Float,
+    expanded: Boolean = widthDp >= EXPANDED_WIDTH_DP,
+    directive: PaneScaffoldDirective = PaneScaffoldDirective.Default,
+): WindowLayout {
+    val share = if (expanded) EXPANDED_SPLIT else MEDIUM_SPLIT
+    return WindowLayout(
+        LayoutKind.Wide,
+        splitDp = clampSplit(widthDp * share, widthDp, 0f),
+        directive = directive,
+        landscape = widthDp > heightDp,
+    )
+}
+
+/** A book foldable or the iPhone Duo held open: two pages meeting at the fold, by default down the middle. */
+fun bookLayout(
+    widthDp: Float,
+    heightDp: Float,
+    splitDp: Float = widthDp / 2f,
+    hingeDp: Float = 0f,
+    directive: PaneScaffoldDirective = PaneScaffoldDirective.Default,
+): WindowLayout =
+    WindowLayout(
+        LayoutKind.Wide,
+        splitDp = clampSplit(splitDp, widthDp, hingeDp),
+        hingeDp = hingeDp,
+        directive = directive,
+        fold = true,
+        landscape = widthDp > heightDp,
+    )
+
+/** Half open with the fold across: tabletop when the window is wider than tall, else a flip in flex mode. */
+fun stackedLayout(
+    widthDp: Float,
+    heightDp: Float,
+    splitDp: Float = heightDp / 2f,
+    hingeDp: Float = 0f,
+    directive: PaneScaffoldDirective = PaneScaffoldDirective.Default,
+): WindowLayout =
+    WindowLayout(
+        LayoutKind.Stacked,
+        splitDp = clampSplit(splitDp, heightDp, hingeDp),
+        hingeDp = hingeDp,
+        directive = directive,
+        landscape = widthDp > heightDp,
+    )
+
+/** A flip's cover screen, or a sliver of split screen. */
+fun tinyLayout(
+    widthDp: Float,
+    heightDp: Float,
+    directive: PaneScaffoldDirective = PaneScaffoldDirective.Default,
+): WindowLayout = WindowLayout(LayoutKind.Tiny, directive = directive, landscape = widthDp > heightDp)
+
+fun phoneLayout(
+    widthDp: Float,
+    heightDp: Float,
+    directive: PaneScaffoldDirective = PaneScaffoldDirective.Default,
+): WindowLayout = WindowLayout(LayoutKind.Phone, directive = directive, landscape = widthDp > heightDp)
 
 /** Where the hinge starts and ends across the split, in dp. */
 private fun HingeInfo.span(density: Float): Pair<Float, Float> =

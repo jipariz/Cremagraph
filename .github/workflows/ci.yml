@@ -50,8 +50,9 @@ jobs:
         run: ./gradlew :app:androidApp:assembleDebug --stacktrace
       - name: Build the web editor
         run: ./gradlew :app:webApp:composeCompatibilityBrowserDistribution --stacktrace
-      # The built site in headless Chromium, on the wasm build and the Kotlin/JS fallback: it loads, hands over from
-      # the splash, draws, and logs no errors.
+      # The built site in headless Chromium and WebKit, on the wasm build and the Kotlin/JS fallback: it loads, hands
+      # over from the splash, draws, and logs no errors. WebKit is there because Safari is the engine nobody runs by
+      # accident, and every Safari-only break has reached users before CI.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -59,7 +60,7 @@ jobs:
         working-directory: tools/web-smoke
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
           node smoke.mjs
       # Every green push to main goes live at https://onlyshots.vercel.app. Vercel builds nothing itself
       # (the project's Ignored Build Step is `exit 0`); this uploads the distribution built above.

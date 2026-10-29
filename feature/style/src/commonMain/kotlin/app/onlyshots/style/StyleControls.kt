@@ -465,6 +465,8 @@ internal fun GridControls(s: GraphStyle, change: Change, pickColor: Pick) {
                 { it.grid.color },
                 { st, c -> st.withGridColor(c) },
                 withOpacity = true,
+                // The grid is drawn over the video, never a panel's colour.
+                panelSwatches = false,
             ),
             s,
             pickColor,
@@ -639,32 +641,26 @@ internal fun ReadingControls(s: GraphStyle, luma: Float, change: Change, pickCol
             }
         CellLook.PLAIN -> Unit
     }
-    val mode =
-        when (c.values) {
-            s.withSeriesValues().cells.values -> 0
-            s.withWhiteValues().cells.values -> 1
-            else -> 2
-        }
-    var custom by remember { mutableStateOf(mode == 2) }
+    val mode = valuesMode(s)
+    // Custom stays picked once chosen, even while its colours still match a preset.
+    var custom by remember { mutableStateOf(mode == ValuesMode.CUSTOM) }
     ChoiceRow(stringResource(Res.string.style_values)) {
         SegmentedControl(
-            listOf(
-                stringResource(Res.string.style_series_colours),
-                stringResource(Res.string.style_white),
-                stringResource(Res.string.style_custom),
-            ),
-            if (custom) 2 else mode,
+            ValuesMode.entries.map { stringResource(it.label) },
+            (if (custom) ValuesMode.CUSTOM else mode).ordinal,
             fill = true,
             onSelect = { i ->
-                custom = i == 2
-                when (i) {
-                    0 -> change { it.withSeriesValues() }
-                    1 -> change { it.withWhiteValues() }
+                val picked = ValuesMode.entries[i]
+                custom = picked == ValuesMode.CUSTOM
+                when (picked) {
+                    ValuesMode.SERIES -> change { it.withSeriesValues() }
+                    ValuesMode.WHITE -> change { it.withWhiteValues() }
+                    ValuesMode.CUSTOM -> Unit
                 }
             },
         )
     }
-    if (custom || mode == 2) {
+    if (custom || mode == ValuesMode.CUSTOM) {
         for (r in Reading.entries) {
             ColorRow(
                 stringResource(Res.string.style_x_value, r.label()),
@@ -1048,6 +1044,15 @@ private val CellLook.label: StringResource
             CellLook.PLAIN -> Res.string.style_cell_plain
             CellLook.GLOSSY -> Res.string.style_cell_glossy
             CellLook.TILES -> Res.string.style_cell_tiles
+        }
+
+/** The values' colouring as the segmented control names it. */
+private val ValuesMode.label: StringResource
+    get() =
+        when (this) {
+            ValuesMode.SERIES -> Res.string.style_series_colours
+            ValuesMode.WHITE -> Res.string.style_white
+            ValuesMode.CUSTOM -> Res.string.style_custom
         }
 
 /** A curve's row in the lines page's colour list. */

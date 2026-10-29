@@ -63,6 +63,10 @@ import app.onlyshots.core.designsystem.component.TopChip
 import app.onlyshots.edit.ShotSheetContent
 import app.onlyshots.home.HelpContent
 import app.onlyshots.open.ShotSourceChoices
+import app.onlyshots.visualizer.VisualizerError
+import app.onlyshots.visualizer.VisualizerFetchForm
+import app.onlyshots.visualizer.VisualizerFetchState
+import app.onlyshots.visualizer.text
 import uk.co.fractalmotion.mugshot.annotations.Mugshot
 import uk.co.fractalmotion.mugshot.annotations.MugshotShrink
 
@@ -237,6 +241,7 @@ internal fun ShotSheet() = Sheet {
         onPick = {},
         onFile = {},
         onFromMachine = {},
+        onVisualizer = {},
     )
 }
 
@@ -246,15 +251,38 @@ internal fun ShotSheet() = Sheet {
 @Preview
 @Composable
 internal fun ShotSheetEmpty() = Sheet {
-    ShotSheetContent(sampleVideo.copy(shot = null), shots = emptyList(), onPick = {}, onFile = {}, onFromMachine = {})
+    ShotSheetContent(
+        sampleVideo.copy(shot = null),
+        shots = emptyList(),
+        onPick = {},
+        onFile = {},
+        onFromMachine = {},
+        onVisualizer = {},
+    )
 }
 
-/** "Compose a video"'s shot sheet: from a file, or from the machine. */
+/** "Compose a video"'s shot sheet: from a file, from the machine, or from Visualizer. */
 @Mugshot
 @MugshotShrink
 @Preview
 @Composable
-internal fun ShotSources() = Sheet { ShotSourceChoices(onFile = {}, onMachine = {}) }
+internal fun ShotSources() = Sheet { ShotSourceChoices(onFile = {}, onMachine = {}, onVisualizer = {}) }
+
+/** The shot sheet turned to Visualizer: how to get a code, the field and "fetch shot". */
+@Mugshot
+@MugshotShrink
+@Preview
+@Composable
+internal fun VisualizerForm() = Sheet { VisualizerFetchForm(VisualizerFetchState(), onFetch = {}) }
+
+/** The Visualizer form after a code that has expired. */
+@Mugshot
+@MugshotShrink
+@Preview
+@Composable
+internal fun VisualizerFormExpired() = Sheet {
+    VisualizerFetchForm(VisualizerFetchState(error = VisualizerError.NOT_FOUND.text()), onFetch = {})
+}
 
 /** The web editor's phone controls, as the mobile editor draws them. */
 @Mugshot
@@ -280,7 +308,7 @@ internal fun EditorControls() = Sheet {
     }
     EditorSheet(title = "Making your video", onDone = null) {
         ProgressLine(0.42f)
-        ListRow("another shot file", ".shot or .json, from SproFiler or the machine", onClick = {})
+        ListRow("another shot file", ".shot or .json, from visualizer.coffee or the machine", onClick = {})
         Pill("cancel", onClick = {}, modifier = Modifier.fillMaxWidth(), fill = true)
     }
 }

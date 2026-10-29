@@ -3,10 +3,11 @@ package app.onlyshots.open
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.onlyshots.core.model.GaggiuinoShotFile
 import app.onlyshots.core.model.Origin
 import app.onlyshots.core.model.OverlaySettings
 import app.onlyshots.core.model.Shot
+import app.onlyshots.core.model.ShotFiles
+import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.UiText
@@ -21,6 +22,9 @@ import app.onlyshots.storage.LibraryStore
 import app.onlyshots.storage.VideoImport
 import app.onlyshots.video.VideoInfo
 import app.onlyshots.video.VideoProbe
+import app.onlyshots.visualizer.Visualizer
+import app.onlyshots.visualizer.VisualizerFetchState
+import app.onlyshots.visualizer.VisualizerFetcher
 import kotlin.time.Clock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -33,8 +37,8 @@ import okio.Path
 import org.jetbrains.compose.resources.decodeToImageBitmap
 
 /**
- * Every editor's start: the video (copied into the library as it is picked) and its shot (a file read now, or a
- * machine's shot handed in), then "open editor" saves the shot onto the video.
+ * Every editor's start: the video (copied into the library as it is picked) and its shot (a file read now, a shot
+ * fetched from visualizer.coffee, or a machine's shot handed in), then "open editor" saves the shot onto the video.
  */
 class OpenViewModel(
     private val store: LibraryStore,
@@ -42,7 +46,13 @@ class OpenViewModel(
     private val probe: VideoProbe,
     private val fs: FileSystem,
     private val intake: VideoImport,
+    visualizer: Visualizer,
 ) : ViewModel() {
+    private val fetcher = VisualizerFetcher(visualizer, viewModelScope)
+
+    /** A fetch from visualizer.coffee, as its form shows it. */
+    val visualizerFetch: StateFlow<VisualizerFetchState> = fetcher.state
+
     /** "opening…" while a video is copied in, or why it could not be. */
     val status: StateFlow<UiText?>
         field = MutableStateFlow<UiText?>(null)
@@ -68,22 +78,35 @@ class OpenViewModel(
         viewModelScope.launch {
             val parsed =
                 withContext(Dispatchers.Default) {
-                    runCatching { GaggiuinoShotFile.parse(fs.read(path) { readUtf8() }, fallbackId = path.name) }
+                    runCatching { ShotFiles.parse(fs.read(path) { readByteArray() }, fallbackId = path.name) }
                         .getOrNull()
                 }
             if (parsed == null) status.value = Res.string.open_error_not_a_shot.text(path.name)
             else {
-                shot.value = ChosenShot(parsed, path.name, "file")
+                shot.value = ChosenShot(parsed, path.name, ShotOrigin.File)
                 status.value = null
             }
         }
     }
 
-    /** A shot from elsewhere: the machine shot picker's. */
-    fun chooseShot(picked: Shot, label: String, from: String) {
-        shot.value = ChosenShot(picked, label, from)
+    /** The shot the machine's shot picker handed back, as the sidecar writes it; one that does not decode is let go. */
+    fun chooseMachineShot(json: String) {
+        val decoded = runCatching { SidecarCodec.json.decodeFromString(Shot.serializer(), json) }.getOrNull() ?: return
+        shot.value = ChosenShot(decoded, decoded.profileName, ShotOrigin.Machine)
         status.value = null
     }
+
+    /** A shot shared on visualizer.coffee, by its code or link; [onFetched] once it is the chosen shot. */
+    fun fetchFromVisualizer(input: String, onFetched: () -> Unit) {
+        fetcher.fetch(input) {
+            shot.value = ChosenShot(it, it.profileName, ShotOrigin.Visualizer)
+            status.value = null
+            onFetched()
+        }
+    }
+
+    /** The Visualizer form closed. */
+    fun visualizerClosed() = fetcher.reset()
 
     /** Copies [file] into the library and keeps it as [picked]. */
     fun pickVideo(file: Path) {

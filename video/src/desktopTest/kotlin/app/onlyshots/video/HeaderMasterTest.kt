@@ -34,6 +34,13 @@ import okio.Path.Companion.toOkioPath
 class HeaderMasterTest {
     private fun prop(name: String): String? = System.getProperty("onlyshots.header.$name")?.takeIf { it.isNotBlank() }
 
+    /** `x,y,w,h` as fractions of the frame. */
+    private fun rect(): NormRect {
+        val v = prop("rect")?.split(",")?.map { it.trim().toFloat() } ?: return NormRect(0.52f, 0.44f, 0.42f, 0.34f)
+        require(v.size == 4) { "onlyshots.header.rect wants x,y,w,h" }
+        return NormRect(v[0], v[1], v[2], v[3])
+    }
+
     @Test
     fun rendersTheHeaderMaster() {
         val videoPath = prop("video") ?: return println("HeaderMasterTest: no onlyshots.header.video, skipping")
@@ -56,10 +63,10 @@ class HeaderMasterTest {
                 syncLocked = false,
                 trimInUs = 0L,
                 trimOutUs = durationUs,
-                // The header crops 257 px off the top and the bottom of a 4K 16:9 frame, so the default bottom-left
-                // placement would lose its lower edge. This sits in the right half, clear of the furniture's copy,
-                // and inside the band the 21:9 crop keeps.
-                overlay = OverlaySettings(styleId = "liquidglass", rect = NormRect(0.52f, 0.44f, 0.42f, 0.34f)),
+                // The header keeps a 1646 px band of a 4K 16:9 frame, so the default bottom-left placement would
+                // lose its lower edge. The default here sits in the right half, clear of the furniture's copy, and
+                // inside the band; `rect` moves it when the band does.
+                overlay = OverlaySettings(styleId = prop("style") ?: "liquidglass", rect = rect()),
                 format = VideoFormat.LANDSCAPE_16_9,
             )
 

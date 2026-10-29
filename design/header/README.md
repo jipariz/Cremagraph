@@ -14,6 +14,20 @@ app whose pitch is "export matches preview", nothing else is as strong.
   Playwright keeps for `tools/web-smoke`, which `design/store/render.py` finds). Writes
   `design/header/out/header-3840x1646.mp4`.
 
+## The band
+
+A 16:9 export is 2160 tall and the header keeps 1646 of it, so 514 px goes. `--top` says where that band sits.
+Centred (the default) takes 257 off each end, which cuts the portafilter at the top of the frame; `--top 0` keeps
+the top and drops the cup's base and the scale instead. Whichever you pick, the graph has to sit inside the band
+with some air under it — pass `-Donlyshots.header.rect=x,y,w,h` to put it there.
+
+What the current header uses:
+
+```
+-Donlyshots.header.rect=0.52,0.33,0.42,0.34     # right half, clear of the copy, 199 px above the band's foot
+python3 design/header/build.py master.mp4 --in 0 --out 19.4 --top 0
+```
+
 ## 1. Record the shot
 
 In the app, with the machine and the scale connected.

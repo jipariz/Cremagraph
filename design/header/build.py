@@ -52,12 +52,16 @@ def furniture(out: pathlib.Path) -> None:
         raise SystemExit(f"furniture.png came out {channels}, with no alpha: the overlay would be opaque")
 
 
-def compose(master: pathlib.Path, layer: pathlib.Path, start: float, end: float, out: pathlib.Path) -> None:
+def compose(
+    master: pathlib.Path, layer: pathlib.Path, start: float, end: float, out: pathlib.Path, top: int | None
+) -> None:
     length = end - start
     if not MIN_S <= length <= MAX_S:
         raise SystemExit(f"{length:g}s is outside Apple's {MIN_S}-{MAX_S}s for a header")
-    # Fill the width, then take the middle 1646: an export is 16:9, so 257 px goes off the top and the bottom.
-    chain = f"[0:v]scale={W}:-2,crop={W}:{H},fps={FPS},setsar=1[v];[v][1:v]overlay=0:0:format=auto[o]"
+    # Fill the width, then take a 1646 band of it: a 16:9 export is 2160 tall, so 514 px goes. Centred that is 257
+    # off each end, which cuts the portafilter at the top of the frame; --top 0 keeps the top and drops the base.
+    y = "(ih-oh)/2" if top is None else str(top)
+    chain = f"[0:v]scale={W}:-2,crop={W}:{H}:0:{y},fps={FPS},setsar=1[v];[v][1:v]overlay=0:0:format=auto[o]"
     subprocess.run(
         ["ffmpeg", "-y", "-ss", f"{start}", "-to", f"{end}", "-i", master, "-i", layer,
          "-filter_complex", chain, "-map", "[o]", "-map", "0:a?",
@@ -81,6 +85,7 @@ def main() -> None:
     ap.add_argument("--in", dest="start", type=float, default=0.0, help="seconds into the master to start")
     ap.add_argument("--out", dest="end", type=float, required=True, help="seconds into the master to stop")
     ap.add_argument("--to", type=pathlib.Path, default=HERE / "out" / "header-3840x1646.mp4")
+    ap.add_argument("--top", type=int, default=None, help="top of the 1646 band in the 2160 frame (default centred)")
     a = ap.parse_args()
     if not a.master.exists():
         raise SystemExit(f"no such master: {a.master}")
@@ -88,7 +93,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         layer = pathlib.Path(tmp) / "furniture.png"
         furniture(layer)
-        compose(a.master, layer, a.start, a.end, a.to)
+        compose(a.master, layer, a.start, a.end, a.to, a.top)
     size = a.to.stat().st_size / 1e6
     root = HERE.parent.parent
     where = a.to.relative_to(root) if a.to.is_relative_to(root) else a.to

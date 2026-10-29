@@ -11,6 +11,7 @@ import app.onlyshots.core.resources.core_export_notify_progress_early
 import app.onlyshots.core.resources.core_export_notify_saved_photos
 import app.onlyshots.core.resources.core_export_notify_saved_text
 import org.jetbrains.compose.resources.getString
+import platform.Foundation.NSBundle
 import platform.Foundation.NSUUID
 import platform.UIKit.UIApplication
 import platform.UIKit.UIApplicationState
@@ -61,8 +62,10 @@ class BackgroundTaskWork : BackgroundWork {
         val withLeft = getString(Res.string.core_export_notify_progress, task.name, task.quality, LEFT)
         var fraction = 0f
         val continued = IosBackground.continued
-        val started =
-            continued?.start("app.onlyshots.export.${task.id}", title, early, onExpired = task.onCancel) == true
+        // iOS takes only identifiers under the app's own bundle id (Info.plist lists the bundle id's `.export.*`). Any
+        // other is refused as unrecognized, and the export falls back to the short background time.
+        val id = "${NSBundle.mainBundle.bundleIdentifier}.export.${task.id}"
+        val started = continued?.start(id, title, early, onExpired = task.onCancel) == true
         if (started) {
             var ok = false
             return try {
@@ -101,9 +104,12 @@ class BackgroundTaskWork : BackgroundWork {
         var task: UIBackgroundTaskIdentifier = UIBackgroundTaskInvalid
         task =
             app.beginBackgroundTaskWithName(title) {
-                onExpired()
-                if (task != UIBackgroundTaskInvalid) app.endBackgroundTask(task)
+                // Given up before [onExpired]: the cancel it sends can end [block] at once, and its `finally` would
+                // end the task a second time.
+                val ending = task
                 task = UIBackgroundTaskInvalid
+                onExpired()
+                if (ending != UIBackgroundTaskInvalid) app.endBackgroundTask(ending)
             }
         return try {
             block()

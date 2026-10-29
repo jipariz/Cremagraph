@@ -39,8 +39,6 @@ import platform.CoreGraphics.CGRectZero
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMTimeMake
 import platform.CoreVideo.CVPixelBufferRelease
-import platform.CoreVideo.kCVPixelBufferPixelFormatTypeKey
-import platform.CoreVideo.kCVPixelFormatType_32BGRA
 import platform.Foundation.NSURL
 import platform.QuartzCore.CACurrentMediaTime
 import platform.UIKit.UIView
@@ -68,12 +66,7 @@ private class PlayerView(player: AVPlayer) : UIView(frame = CGRectZero.readValue
 actual fun VideoSurface(file: Path, state: PlayerState, clipUs: LongRange, modifier: Modifier, drawFrames: Boolean) {
     val player = remember(file) { AVPlayer(uRL = NSURL.fileURLWithPath(file.toString())) }
     // Decoded frames for a blur or glass style: the player layer is native, so Haze cannot blur it.
-    val output =
-        remember(player) {
-            AVPlayerItemVideoOutput(
-                pixelBufferAttributes = mapOf<Any?, Any?>(kCVPixelBufferPixelFormatTypeKey to kCVPixelFormatType_32BGRA)
-            )
-        }
+    val output = remember(player) { AVPlayerItemVideoOutput(pixelBufferAttributes = PixelBuffers.bgraAttributes) }
     DisposableEffect(player, drawFrames) {
         val item = player.currentItem
         if (drawFrames) item?.addOutput(output)

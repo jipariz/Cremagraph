@@ -48,9 +48,14 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
+import app.onlyshots.core.designsystem.component.BarIcon
+import app.onlyshots.core.designsystem.component.BarPriority
 import app.onlyshots.core.designsystem.component.CgIcon
 import app.onlyshots.core.designsystem.component.HairlineGrid
 import app.onlyshots.core.designsystem.component.IconCircleButton
+import app.onlyshots.core.designsystem.component.LocalNativeChrome
+import app.onlyshots.core.designsystem.component.NativeBarItem
+import app.onlyshots.core.designsystem.component.NativeItems
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.ReadingTile
 import app.onlyshots.core.designsystem.component.RecordButton
@@ -59,6 +64,8 @@ import app.onlyshots.core.designsystem.component.RulesStripHint
 import app.onlyshots.core.designsystem.component.SourceChip
 import app.onlyshots.core.designsystem.component.StatusChip
 import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.core_record
+import app.onlyshots.core.resources.core_stop
 import app.onlyshots.core.resources.record_armed
 import app.onlyshots.core.resources.record_no_data_hint
 import app.onlyshots.core.resources.record_ready
@@ -93,8 +100,31 @@ internal fun TakeTopRow(take: TakeInputs, back: Boolean, modifier: Modifier = Mo
         )
         Spacer(Modifier.weight(1f))
         // Start, pre-roll and stop rules, as the phone's gear: they need a machine and a camera, and are closed
-        // mid-shot.
-        KeyIn(take.state.hasData && !take.state.recording && !take.state.noCamera) {
+        // mid-shot. Where the bars are native (iPhone Duo) the gear is their item, after the record key: the
+        // screen's prominent action, record or stop as the take stands.
+        val settings = take.state.hasData && !take.state.recording && !take.state.noCamera
+        val native = LocalNativeChrome.current != null
+        val settingsTitle = stringResource(Res.string.record_settings)
+        val recording = take.state.recording
+        val recordTitle = stringResource(if (recording) Res.string.core_stop else Res.string.core_record)
+        NativeItems(
+            buildList {
+                add(
+                    NativeBarItem(
+                        TestTags.RecordButton,
+                        recordTitle,
+                        if (recording) BarIcon.Stop else BarIcon.Record,
+                        prominent = true,
+                        enabled = !take.state.noCamera,
+                        priority = BarPriority.High,
+                    )
+                )
+                if (settings) add(NativeBarItem(TestTags.RecordSettings, settingsTitle, BarIcon.Settings))
+            }
+        ) { id ->
+            if (id == TestTags.RecordButton) take.actions.recordPressed() else take.onSettings()
+        }
+        KeyIn(settings && !native) {
             IconCircleButton(
                 CgIcons.Settings,
                 stringResource(Res.string.record_settings),
@@ -222,9 +252,13 @@ internal fun TakeStatusIfWorthIt(state: RecordUiState, modifier: Modifier = Modi
     if (state.statusWorthShowing) TakeStatus(state, modifier)
 }
 
-/** The record button, its look following the session's phase. */
+/**
+ * The record button, its look following the session's phase. Where the bars are native the record key is their
+ * prominent item ([TakeTopRow]), not a key on the picture.
+ */
 @Composable
 internal fun RecordKey(take: TakeInputs, modifier: Modifier = Modifier) {
+    if (LocalNativeChrome.current != null) return
     RecordButton(
         take.state.buttonState(),
         onClick = take.actions::recordPressed,

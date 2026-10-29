@@ -34,6 +34,7 @@ fun HomeBody(
     onFoldPageDismiss: () -> Unit = {},
 ) {
     val layout = LocalWindowLayout.current
+    HomeNativeBar(recordAction(state).enabled, onOpenCamera, onAddByAddress)
     when (layout.kind) {
         LayoutKind.Wide ->
             HomeWideLayout(

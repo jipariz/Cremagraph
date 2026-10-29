@@ -90,7 +90,10 @@ Late shot gets old tail joined in front (`Mp4Join` on Android; on iOS old writer
 **Storage.** Sidecar JSON per video, beside the video = only truth. No database: nothing lists the library.
 
 **Layout.** `windowLayout(...)` picks `Phone`, `Wide`, `Stacked`, `Tiny`. Every adaptive branch goes through it.
-Foldables follow "OnlyShots Foldables" canvas: nothing on fold; picture one pane, controls other.
+Foldables follow "OnlyShots Foldables" canvas: nothing on fold; picture one pane, controls other. iPhone Duo follows
+Figma "OnlyShots · iPhone Duo" (Apple HIG "Designing for iPhone Duo"): system bars, not Compose ones, via the native
+shell (`NativeShell.swift`, `LocalNativeChrome`); status, Dynamic Island and toolbar share a side column except on
+the inner display upright. Check on the iPhone Duo simulator (Xcode 27.1): closed, open, half-open, both orientations.
 
 **Look.** "Instrument" (canvas "OnlyShots · Instrument"): ink `#0B0B0B`, bone `#E8E6E1` text, one signal `#FF5A1F`
 accent, `#3A3A38` hairlines, square corners. IBM Plex Mono SemiBold names and counts (labels drawn in capitals with
@@ -312,7 +315,7 @@ both cases the API Play names is one the app never calls.
 - `ITSAppUsesNonExemptEncryption` = false.
 - Reviewers have no machine: tell them about "try a sample shot" and **simulate shot**.
 - **iPhone Duo:** screenshots needed from April 2027. Scene manifest in `Info.plist` must stay (else unfold kicks
-  app out). Fold comes from Swift `FoldWatchingController`.
+  app out). Fold comes from Swift `ComposeHostController` (`NativeShell.swift`).
 
 ## Open questions
 

@@ -10,13 +10,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import app.onlyshots.PRIVACY_URL
 import app.onlyshots.TestTags
 import app.onlyshots.core.designsystem.CgColors
@@ -26,6 +33,8 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.CgIcon
+import app.onlyshots.core.designsystem.component.HeaderBack
+import app.onlyshots.core.designsystem.component.LocalNativeScreen
 import app.onlyshots.core.model.AppVersion
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.core_version
@@ -106,5 +115,17 @@ private fun HelpSection(title: String, note: String, content: @Composable () -> 
         SectionLabel(title)
         content()
         Text(note, style = CgTheme.type.bodySmall, color = CgColors.Text.Secondary)
+    }
+}
+
+/** The help as a page of its own, under the screen's back key; it hands the native bar a back key of its own. */
+@Composable
+internal fun HelpPage(title: String, onClose: () -> Unit, modifier: Modifier, content: @Composable () -> Unit) {
+    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None)) { onClose() }
+    CompositionLocalProvider(LocalNativeScreen provides remember { Any() }) {
+        Column(modifier) {
+            HeaderBack(title, onBack = onClose, modifier = Modifier.padding(vertical = CgSpace.S8))
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(CgSpace.S16)) { content() }
+        }
     }
 }

@@ -28,6 +28,7 @@ import app.onlyshots.StyleEditorRoute
 import app.onlyshots.core.designsystem.CgColors
 import app.onlyshots.core.designsystem.component.EditorSheet
 import app.onlyshots.core.designsystem.component.EditorSheetSlot
+import app.onlyshots.core.designsystem.component.LocalNativeChrome
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.model.style.GraphStyle
 import app.onlyshots.core.resources.text
@@ -87,6 +88,8 @@ fun EditBody(
         focus.requestFocus()
     }
     val share = { actions.saveAndExport(ui.shareQuality, chrome.sound) }
+    val exportInPanel =
+        LocalNativeChrome.current == null || LocalExportWording.current.share != null || ui.qualities.size > 1
     val slots =
         EditSlots(
             picture = { modifier ->
@@ -112,22 +115,29 @@ fun EditBody(
                     )
                 }
             },
-            // The way out, at the bottom of a wide editor's panel whichever page it shows.
-            exportBar = {
-                if (video != null) {
-                    ExportBar(
-                        video,
-                        galleryQuality = ui.galleryQuality,
-                        shareQuality = ui.shareQuality,
-                        qualities = ui.qualities,
-                        sound = chrome.sound,
-                        onSave = export,
-                        onShare = share,
-                        onQuality = actions::pickQuality,
-                    )
-                }
-            },
+            // The way out, at the bottom of a wide editor's panel whichever page it shows. Where the bars are native
+            // saving is their item: the panel keeps a footer only for what is left to choose there (share, the
+            // quality).
+            exportBar =
+                if (!exportInPanel) null
+                else {
+                    {
+                        if (video != null) {
+                            ExportBar(
+                                video,
+                                galleryQuality = ui.galleryQuality,
+                                shareQuality = ui.shareQuality,
+                                qualities = ui.qualities,
+                                sound = chrome.sound,
+                                onSave = export,
+                                onShare = share,
+                                onQuality = actions::pickQuality,
+                            )
+                        }
+                    }
+                },
         )
+    EditNativeBar(ui, actions, player, onExport = if (chrome.kind == LayoutKind.Phone) null else export)
     Box(Modifier.fillMaxSize().background(CgColors.Surface.Base).then(keyInput)) {
         val insets = Modifier.fillMaxSize().safeDrawingPadding()
         when {
@@ -151,8 +161,8 @@ internal class EditSlots(
     val timeBand: @Composable () -> Unit,
     /** What a sheet holds: a bottom sheet on a phone, the side panel on a wide window. */
     val sheet: @Composable (EditSheet) -> Unit,
-    /** The export, pinned under a wide window's panel. */
-    val exportBar: @Composable () -> Unit,
+    /** The export, pinned under a wide window's panel; null where the native bar's item is all there is to it. */
+    val exportBar: (@Composable () -> Unit)?,
 )
 
 /** What each sheet holds. */

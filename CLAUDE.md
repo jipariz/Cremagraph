@@ -207,8 +207,8 @@ alias of browser `File` on web.
 
 **Adaptive layout.** One function: `windowLayout(info, widthDp, heightDp, density)` → `Phone`/`Wide`/`Stacked`/`Tiny`
 + split. Input: `currentWindowAdaptiveInfo()` (size classes, Android hinges). iOS: `platformWindowAdaptiveInfo()` adds
-foldable iPhone fold from `IosHinge`, fed by Swift `FoldWatchingController` (Kotlin UIKit bindings lack iOS 27.1 hinge
-API). Every adaptive branch goes through it (`LocalWindowLayout`). No ad hoc size checks: every breakpoint lives in
+foldable iPhone fold from `IosHinge`, fed by Swift `ComposeHostController` (`NativeShell.swift`; Kotlin UIKit bindings lack
+iOS 27.1 hinge API). Every adaptive branch goes through it (`LocalWindowLayout`). No ad hoc size checks: every breakpoint lives in
 `core/ui/.../layout/Breakpoints.kt`; orientation is `WindowLayout.landscape`. `BoxWithConstraints` in a feature only fits
 content (a frame, a toolbar row), never picks a layout.
 
@@ -228,6 +228,12 @@ content (a frame, a toolbar row), never picks a layout.
   (`OverlayEditLayer(bounds)`, `RecordActions.keepGraphWithin`).
 - **Foldables:** follow "OnlyShots Foldables" canvas. Previews in `screenshots/.../FoldablePreviews.kt`. `TwoPane` only
   for tabletop (`Stacked`). Remaining bottom sheets capped at `SHEET_MAX_WIDTH`, `SHEET_HEIGHT_FRACTION` tall.
+- **iPhone Duo native shell** (iOS 27.1, Figma "OnlyShots · iPhone Duo"): Swift `ShellNavigationController` around
+  the one Compose screen. Where there is a hinge, system shows each screen's bar (side column on outer and inner
+  landscape, top bar on inner portrait); elsewhere bar hidden, screens draw their own. Screens hand bar over via
+  `LocalNativeChrome` (`:core:designsystem` `NativeChrome.kt`): `BackButton` registers itself, actions via
+  `NativeItems(...)` (Back → prominent → groups → bottom), Compose key they replace skipped while native. New top-bar
+  key on a screen: add its `NativeItems` entry. Bar crosses to Swift as JSON (`NativeShell.kt`).
 
 **DI** = Koin. `editorModule` (`:editor`): library, styles, export, editor view models. `appModule`
 (`app/shared/.../di/AppModule.kt`): phones' sources and screens. `PlatformModule.<platform>.kt` per target. Web's

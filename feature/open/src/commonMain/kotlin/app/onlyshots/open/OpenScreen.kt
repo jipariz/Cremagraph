@@ -11,8 +11,15 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.onlyshots.TestTags
+import app.onlyshots.core.designsystem.component.BarIcon
+import app.onlyshots.core.designsystem.component.BarPriority
 import app.onlyshots.core.designsystem.component.CgSheet
+import app.onlyshots.core.designsystem.component.NativeBarItem
+import app.onlyshots.core.designsystem.component.NativeItems
 import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.open_editor
+import app.onlyshots.core.resources.open_from_file
 import app.onlyshots.core.resources.open_sheet_title
 import app.onlyshots.core.resources.visualizer_from
 import app.onlyshots.layout.LocalWindowLayout
@@ -74,6 +81,24 @@ fun OpenScreen(
                 override fun openEditor() = viewModel.openWith { currentOnOpen(it) }
             }
         }
+    // Where the bars are native (iPhone Duo): open the editor (prominent) and, at the far end, a shot from a file.
+    val openTitle = stringResource(Res.string.open_editor)
+    val fileTitle = stringResource(Res.string.open_from_file)
+    NativeItems(
+        listOf(
+            NativeBarItem(
+                TestTags.OpenEditor,
+                openTitle,
+                BarIcon.Open,
+                prominent = true,
+                enabled = picked != null && shot != null,
+                priority = BarPriority.High,
+            ),
+            NativeBarItem(TestTags.OpenFromFile, fileTitle, BarIcon.File, bottom = true, priority = BarPriority.Low),
+        )
+    ) { id ->
+        if (id == TestTags.OpenEditor) actions.openEditor() else shotFilePicker()
+    }
     Box(Modifier.fillMaxSize()) {
         OpenBody(
             ui =

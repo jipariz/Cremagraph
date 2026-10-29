@@ -21,6 +21,7 @@ import app.onlyshots.storage.AppSettingsRepo
 import app.onlyshots.storage.Library
 import app.onlyshots.storage.LibraryStore
 import app.onlyshots.style.StyleLibrary
+import co.touchlab.kermit.Logger
 import kotlin.time.Clock
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineScope
@@ -336,7 +337,10 @@ class RecordViewModel(
     }
 
     private suspend fun save(take: FinishedRecording) {
-        val recording = runCatching { camera.stop() }.getOrNull() ?: return
+        val recording =
+            runCatching { camera.stop() }
+                .onFailure { log.e(it) { "the camera did not hand the take over" } }
+                .getOrNull() ?: return
         // The session leaves the shot unnamed (it cannot put words to it); the default title goes in here.
         val finished =
             take.shot
@@ -371,6 +375,7 @@ class RecordViewModel(
             }
         }
             .getOrElse {
+                log.e(it) { "saving the take from ${recording.file} failed" }
                 saveError.value = Res.string.record_save_failed.text()
                 return
             }
@@ -385,6 +390,8 @@ class RecordViewModel(
         sessionScope = null
     }
 }
+
+private val log = Logger.withTag("Record")
 
 /** How often a style that adapts to the video samples the picture behind the graph. */
 private const val LUMA_SAMPLE_MS = 500L

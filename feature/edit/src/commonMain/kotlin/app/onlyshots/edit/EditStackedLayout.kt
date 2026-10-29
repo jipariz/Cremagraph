@@ -34,6 +34,7 @@ import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
 import app.onlyshots.core.designsystem.component.CgIcon
+import app.onlyshots.core.designsystem.component.LocalNativeChrome
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.TopChip
 import app.onlyshots.core.designsystem.component.TwoPane
@@ -219,6 +220,8 @@ private fun ToolChips(
         } else {
             Pill(stringResource(Res.string.edit_add_shot), onClick = { actions.openSheet(EditSheet.SHOT) })
         }
-        TopChip(stringResource(LocalExportWording.current.save), onClick = onExport, primary = true)
+        if (LocalNativeChrome.current == null) {
+            TopChip(stringResource(LocalExportWording.current.save), onClick = onExport, primary = true)
+        }
     }
 }

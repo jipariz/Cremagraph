@@ -20,11 +20,13 @@ import org.jetbrains.skia.Surface
 import platform.CoreVideo.CVPixelBufferGetBaseAddress
 import platform.CoreVideo.CVPixelBufferGetBytesPerRow
 import platform.CoreVideo.CVPixelBufferGetHeight
+import platform.CoreVideo.CVPixelBufferGetPixelFormatType
 import platform.CoreVideo.CVPixelBufferGetWidth
 import platform.CoreVideo.CVPixelBufferLockBaseAddress
 import platform.CoreVideo.CVPixelBufferRef
 import platform.CoreVideo.CVPixelBufferUnlockBaseAddress
 import platform.CoreVideo.kCVPixelBufferLock_ReadOnly
+import platform.CoreVideo.kCVPixelFormatType_32BGRA
 
 /**
  * BGRA pixel buffers (camera frames, player frames) as small Compose bitmaps: on iOS the native preview layers cannot
@@ -41,6 +43,8 @@ object PixelBuffers {
             val w = CVPixelBufferGetWidth(buffer).toInt()
             val h = CVPixelBufferGetHeight(buffer).toInt()
             if (w == 0 || h == 0) return null
+            // Only BGRA: a YUV frame has rows too short for the ImageInfo below, and makeRaster would throw.
+            if (CVPixelBufferGetPixelFormatType(buffer) != kCVPixelFormatType_32BGRA) return null
             val row = CVPixelBufferGetBytesPerRow(buffer).toInt()
             val base = CVPixelBufferGetBaseAddress(buffer) ?: return null
             val data = Data.makeWithoutCopy(base.rawValue, row * h, owner)
@@ -76,6 +80,8 @@ object PixelBuffers {
         try {
             val w = CVPixelBufferGetWidth(buffer).toInt()
             val h = CVPixelBufferGetHeight(buffer).toInt()
+            // Only BGRA: a YUV frame has rows too short for the ImageInfo below, and makeRaster would throw.
+            if (CVPixelBufferGetPixelFormatType(buffer) != kCVPixelFormatType_32BGRA) return null
             val row = CVPixelBufferGetBytesPerRow(buffer).toInt()
             val base = CVPixelBufferGetBaseAddress(buffer)?.rawValue ?: return null
             if (w == 0 || h == 0) return null

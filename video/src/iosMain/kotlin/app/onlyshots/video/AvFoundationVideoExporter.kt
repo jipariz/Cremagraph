@@ -19,7 +19,6 @@ import app.onlyshots.overlay.compose.OverlayFrameRenderer
 import app.onlyshots.overlay.compose.overlayLabels
 import app.onlyshots.overlay.scene.BackdropPrim
 import kotlin.coroutines.resume
-import kotlin.math.atan2
 import kotlin.math.roundToInt
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -28,7 +27,6 @@ import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.rawValue
-import kotlinx.cinterop.useContents
 import kotlinx.cinterop.value
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -67,7 +65,6 @@ import platform.AVFoundation.AVVideoCodecTypeH264
 import platform.AVFoundation.AVVideoCompressionPropertiesKey
 import platform.AVFoundation.AVVideoHeightKey
 import platform.AVFoundation.AVVideoWidthKey
-import platform.AVFoundation.preferredTransform
 import platform.AVFoundation.tracksWithMediaType
 import platform.CoreAudioTypes.kAudioFormatLinearPCM
 import platform.CoreAudioTypes.kAudioFormatMPEG4AAC
@@ -264,7 +261,7 @@ class AvFoundationVideoExporter(
         check(writer.startWriting()) { "writer: ${writer.error?.localizedDescription}" }
         writer.startSessionAtSourceTime(start)
 
-        val rotation = rotationDegrees(videoTrack)
+        val rotation = videoTrack.rotationDegrees()
         val totalUs = (item.trimOutUs - item.trimInUs).coerceAtLeast(1)
         val drawer = FrameDrawer(size.width, size.height, rotation, item.reframe)
 
@@ -352,13 +349,6 @@ class AvFoundationVideoExporter(
         val portrait = q.size(VideoFormat.PORTRAIT_9_16)
         return (base.toLong() * size.width * size.height / (portrait.width.toLong() * portrait.height)).toInt()
     }
-
-    /** Rotation the track asks for (phones store portrait video as rotated landscape). */
-    private fun rotationDegrees(track: AVAssetTrack): Int =
-        track.preferredTransform.useContents {
-            val deg = atan2(b, a) * 180.0 / kotlin.math.PI
-            (((deg / 90.0).roundToInt() * 90) % 360 + 360) % 360
-        }
 }
 
 /** Draws one decoded frame into an encoder buffer with [SkiaFrameDrawer], both as Skia views of the pixel buffers. */

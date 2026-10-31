@@ -4,8 +4,8 @@ package app.onlyshots.edit
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -14,19 +14,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.viewinterop.UIKitView
 import app.onlyshots.camera.PixelBuffers
+import app.onlyshots.video.rotationDegrees
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import okio.Path
+import platform.AVFoundation.AVAssetTrack
 import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
+import platform.AVFoundation.AVMediaTypeVideo
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItemVideoOutput
 import platform.AVFoundation.AVPlayerLayer
+import platform.AVFoundation.AVURLAsset
 import platform.AVFoundation.addOutput
 import platform.AVFoundation.currentItem
 import platform.AVFoundation.currentTime
@@ -35,11 +41,11 @@ import platform.AVFoundation.pause
 import platform.AVFoundation.play
 import platform.AVFoundation.removeOutput
 import platform.AVFoundation.seekToTime
+import platform.AVFoundation.tracksWithMediaType
 import platform.CoreGraphics.CGRectZero
 import platform.CoreMedia.CMTimeGetSeconds
 import platform.CoreMedia.CMTimeMake
 import platform.CoreVideo.CVPixelBufferRelease
-import platform.CoreVideo.kCVPixelBufferPixelFormatTypeKey
 import platform.CoreVideo.kCVPixelFormatType_32BGRA
 import platform.Foundation.NSURL
 import platform.QuartzCore.CACurrentMediaTime
@@ -66,12 +72,21 @@ private class PlayerView(player: AVPlayer) : UIView(frame = CGRectZero.readValue
 
 @Composable
 actual fun VideoSurface(file: Path, state: PlayerState, clipUs: LongRange, modifier: Modifier, drawFrames: Boolean) {
-    val player = remember(file) { AVPlayer(uRL = NSURL.fileURLWithPath(file.toString())) }
+    val url = remember(file) { NSURL.fileURLWithPath(file.toString()) }
+    val player = remember(url) { AVPlayer(uRL = url) }
+    // The player layer turns a rotated track itself; the frames below are the raw ones, so they are turned here.
+    val rotation =
+        remember(url) {
+            val track = AVURLAsset(url, null).tracksWithMediaType(AVMediaTypeVideo).firstOrNull() as? AVAssetTrack
+            track?.rotationDegrees() ?: 0
+        }
     // Decoded frames for a blur or glass style: the player layer is native, so Haze cannot blur it.
     val output =
         remember(player) {
             AVPlayerItemVideoOutput(
-                pixelBufferAttributes = mapOf<Any?, Any?>(kCVPixelBufferPixelFormatTypeKey to kCVPixelFormatType_32BGRA)
+                // kCVPixelBufferPixelFormatTypeKey: the CFString constant is no dictionary key here, so the
+                // attributes would be dropped and the player would hand out its own (YUV) frames.
+                pixelBufferAttributes = mapOf<Any?, Any?>("PixelFormatType" to kCVPixelFormatType_32BGRA.toInt())
             )
         }
     DisposableEffect(player, drawFrames) {
@@ -112,8 +127,21 @@ actual fun VideoSurface(file: Path, state: PlayerState, clipUs: LongRange, modif
         }
     }
     if (drawFrames) {
-        Box(modifier.background(Color.Black)) {
-            frame?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        // A quarter-turned frame is laid out across the box and turned into it, so it covers the box either way.
+        val quarterTurned = rotation % 180 != 0
+        BoxWithConstraints(modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+            frame?.let {
+                Image(
+                    it,
+                    null,
+                    Modifier.size(
+                            if (quarterTurned) maxHeight else maxWidth,
+                            if (quarterTurned) maxWidth else maxHeight,
+                        )
+                        .graphicsLayer { rotationZ = rotation.toFloat() },
+                    contentScale = ContentScale.Crop,
+                )
+            }
         }
     } else {
         UIKitView(factory = { PlayerView(player) }, modifier = modifier)

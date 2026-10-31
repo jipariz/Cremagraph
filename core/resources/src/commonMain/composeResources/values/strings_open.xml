@@ -6,6 +6,7 @@
     <string name="open_error_not_a_shot">%1$s is not a Gaggiuino shot</string>
     <string name="open_error_video">%1$s could not be opened: %2$s</string>
     <string name="open_error_unreadable">not a video this can read</string>
+    <string name="open_error_codec">%1$s video this browser can't decode — Safari plays it, or convert it to H.264 .mp4</string>
 
     <!-- Shared -->
     <string name="open_editor">open editor</string>

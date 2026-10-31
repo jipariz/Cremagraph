@@ -10,7 +10,9 @@ import app.onlyshots.core.resources.UiText
 import app.onlyshots.core.resources.open_change
 import app.onlyshots.core.resources.open_choose
 import app.onlyshots.core.resources.open_drop_to_use
+import app.onlyshots.core.resources.open_error_codec
 import app.onlyshots.core.resources.open_error_not_a_shot
+import app.onlyshots.core.resources.open_error_unreadable
 import app.onlyshots.core.resources.open_hint_add_shot
 import app.onlyshots.core.resources.open_hint_add_video
 import app.onlyshots.core.resources.open_hint_both
@@ -32,6 +34,7 @@ import app.onlyshots.core.resources.source_scale
 import app.onlyshots.core.resources.text
 import app.onlyshots.core.resources.unit_grams
 import app.onlyshots.core.resources.unit_seconds
+import app.onlyshots.video.UndecodableVideoException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -104,6 +107,16 @@ class OpenStepsTest {
         val ui = OpenUi(status = problem)
         assertEquals(problem, ui.problem)
         assertNull(ui.opening)
+    }
+
+    @Test
+    fun aVideoThatWillNotOpenSaysWhy() {
+        // The browser names the codec, so the message can say which one and what plays it.
+        assertEquals(Res.string.open_error_codec.text("HEVC"), UndecodableVideoException("hevc").openProblem())
+        // Nothing in the file was read as video: there is no codec to name.
+        assertEquals(Res.string.open_error_unreadable.text(), UndecodableVideoException("").openProblem())
+        // Anything else keeps the platform's own words.
+        assertEquals("disk full".raw(), IllegalStateException("disk full").openProblem())
     }
 
     @Test

@@ -15,6 +15,7 @@
     <string name="core_export_left">about %1$s left</string>
     <string name="core_export_estimating">working out how long this will take…</string>
     <string name="core_export_no_webgl">no WebGL in this browser</string>
+    <string name="core_export_no_webcodecs">this browser cannot encode video: use Chrome, Edge or Safari</string>
     <string name="core_export_notification_channel">exports</string>
     <string name="core_export_notification_title">creating your video</string>
 
@@ -77,7 +78,7 @@
     <string name="core_desktop_header_note">runs on this computer, nothing is uploaded</string>
     <string name="core_desktop_videos_note">Exports at the video's full quality, with sound, into Movies/OnlyShots.</string>
     <string name="core_web_header_note">runs in your browser, nothing is uploaded</string>
-    <string name="core_web_videos_note">Exports at 1080p without sound, in Chrome, Edge or Safari 16.4+.</string>
+    <string name="core_web_videos_note">Exports at 1080p without sound, in Chrome, Edge or Safari 16.4+. A .mov from an iPhone holds HEVC, which not every browser can decode.</string>
     <string name="core_web_file_gone">that file is gone</string>
     <string name="core_version">OnlyShots %1$s</string>
     <string name="core_less">less</string>

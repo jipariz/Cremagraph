@@ -82,3 +82,18 @@ interface VideoProbe {
     /** Whether this device's H.264 encoder can write 2160 × 3840. */
     fun supports4k(): Boolean
 }
+
+/**
+ * The file opened but its picture cannot be decoded here: [codec] as the decoder names it ("hevc", "prores"…), empty
+ * when nothing in the file was read as video. Only the browser raises it; the screen that picked the file words it.
+ */
+class UndecodableVideoException(val codec: String) : IllegalStateException("cannot decode '$codec'")
+
+/** A codec in the words people know it by; one with no such name is shown as it came. */
+fun codecName(codec: String): String =
+    when (codec) {
+        "avc" -> "H.264"
+        "hevc" -> "HEVC"
+        "prores" -> "ProRes"
+        else -> codec.uppercase()
+    }

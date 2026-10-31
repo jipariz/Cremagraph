@@ -292,7 +292,8 @@ function playerOpen(path, maxSide) {
     pointerEvents: 'none',
   });
   document.body.appendChild(video);
-  const player = { video, maxSide, canvas: null, ctx: null, fresh: false };
+  // `muted` is what the editor asked for; the element's own flag may differ while autoplay refuses the sound.
+  const player = { video, maxSide, canvas: null, ctx: null, fresh: false, muted: false };
   const watch = () => {
     player.fresh = true;
     video.requestVideoFrameCallback?.(watch);
@@ -333,11 +334,13 @@ function playerSeek(id, time) {
 async function playerPlay(id) {
   const p = players.get(id);
   if (!p) return false;
+  // Autoplay rules: a muted start is always allowed, an audible one only once the page has been clicked. What the
+  // editor asked for is tried again at every play, so a start that had to be silent is not silent for ever.
+  p.video.muted = p.muted;
   try {
     await p.video.play();
     return true;
   } catch {
-    // Autoplay rules: a muted start is always allowed, and the next tap brings the sound.
     p.video.muted = true;
     await p.video.play().catch(() => {});
     return false;
@@ -354,7 +357,9 @@ function playerTime(id) {
 
 function playerMute(id, muted) {
   const p = players.get(id);
-  if (p) p.video.muted = muted;
+  if (!p) return;
+  p.muted = muted;
+  p.video.muted = muted;
 }
 
 /**

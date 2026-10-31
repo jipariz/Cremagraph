@@ -46,47 +46,85 @@ class GaggiuinoDecoder(private val endTimeoutUs: Long = 1_500_000) : MachineDeco
     private var binaryStartUs: Long? = null
     private var lastBrewingUs = 0L
 
+    /** Binary firmware: the newest targets from `d_shot_snap`, which the sensor stream does not carry. */
+    private var targets: Targets? = null
+
     override fun reset() {
         anchorUs = null
         lastTimeInShotMs = -1
         binaryStartUs = null
+        targets = null
     }
 
     override fun decodeBinary(bytes: ByteArray, receivedAtUs: Long, path: String): List<MachineMessage> {
         val (action, data) = binaryEnvelope(bytes) ?: return listOf(MachineMessage.Ignored)
-        if (action != SENSOR_SNAPSHOT) return listOf(MachineMessage.Ignored)
         val f =
             try {
                 protoFields(data).associateBy { it.number }
             } catch (e: IllegalArgumentException) {
                 return listOf(MachineMessage.Ignored)
             }
+        return when (action) {
+            SENSOR_SNAPSHOT -> onSensorSnapshot(f, receivedAtUs)
+            SHOT_SNAPSHOT -> onShotSnapshot(f, receivedAtUs)
+            else -> listOf(MachineMessage.Ignored)
+        }
+    }
+
+    /**
+     * `d_sensor_snap`: the brew switch, and every reading the shot is drawn from. Its temperature is the machine's own
+     * thermocouple, which climbs through an extraction; the shot stream reports the setpoint instead, and this is the
+     * measurement, so it is the one kept.
+     */
+    private fun onSensorSnapshot(f: Map<Int, ProtoField>, at: Long): List<MachineMessage> {
         val brewing = f[1]?.bool ?: false
         val out = ArrayList<MachineMessage>(2)
         if (brewing && binaryStartUs == null) {
-            binaryStartUs = receivedAtUs
-            out += MachineMessage.Brew(BrewEvent.Started(receivedAtUs))
+            binaryStartUs = at
+            out += MachineMessage.Brew(BrewEvent.Started(at))
         }
         if (!brewing && binaryStartUs != null) {
             binaryStartUs = null
+            targets = null
             out += MachineMessage.Brew(BrewEvent.Ended(lastBrewingUs))
         }
-        if (brewing) lastBrewingUs = receivedAtUs
+        if (brewing) lastBrewingUs = at
         fun float(n: Int) = f[n]?.float?.takeIf { it.isFinite() }
+        val t = targets.takeIf { brewing }
         out +=
             MachineMessage.Reading(
                 Sample(
-                    tUs = receivedAtUs,
+                    tUs = at,
                     pressure = float(6),
                     flow = float(7),
                     weight = float(9),
                     weightFlow = float(8),
                     temperature = float(4),
+                    targetPressure = t?.pressure,
+                    targetFlow = t?.flow,
+                    targetTemperature = t?.temperature,
                     brewing = brewing,
                 )
             )
         return out
     }
+
+    /**
+     * `d_shot_snap`, one per sample while a shot runs. The sensor stream carries no targets at all, so this is where
+     * they come from; its own readings are left alone, the sensor stream having already measured them.
+     *
+     * Scaled integers, ten times the real value. `timeInShot` (field 1) is read past: Gaggiuino's docs call these "the
+     * same convention as the shot-history JSON files", but this firmware's history is in real units and milliseconds,
+     * so the two disagree about the unit and nothing here needs it.
+     */
+    private fun onShotSnapshot(f: Map<Int, ProtoField>, at: Long): List<MachineMessage> {
+        fun scaled(n: Int) = f[n]?.takeIf { it.wireType == ProtoField.VARINT }?.varint?.toFloat()?.div(SHOT_SCALE)
+        targets = Targets(temperature = scaled(8), flow = scaled(9), pressure = scaled(10))
+        return listOf(MachineMessage.Ignored)
+    }
+
+    /** The targets of the sample the machine last reported, held for the readings that carry none. */
+    private class Targets(val temperature: Float?, val flow: Float?, val pressure: Float?)
 
     override fun decodeText(text: String, receivedAtUs: Long, path: String): List<MachineMessage> {
         val root =
@@ -173,6 +211,12 @@ class GaggiuinoDecoder(private val endTimeoutUs: Long = 1_500_000) : MachineDeco
 
         /** Binary firmware: live sensors, and system state (version, operation mode). */
         const val SENSOR_SNAPSHOT = "d_sensor_snap"
+
+        /** Binary firmware: one per sample while a shot runs. */
+        const val SHOT_SNAPSHOT = "d_shot_snap"
+
+        /** `ShotSnapshotDto` stores every reading as ten times its real value. */
+        private const val SHOT_SCALE = 10f
         const val SYSTEM_STATE = "d_sys_state"
 
         /** The `{ 1: action, 2: data }` envelope every binary frame comes in, or null when it is not one. */

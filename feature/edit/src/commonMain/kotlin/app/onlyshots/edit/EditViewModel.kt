@@ -185,15 +185,16 @@ class EditViewModel(
             }
         }
         viewModelScope.launch {
-            var wasExporting = false
-            combine(exports.progress, exports.left) { all, left -> all[id] to left[id] }
-                .collect { (p, left) ->
+            // Watched with the outcomes, not only the progress: a render that fails at once can add and drop its
+            // progress entry between two looks, and the map, back as it was, is never seen to change.
+            combine(exports.progress, exports.left, exports.outcomes) { all, left, outcomes ->
+                    Triple(all[id], left[id], id in outcomes)
+                }
+                .collect { (p, left, over) ->
                     if (p != null) {
-                        wasExporting = true
                         ui.update { it.copy(exporting = p, exportLeftMs = left) }
-                    } else if (wasExporting || id in exports.outcomes.value) {
+                    } else if (over) {
                         // Over: here, or before this screen was opened (from the export's notification).
-                        wasExporting = false
                         exports.consume(id)?.let(::ended)
                     }
                 }
@@ -373,7 +374,7 @@ class EditViewModel(
         viewModelScope.launch {
             val shot =
                 withContext(work) {
-                    runCatching { ShotFiles.parse(fs.read(path) { readUtf8() }, fallbackId = "file-$id") }
+                    runCatching { ShotFiles.parse(fs.read(path) { readByteArray() }, fallbackId = "file-$id") }
                         .also { fs.delete(path, mustExist = false) }
                         .getOrNull()
                 }

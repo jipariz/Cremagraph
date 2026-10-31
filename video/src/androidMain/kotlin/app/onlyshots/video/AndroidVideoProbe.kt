@@ -44,10 +44,11 @@ class AndroidVideoProbe(private val fs: FileSystem = FileSystem.SYSTEM) : VideoP
             val r = MediaMetadataRetriever()
             val frame = try {
                 r.setDataSource(file.toString())
-                r.getFrameAtTime(atUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                r.scaledFrameAt(atUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, maxWidthPx)
             } finally {
                 r.release()
             } ?: return@withContext
+            // Already the right size from API 27 on; on 26 the decoder gave the whole frame and it still has to shrink.
             val scale = (maxWidthPx.toFloat() / frame.width).coerceAtMost(1f)
             val scaled = if (scale < 1f) {
                 Bitmap.createScaledBitmap(frame, (frame.width * scale).toInt(), (frame.height * scale).toInt(), true)

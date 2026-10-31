@@ -3,7 +3,7 @@
 <resources>
     <!-- Status and errors -->
     <string name="open_status_opening">opening…</string>
-    <string name="open_error_not_a_shot">%1$s is not a Gaggiuino shot</string>
+    <string name="open_error_not_a_shot">%1$s is not a shot this app can read</string>
     <string name="open_error_video">%1$s could not be opened: %2$s</string>
     <string name="open_error_unreadable">not a video this can read</string>
     <string name="open_error_codec">%1$s video this browser can't decode — Safari plays it, or convert it to H.264 .mp4</string>
@@ -23,13 +23,13 @@
     <string name="open_phone_video_title">Video</string>
     <string name="open_phone_video_gallery">a video of the shot, from your gallery</string>
     <string name="open_phone_shot_title">Shot</string>
-    <string name="open_phone_shot_machine">a .shot file, Visualizer, or straight from your machine</string>
-    <string name="open_shot_file_detail">.shot or .json, from the machine or visualizer.coffee</string>
+    <string name="open_phone_shot_machine">a shot file, Visualizer, or straight from your machine</string>
+    <string name="open_shot_file_detail">.shot, .json or .slog, from the machine or visualizer.coffee</string>
     <string name="open_header_edit">compose a video</string>
     <string name="open_sheet_title">the shot</string>
     <string name="open_from_file">From a file</string>
     <string name="open_from_machine">From the machine</string>
-    <string name="open_from_machine_detail">A recent shot from your Gaggiuino on this Wi‑Fi</string>
+    <string name="open_from_machine_detail">A recent shot from your machine on this Wi‑Fi</string>
 
     <!-- Desktop and web -->
     <string name="open_wide_intro">Pick a video of an espresso shot and the shot itself. The editor lines the graph up where the pump starts — you place it, style it and export.</string>
@@ -37,15 +37,15 @@
     <string name="open_wide_video_drop">drop an .mp4 or .mov here</string>
     <string name="open_wide_choose_video">choose video</string>
     <string name="open_wide_shot_title">The shot</string>
-    <string name="open_wide_shot_detail">a .shot or .json file, or a Visualizer share code or link</string>
-    <string name="open_wide_shot_detail_machine">a .shot or .json file, a Visualizer share code or link, or pick it from the machine</string>
+    <string name="open_wide_shot_detail">a .shot, .json or .slog file, or a Visualizer share code or link</string>
+    <string name="open_wide_shot_detail_machine">a .shot, .json or .slog file, a Visualizer share code or link, or pick it from the machine</string>
     <string name="open_wide_choose_shot">choose shot</string>
     <string name="open_preview_caption">what you'll export — 9:16, 4:5, 1:1 or 16:9</string>
     <string name="open_details_does_title">What it does</string>
     <string name="open_details_does">Puts the shot's pressure, flow, weight and temperature over the video, lined up where the pump starts, in a style you choose.</string>
     <string name="open_details_shots_title">Shots it reads</string>
-    <string name="open_details_shots">Gaggiuino .shot or .json — from baristagiuino or the machine's own page, old and new firmware. From visualizer.coffee, any machine's shot or a Beanconqueror brew: by share code, link or download.</string>
-    <string name="open_details_shots_machine">Gaggiuino .shot or .json — from baristagiuino or the machine's own page, old and new firmware, or straight from a Gaggiuino on this network. From visualizer.coffee, any machine's shot or a Beanconqueror brew: by share code, link or download.</string>
+    <string name="open_details_shots">Gaggiuino .shot or .json, GaggiMate .slog or .json — from the machine's own page, baristagiuino or the shot analyzer, old and new firmware. From visualizer.coffee, any machine's shot or a Beanconqueror brew: by share code, link or download.</string>
+    <string name="open_details_shots_machine">Gaggiuino .shot or .json, GaggiMate .slog or .json — from the machine's own page, baristagiuino or the shot analyzer, old and new firmware, or straight from a machine on this network. From visualizer.coffee, any machine's shot or a Beanconqueror brew: by share code, link or download.</string>
     <string name="open_details_videos_title">Videos</string>
     <string name="open_details_videos">.mp4 or .mov from a phone or camera.</string>
 
@@ -58,9 +58,9 @@
     <!-- Mobile web -->
     <string name="open_mobile_intro">Pick the video and the shot. Nothing leaves your phone.</string>
     <string name="open_mobile_video_detail">.mp4 or .mov</string>
-    <string name="open_mobile_shot_detail">.shot or .json file, or Visualizer</string>
+    <string name="open_mobile_shot_detail">.shot, .json or .slog file, or Visualizer</string>
     <string name="open_mobile_reads_title">Shots and videos it reads</string>
-    <string name="open_mobile_reads">Gaggiuino .shot or .json — from baristagiuino or the machine's own page, old and new firmware. From visualizer.coffee, any machine's shot or a Beanconqueror brew: by share code, link or download. Videos: .mp4 or .mov from a phone or camera.</string>
+    <string name="open_mobile_reads">Gaggiuino .shot or .json, GaggiMate .slog or .json — from the machine's own page, baristagiuino or the shot analyzer, old and new firmware. From visualizer.coffee, any machine's shot or a Beanconqueror brew: by share code, link or download. Videos: .mp4 or .mov from a phone or camera.</string>
     <string name="open_banner_title">Film it live with the app</string>
     <string name="open_banner_detail">Connects to the machine and scale, draws the graph as you pull.</string>
     <string name="open_dismiss">Dismiss</string>

@@ -166,6 +166,10 @@ class ExportManager(
                 } catch (e: CancellationException) {
                     ids.filterNot { it in outcomes.value }.forEach { done(it, Outcome.Cancelled) }
                     throw e
+                } catch (e: Exception) {
+                    // Whatever went wrong, each video still ends: the edit screen waits for its outcome.
+                    val message = Res.string.edit_export_failed.text("${e.message ?: e::class.simpleName}".raw())
+                    ids.filterNot { it in outcomes.value }.forEach { fail(it, message) }
                 } finally {
                     progress.update { it - ids.toSet() }
                     left.update { it - ids.toSet() }
@@ -217,6 +221,8 @@ class ExportManager(
         } catch (e: Exception) {
             failed = e.message ?: e::class.simpleName ?: "?"
         }
+        // An exporter that ends without a file and without saying why has failed all the same.
+        if (file == null && failed == null) failed = "no video was made"
         failed?.let {
             fail(id, Res.string.edit_export_failed.text(it.raw()))
             progress.update { all -> all - id }

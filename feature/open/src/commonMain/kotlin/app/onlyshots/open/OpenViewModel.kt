@@ -81,7 +81,8 @@ class OpenViewModel(
         viewModelScope.launch {
             val parsed =
                 withContext(Dispatchers.Default) {
-                    runCatching { ShotFiles.parse(fs.read(path) { readUtf8() }, fallbackId = path.name) }.getOrNull()
+                    runCatching { ShotFiles.parse(fs.read(path) { readByteArray() }, fallbackId = path.name) }
+                        .getOrNull()
                 }
             if (parsed == null) status.value = Res.string.open_error_not_a_shot.text(path.name)
             else {

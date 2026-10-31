@@ -48,7 +48,12 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
+import app.onlyshots.core.designsystem.component.BarIcon
+import app.onlyshots.core.designsystem.component.BarPriority
 import app.onlyshots.core.designsystem.component.CgIcon
+import app.onlyshots.core.designsystem.component.LocalNativeChrome
+import app.onlyshots.core.designsystem.component.NativeBarItem
+import app.onlyshots.core.designsystem.component.NativeItems
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.style_name
 import app.onlyshots.core.resources.style_rename
@@ -127,6 +132,23 @@ internal fun StyleEditorHeader(
                 CgIcon(CgIcons.Edit, tint = CgColors.Text.Dim, size = EDIT_ICON)
             }
         }
+        // Where the bars are native (iPhone Duo) save is their prominent item, not a key here.
+        val saveTitle = stringResource(Res.string.style_save)
+        NativeItems(
+            listOf(
+                NativeBarItem(
+                    TestTags.StyleEditorSave,
+                    saveTitle,
+                    BarIcon.Save,
+                    prominent = true,
+                    priority = BarPriority.High,
+                )
+            )
+        ) {
+            if (editing) commit()
+            onSave()
+        }
+        if (LocalNativeChrome.current != null) return@Row
         Box(
             Modifier.padding(start = CgSpace.S8)
                 .testTag(TestTags.StyleEditorSave)

@@ -53,6 +53,7 @@
     <string name="home_action_offline">%1$s is offline · or pick another source</string>
     <string name="home_action_scale_caption">Recording starts at the first drops</string>
     <string name="home_auto_start_brew_switch">Shot starts recording when the brew switch flips on</string>
+    <string name="home_auto_start_process_start">Shot starts recording when the machine starts a brew</string>
     <string name="home_try_sample">no machine? try a sample shot</string>
     <string name="home_record">record</string>
     <string name="home_record_armed_auto">The camera opens armed. The shot starts the take.</string>

@@ -37,7 +37,7 @@
     <string name="edit_loading_shot">loading the shot…</string>
     <string name="edit_shot_load_failed">could not load that shot</string>
     <string name="edit_reading_file">reading the file…</string>
-    <string name="edit_not_a_shot_file">that file is not a Gaggiuino shot</string>
+    <string name="edit_not_a_shot_file">that file is not a shot this app can read</string>
     <string name="edit_finding_start">finding the start…</string>
     <string name="edit_no_pump_by_hand">no pump sound found: place the flag by hand</string>
     <string name="edit_gallery_access">OnlyShots needs access to your gallery to save the video there</string>
@@ -75,6 +75,8 @@
     <string name="edit_find_start">find start</string>
     <string name="edit_muted">muted</string>
     <string name="edit_sound">sound</string>
+    <string name="edit_undo">undo</string>
+    <string name="edit_redo">redo</string>
     <string name="edit_fit">fit</string>
     <string name="edit_zoom_in">zoom in</string>
     <string name="edit_step_back">a frame back</string>
@@ -110,7 +112,7 @@
     <string name="edit_shot_file">a shot file</string>
     <string name="edit_shot_file_detail">.shot or .json, from visualizer.coffee or the machine</string>
     <string name="edit_from_machine">from the machine</string>
-    <string name="edit_from_machine_detail">a recent shot from your Gaggiuino on this Wi‑Fi</string>
+    <string name="edit_from_machine_detail">a recent shot from your machine on this Wi‑Fi</string>
     <string name="edit_on_connected_machine">on the connected machine</string>
     <string name="edit_number_time">time</string>
     <string name="edit_number_weight">weight</string>

@@ -46,6 +46,7 @@ import app.onlyshots.core.designsystem.component.CgTextField
 import app.onlyshots.core.designsystem.component.CgToggle
 import app.onlyshots.core.designsystem.component.HairlineGrid
 import app.onlyshots.core.designsystem.component.ListRow
+import app.onlyshots.core.designsystem.component.LocalNativeChrome
 import app.onlyshots.core.designsystem.component.Pill
 import app.onlyshots.core.designsystem.component.ProgressLine
 import app.onlyshots.core.designsystem.component.SegmentedControl
@@ -638,29 +639,37 @@ fun ExportBar(
 ) {
     val wording = LocalExportWording.current
     val choose = qualities.size > 1
+    // Where the bars are native (iPhone Duo) saving is the bar's prominent item; only the other way out stays here.
+    val native = LocalNativeChrome.current != null
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
-        Row(
-            Modifier.height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Two ways out of equal weight: the same size, the second one dark. At least 52 dp, never cut: a label that
-            // wraps in a narrow panel makes both taller (the row's intrinsic height) instead of losing its second line.
-            CgButton(
-                stringResource(wording.save),
-                onClick = onSave,
-                kind = CgButtonKind.Signal,
-                modifier = Modifier.weight(1f).heightIn(min = 52.dp).fillMaxHeight().testTag(TestTags.ExportSave),
-            )
-            wording.share?.let {
-                CgButton(
-                    stringResource(it),
-                    onClick = onShare,
-                    kind = CgButtonKind.Secondary,
-                    modifier = Modifier.weight(1f).heightIn(min = 52.dp).fillMaxHeight().testTag(TestTags.ExportShare),
-                )
+        if (!native || wording.share != null)
+            Row(
+                Modifier.height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(CgSpace.S8),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Two ways out of equal weight: the same size, the second one dark. At least 52 dp, never cut: a label
+                // that wraps in a narrow panel makes both taller (the row's intrinsic height) instead of losing its
+                // second line.
+                if (!native) {
+                    CgButton(
+                        stringResource(wording.save),
+                        onClick = onSave,
+                        kind = CgButtonKind.Signal,
+                        modifier =
+                            Modifier.weight(1f).heightIn(min = 52.dp).fillMaxHeight().testTag(TestTags.ExportSave),
+                    )
+                }
+                wording.share?.let {
+                    CgButton(
+                        stringResource(it),
+                        onClick = onShare,
+                        kind = CgButtonKind.Secondary,
+                        modifier =
+                            Modifier.weight(1f).heightIn(min = 52.dp).fillMaxHeight().testTag(TestTags.ExportShare),
+                    )
+                }
             }
-        }
         // Each way out's quality under its button, when there is a choice.
         if (choose) {
             Row(horizontalArrangement = Arrangement.spacedBy(CgSpace.S8)) {
@@ -674,12 +683,15 @@ fun ExportBar(
                 }
             }
         }
-        Text(
-            "${exportSummary(item, galleryQuality.takeUnless { choose }, sound, wording)} · " +
-                stringResource(wording.saveWhere),
-            style = CgTheme.type.caption,
-            color = CgColors.Text.Dim,
-        )
+        // What the save makes, under its button: with the button in the native bar, it goes with it.
+        if (!native) {
+            Text(
+                "${exportSummary(item, galleryQuality.takeUnless { choose }, sound, wording)} · " +
+                    stringResource(wording.saveWhere),
+                style = CgTheme.type.caption,
+                color = CgColors.Text.Dim,
+            )
+        }
     }
 }
 

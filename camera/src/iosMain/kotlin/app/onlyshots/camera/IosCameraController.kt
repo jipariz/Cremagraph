@@ -154,7 +154,9 @@ class IosCameraController(
                 fromConnection: AVCaptureConnection,
             ) {
                 val sb = didOutputSampleBuffer ?: return
-                onSample(sb, video = output === videoOut)
+                // By type, not identity: AVFoundation hands back the output under a KVO subclass, which Kotlin wraps
+                // as another object, so `===` with [videoOut] is false and every frame would count as sound.
+                onSample(sb, video = output is AVCaptureVideoDataOutput)
             }
         }
 
@@ -165,7 +167,8 @@ class IosCameraController(
 
     /** Opens the camera. Call once the camera permission is granted. */
     fun prepare() {
-        if (session.inputs.isNotEmpty()) return
+        // The camera, not any input: the mic can be added before the preview first asks for the camera.
+        if (device != null) return
         session.beginConfiguration()
         session.sessionPreset = preset()
         state.update {
@@ -195,9 +198,7 @@ class IosCameraController(
         }
         // BGRA, not the default YUV: the writer takes either, and BGRA can be drawn and measured directly for the
         // Compose preview a blur style needs and for "adapt to video".
-        // "PixelFormatType" = kCVPixelBufferPixelFormatTypeKey: the CFString constant is no dictionary key here.
-        videoOut.videoSettings =
-            mapOf<Any?, Any?>("PixelFormatType" to platform.CoreVideo.kCVPixelFormatType_32BGRA.toInt())
+        videoOut.videoSettings = PixelBuffers.bgraAttributes
         if (session.canAddOutput(videoOut)) session.addOutput(videoOut)
         applyRotation()
         session.commitConfiguration()
@@ -314,7 +315,7 @@ class IosCameraController(
     override fun setFourK(on: Boolean) {
         if (on == fourK || armed) return
         fourK = on
-        if (session.inputs.isEmpty()) return
+        if (device == null) return
         session.beginConfiguration()
         session.sessionPreset = preset()
         session.commitConfiguration()

@@ -21,6 +21,7 @@ import app.onlyshots.core.designsystem.CgStroke
 import app.onlyshots.core.designsystem.CgTheme
 import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BackButton
+import app.onlyshots.core.designsystem.component.LocalNativeChrome
 import app.onlyshots.core.designsystem.component.TopChip
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
@@ -56,12 +57,14 @@ internal fun EditTopBar(
             dot = shotMark(video).color,
         )
         SoundToggle(video, player)
-        TopChip(
-            stringResource(Res.string.edit_export),
-            onClick = { onOpenSheet(EditSheet.EXPORT) },
-            modifier = Modifier.testTag(TestTags.EditExport),
-            primary = true,
-        )
+        if (LocalNativeChrome.current == null) {
+            TopChip(
+                stringResource(Res.string.edit_export),
+                onClick = { onOpenSheet(EditSheet.EXPORT) },
+                modifier = Modifier.testTag(TestTags.EditExport),
+                primary = true,
+            )
+        }
     }
 }
 
@@ -99,11 +102,11 @@ internal fun WideTopBar(video: VideoItem, player: PlayerState, onBack: () -> Uni
 
 /**
  * Sound on or off, for playback and the export alike; a video recorded without the microphone has nothing to mute, so
- * there is no key.
+ * there is no key. Where the bars are native it is their item instead.
  */
 @Composable
 internal fun SoundToggle(video: VideoItem?, player: PlayerState, modifier: Modifier = Modifier) {
-    if (video?.hasAudio != true) return
+    if (video?.hasAudio != true || LocalNativeChrome.current != null) return
     // A top-bar key like the shot and export ones beside it, the same height.
     TopChip(
         if (player.muted) stringResource(Res.string.edit_muted) else stringResource(Res.string.edit_sound),

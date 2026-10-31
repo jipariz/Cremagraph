@@ -34,6 +34,7 @@ import app.onlyshots.core.designsystem.caps
 import app.onlyshots.core.designsystem.component.BluetoothBlue
 import app.onlyshots.core.designsystem.component.ChoiceCard
 import app.onlyshots.core.designsystem.component.IconCircleButton
+import app.onlyshots.core.designsystem.component.LocalNativeChrome
 import app.onlyshots.core.designsystem.component.OnlyShotsMark
 import app.onlyshots.core.designsystem.headline
 import app.onlyshots.core.resources.Res
@@ -75,6 +76,7 @@ internal fun StartHeader(onHelp: (() -> Unit)?, big: Boolean, modifier: Modifier
 
 @Composable
 internal fun HelpKey(onHelp: () -> Unit, modifier: Modifier = Modifier) {
+    if (LocalNativeChrome.current != null) return
     IconCircleButton(
         CgIcons.Help,
         stringResource(Res.string.home_about),

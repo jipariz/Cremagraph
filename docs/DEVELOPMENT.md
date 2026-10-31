@@ -90,7 +90,10 @@ Late shot gets old tail joined in front (`Mp4Join` on Android; on iOS old writer
 **Storage.** Sidecar JSON per video, beside the video = only truth. No database: nothing lists the library.
 
 **Layout.** `windowLayout(...)` picks `Phone`, `Wide`, `Stacked`, `Tiny`. Every adaptive branch goes through it.
-Foldables follow "OnlyShots Foldables" canvas: nothing on fold; picture one pane, controls other.
+Foldables follow "OnlyShots Foldables" canvas: nothing on fold; picture one pane, controls other. iPhone Duo follows
+Figma "OnlyShots · iPhone Duo" (Apple HIG "Designing for iPhone Duo"): system bars, not Compose ones, via the native
+shell (`NativeShell.swift`, `LocalNativeChrome`); status, Dynamic Island and toolbar share a side column except on
+the inner display upright. Check on the iPhone Duo simulator (Xcode 27.1): closed, open, half-open, both orientations.
 
 **Look.** "Instrument" (canvas "OnlyShots · Instrument"): ink `#0B0B0B`, bone `#E8E6E1` text, one signal `#FF5A1F`
 accent, `#3A3A38` hairlines, square corners. IBM Plex Mono SemiBold names and counts (labels drawn in capitals with
@@ -228,10 +231,17 @@ bundle, sideloaded). Rotate either key? Update it there.
 
 Check after deploy: `adb shell pm get-app-links dev.parez.onlyshots`, Apple's AASA validator.
 
-**Shot files.** "from a file" goes through `ShotFiles.parse`, which tells three shapes apart:
+**Shot files.** "from a file" goes through `ShotFiles.parse`, which takes the file's bytes and tells five shapes
+apart. A GaggiMate `.slog` is binary and known by its first four bytes; the rest are JSON, told apart by shape:
 
 - Gaggiuino `.shot` JSON (`datapoints`): what `GET /api/shots/{id}` and baristagiuino give. `GaggiuinoShotFile`. Older
   firmware: parallel arrays, time in deciseconds, values ×10. Newer: one object per reading, real units, ms.
+- GaggiMate `.slog` (magic `SHOT`): the machine's own binary log, also what `GET /api/history/<id>.slog` serves.
+  `GaggiMateShotLog`. Little-endian, 128- or 512-byte header then fixed-width samples; `fieldsMask` says which fields
+  a sample carries and the record size tells a v6 index stamp from a v6 millisecond one. Same file parses the `SIDX`
+  index behind `recent.bin`.
+- GaggiMate export JSON (`samples` of `{t, ct, cp, …}`): what the machine's Shot Analyzer hands out.
+  `GaggiMateShotFile`. Real units, time in ms.
 - visualizer.coffee's normalized shot (`timeframe` + `data.espresso_*`): any machine's, as the visualizer kept it (it
   keeps no upload). `VisualizerShot`. A Decent's values arrive as strings, its missing goals as -1; phases are where
   `espresso_state_change` flips sign.
@@ -239,6 +249,13 @@ Check after deploy: `adb shell pm get-app-links dev.parez.onlyshots`, Apple's AA
   sensor at its own rate, lined up by wall-clock `timestamp` (nearest within 250 ms, else left out).
 
 Missing series left out, not guessed. All shots read from the visualizer or Beanconqueror are `SourceKind.VISUALIZER`.
+
+**Caching the web build.** `app/webApp/vercel.json` caches a wasm file for a year as `immutable`, and that rule has
+to match **content-hashed names only** (`/:hash([0-9a-f]{8,}).wasm`). The wasm build's bundles carry their hash, so a
+deploy writes a new name and the stale one is never asked for. `skiko.wasm`, which the Kotlin/JS build loads through
+`skiko.mjs`, keeps its name forever: caching it as immutable pairs a year-old wasm with a freshly revalidated loader,
+Skia never starts and the page is blank for exactly the people who visited before. Everything unmatched falls back to
+Vercel's `max-age=0, must-revalidate`, which is what `skiko.mjs` and both JS bundles already get.
 
 **Visualizer.** `:visualizer` fetches a shared shot: a share code (four letters from the shot page's Share, valid about an
 hour) via `GET /api/shots/shared?code=X&with_data=1` (without `with_data` no readings), or a link / id via
@@ -254,9 +271,42 @@ All seven milestones done: spike, foundations, record, editor, share, more sourc
   (`Tiny`): only by resizing. iPhone Duo tabletop and camera.
 - **Gaggiuino:** binary firmware seen on real machine (Oct 18, 2026). Scan and identify tested on fakes, not real
   machine on phone.
+- **Gaggiuino temperature, on purpose:** binary firmware pushes two streams. `d_sensor_snap` carries the machine's
+  thermocouple, which climbs through an extraction; `d_shot_snap` reports the setpoint as its `temperature`, which is
+  what the machine's own charts and its shot files show as a flat line (in a shot file `temperature` equals
+  `targetTemperature` on every sample, the machine having no temperature profiling). The graph keeps the
+  thermocouple, because it is the measurement; `d_shot_snap` is read only for the targets, which the sensor stream
+  does not carry at all. Expect the curve to disagree with the machine's web UI, and that to be right.
+- **GaggiMate:** written from upstream source (master `b78beee`, Oct 18, 2026) and tested against captured frame
+  shapes and hand-built `.slog` bytes. Not yet run against a real machine, and the pressure gate on `cp` is untested
+  on a Standard.
 - **Home spec not built yet:** machine + scale together, remembered machines offline, rename/forget, live reading
   line on card, pressure sensors.
 - **Android 14 and older:** export service runs as `dataSync` (`mediaProcessing` from Android 15 only).
+
+**Play Console quality cards (1.0.0, assessed Oct 27, 2026).** Both are advisory, neither blocks a release, and in
+both cases the API Play names is one the app never calls.
+
+- **"Edge-to-edge may not display for all users".** The display is right: every screen root applies
+  `safeDrawingPadding()`, no theme sets a bar colour, and there is no deprecated window call in app code. The flagged
+  `Window.setStatusBarColor` / `setNavigationBarColor` are inside `androidx.activity`'s `enableEdgeToEdge`, which
+  still sets them in `EdgeToEdgeApi26`, `Api29` and `Api35`. `MainActivity` now calls it only below API 35, where
+  those setters are not deprecated and are what makes the bars transparent at all; from 35 the window is edge to edge
+  by itself and only the icon colours are set, through `WindowCompat`. **The card is expected to stay** while
+  `minSdk = 26`: Play scans the merged DEX, the legacy branch keeps those androidx classes, and clearing it entirely
+  would mean giving up edge to edge on Android 8 to 14. The split was checked on an API 35 emulator against the
+  previous code, in both system themes, by reading `vsysui` out of `dumpsys window`: identical either way, so it is
+  a deprecation change and nothing else.
+- **Pre-existing, found while checking the above:** on API 35 under a *light* system theme the window comes up with
+  `vsysui=LIGHT_NAVIGATION_BAR`, i.e. dark navigation icons, although the app is `#0B0B0B` whatever the system does
+  and `MainActivity` asks for light ones. Same before and after the change, so `enableEdgeToEdge`'s
+  `SystemBarStyle.dark` is not winning on 35. Not chased yet; it is a thin gesture handle on most devices.
+- **"Improve your app's performance with bitmap downsampling".** The app calls `BitmapFactory` nowhere; the card is
+  most likely Compose's `decodeToImageBitmap` (a `BitmapFactory.decodeByteArray` underneath) or androidx.core. The
+  real problem it pointed at was ours though, and is fixed: `MediaMetadataRetriever.getFrameAtTime` decodes at the
+  source's own resolution, 33 MB a frame at 4 K, and `lumaAt` was doing that every 250 ms of a take to read twelve
+  pixels. Both Android call sites now go through `scaledFrameAt` (`video/.../ScaledFrame.kt`), which hands the size
+  to the decoder as iOS and the web already did. Whether the card clears is only visible after an upload.
 
 **App Store:**
 
@@ -265,7 +315,7 @@ All seven milestones done: spike, foundations, record, editor, share, more sourc
 - `ITSAppUsesNonExemptEncryption` = false.
 - Reviewers have no machine: tell them about "try a sample shot" and **simulate shot**.
 - **iPhone Duo:** screenshots needed from April 2027. Scene manifest in `Info.plist` must stay (else unfold kicks
-  app out). Fold comes from Swift `FoldWatchingController`.
+  app out). Fold comes from Swift `ComposeHostController` (`NativeShell.swift`).
 
 ## Open questions
 

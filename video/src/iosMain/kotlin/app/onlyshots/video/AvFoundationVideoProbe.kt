@@ -2,10 +2,7 @@
 
 package app.onlyshots.video
 
-import kotlin.math.PI
-import kotlin.math.atan2
 import kotlin.math.max
-import kotlin.math.roundToInt
 import kotlin.time.Instant
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -36,7 +33,6 @@ import platform.AVFoundation.commonMetadata
 import platform.AVFoundation.dateValue
 import platform.AVFoundation.duration
 import platform.AVFoundation.naturalSize
-import platform.AVFoundation.preferredTransform
 import platform.AVFoundation.stringValue
 import platform.AVFoundation.tracksWithMediaType
 import platform.CoreAudioTypes.kAudioFormatLinearPCM
@@ -60,13 +56,7 @@ class AvFoundationVideoProbe : VideoProbe {
             val asset = AVURLAsset(NSURL.fileURLWithPath(file.toString()), null)
             val track = asset.tracksWithMediaType(AVMediaTypeVideo).firstOrNull() as? AVAssetTrack
             // Phones store portrait video as rotated landscape: report the height as shown.
-            val quarterTurned =
-                track?.let {
-                    it.preferredTransform.useContents {
-                        val deg = atan2(b, a) * 180.0 / PI
-                        ((((deg / 90.0).roundToInt() * 90) % 360 + 360) % 360) % 180 != 0
-                    }
-                } ?: false
+            val quarterTurned = track?.let { it.rotationDegrees() % 180 != 0 } ?: false
             val shown = track?.naturalSize?.useContents { if (quarterTurned) width else height } ?: 0.0
             val across = track?.naturalSize?.useContents { if (quarterTurned) height else width } ?: 0.0
             VideoInfo(

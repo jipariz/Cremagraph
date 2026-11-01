@@ -9,6 +9,9 @@ import org.jetbrains.skia.Surface
 /** The browser gives no WebGL context: the export cannot run here. The exporter words it for the user. */
 internal class NoWebGlException : IllegalStateException("no WebGL in this browser")
 
+/** The browser has no WebCodecs `VideoEncoder`: nothing can be written here. The exporter words it too. */
+internal class NoWebCodecsException : IllegalStateException("no VideoEncoder in this browser")
+
 /**
  * A WebGL context of its own for the export, with a Skia [DirectContext] on it. The glass shader and the blur run on
  * the GPU here: Skia's CPU path for runtime shaders is interpreted in wasm and takes seconds a frame.

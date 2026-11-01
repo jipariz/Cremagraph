@@ -9,6 +9,7 @@ import app.onlyshots.core.model.Reframe
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.model.overlayTitle
 import app.onlyshots.core.resources.Res
+import app.onlyshots.core.resources.core_export_no_webcodecs
 import app.onlyshots.core.resources.core_export_no_webgl
 import app.onlyshots.overlay.GraphStyles
 import app.onlyshots.overlay.compose.OVERLAY_TEXT_CACHE
@@ -62,6 +63,7 @@ class WebVideoExporter(
             when (error) {
                 null -> ExportProgress.Done(out)
                 is NoWebGlException -> ExportProgress.Failed(getString(Res.string.core_export_no_webgl))
+                is NoWebCodecsException -> ExportProgress.Failed(getString(Res.string.core_export_no_webcodecs))
                 else -> ExportProgress.Failed(error.message ?: error::class.simpleName.orEmpty())
             }
         )

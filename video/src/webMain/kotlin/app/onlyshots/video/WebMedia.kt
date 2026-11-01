@@ -44,6 +44,7 @@ object WebMedia {
 
     suspend fun probe(path: String): WebProbe {
         val p = cgProbe(path).await<JsAny>()
+        if (!bool(p, "canDecode")) throw UndecodableVideoException(str(p, "codec"))
         return WebProbe(
             durationUs = (num(p, "duration") * 1_000_000).toLong(),
             hasAudio = bool(p, "hasAudio"),
@@ -116,10 +117,12 @@ object WebMedia {
         zoom: Double,
         offsetX: Double,
         offsetY: Double,
-    ): Double =
-        cgExportStart(path, width, height, startSeconds, endSeconds, zoom, offsetX, offsetY)
+    ): Double {
+        if (!hasVideoEncoder()) throw NoWebCodecsException()
+        return cgExportStart(path, width, height, startSeconds, endSeconds, zoom, offsetX, offsetY)
             .await<JsNumber>()
             .toDouble()
+    }
 
     /** The next decoded frame's time in seconds, or a negative number at the end. */
     suspend fun exportNext(): Double = cgExportNext().await<JsNumber>().toDouble()
@@ -214,8 +217,13 @@ private fun cgExportFinish(outPath: String): Promise<JsAny?> = js("globalThis.cg
 
 private fun cgExportCancel(): Promise<JsAny?> = js("globalThis.cg.exportCancel()")
 
+private fun hasVideoEncoder(): Boolean = js("typeof VideoEncoder !== 'undefined'")
+
 private fun num(o: JsAny, key: String): Double = js("Number(o[key] || 0)")
 
 private fun bool(o: JsAny, key: String): Boolean = js("!!o[key]")
+
+/** A field as text; a missing one reads empty, which [field] could not do without trapping on wasm. */
+private fun str(o: JsAny, key: String): String = js("String(o[key] || '')")
 
 private fun field(o: JsAny, key: String): JsAny = js("o[key]")

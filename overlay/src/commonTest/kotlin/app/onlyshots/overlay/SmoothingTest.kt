@@ -42,13 +42,28 @@ class SmoothingTest {
     }
 
     @Test
-    fun theSamplesThemselvesAreKeptAndWideSpansGetPointsBetween() {
-        // Spans of 30 px with 3 px per split, capped at 6: each span becomes 6 parts, 1 + 6 + 6 points.
+    fun wideSpansGetPointsBetweenAndInnerReadingsAreLowPassed() {
+        // Spans of 30 px with 3 px per split, capped at 6: each span becomes 6 parts, 1 + 6 + 6 points. The reading at
+        // x = 30 is pulled a quarter of the way towards its neighbours, (0 + 2 × 20 + 30) / 4; the ends do not move.
         val out = smoothRun(floatArrayOf(0f, 0f, 30f, 20f, 60f, 30f), top = 0f, bottom = 100f)
         assertEquals(13, out.size / 2)
         assertEquals(30f, xs(out)[6])
-        assertEquals(20f, ys(out)[6], 1e-4f)
+        assertEquals(17.5f, ys(out)[6], 1e-4f)
+        assertEquals(0f, ys(out).first(), 1e-4f)
+        assertEquals(30f, ys(out).last(), 1e-4f)
         assertEquals(60f, xs(out).last())
+    }
+
+    @Test
+    fun quantizedReadingsDoNotComeOutAsStairs() {
+        // What a machine that reports in tenths sends while the pressure climbs: every reading repeated once. Drawn
+        // faithfully this is a staircase, so the curve has to leave the readings to rise.
+        val run = FloatArray(24) { i -> if (i % 2 == 0) i * 2f else 100f - (i / 4) * 10f }
+        val y = ys(smoothRun(run, top = 0f, bottom = 100f))
+        var flat = 0
+        for (i in 1 until y.size) if (y[i] == y[i - 1]) flat++
+        assertTrue(flat <= 1, "still stepped: ${y.toList()}")
+        for (i in 1 until y.size) assertTrue(y[i] <= y[i - 1] + 1e-4f, "dips at $i: ${y[i - 1]} → ${y[i]}")
     }
 
     @Test

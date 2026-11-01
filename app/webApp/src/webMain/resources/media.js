@@ -126,11 +126,17 @@ function inputOf(path) {
   return new Input({ formats: ALL_FORMATS, source: new BlobSource(fileOf(path)) });
 }
 
+/**
+ * What one open of a file says about it. A file this cannot read answers `canDecode: false` instead of throwing: a
+ * rejected promise reaches Kotlin/Wasm with nothing left of it but the word Error, and a file the user picked wrongly
+ * is an answer, not a fault. `codec` is Mediabunny's name for it ('hevc', 'prores'…), empty when it found no video.
+ */
 async function probe(path) {
   const input = inputOf(path);
-  const track = await input.getPrimaryVideoTrack();
-  if (!track) throw new Error('no video track in that file');
-  if (!(await track.canDecode())) throw new Error('this browser cannot decode that video');
+  // Anything that is not a container this knows throws out of the demuxer; that is the same wrong pick.
+  const track = await input.getPrimaryVideoTrack().catch(() => null);
+  if (!track) return { canDecode: false, codec: '' };
+  if (!(await track.canDecode())) return { canDecode: false, codec: track.codec || '' };
   let created = 0;
   try {
     const tags = await input.getMetadataTags();
@@ -141,6 +147,7 @@ async function probe(path) {
     created = 0; // containers without tags are the common case, not an error
   }
   return {
+    canDecode: true,
     duration: await input.computeDuration(),
     hasAudio: !!(await input.getPrimaryAudioTrack()),
     width: track.displayWidth,
@@ -285,7 +292,8 @@ function playerOpen(path, maxSide) {
     pointerEvents: 'none',
   });
   document.body.appendChild(video);
-  const player = { video, maxSide, canvas: null, ctx: null, fresh: false };
+  // `muted` is what the editor asked for; the element's own flag may differ while autoplay refuses the sound.
+  const player = { video, maxSide, canvas: null, ctx: null, fresh: false, muted: false };
   const watch = () => {
     player.fresh = true;
     video.requestVideoFrameCallback?.(watch);
@@ -326,11 +334,13 @@ function playerSeek(id, time) {
 async function playerPlay(id) {
   const p = players.get(id);
   if (!p) return false;
+  // Autoplay rules: a muted start is always allowed, an audible one only once the page has been clicked. What the
+  // editor asked for is tried again at every play, so a start that had to be silent is not silent for ever.
+  p.video.muted = p.muted;
   try {
     await p.video.play();
     return true;
   } catch {
-    // Autoplay rules: a muted start is always allowed, and the next tap brings the sound.
     p.video.muted = true;
     await p.video.play().catch(() => {});
     return false;
@@ -347,7 +357,9 @@ function playerTime(id) {
 
 function playerMute(id, muted) {
   const p = players.get(id);
-  if (p) p.video.muted = muted;
+  if (!p) return;
+  p.muted = muted;
+  p.video.muted = muted;
 }
 
 /**
@@ -412,7 +424,6 @@ const exp = {
  */
 async function exportStart(path, w, h, start, end, zoom, offsetX, offsetY) {
   exportReset();
-  if (typeof VideoEncoder === 'undefined') throw new Error('this browser cannot encode video: use Chrome, Edge or Safari');
   exp.input = inputOf(path);
   const track = await exp.input.getPrimaryVideoTrack();
   const stats = await track.computePacketStats(100);

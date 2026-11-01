@@ -11,6 +11,7 @@ import app.onlyshots.core.model.SidecarCodec
 import app.onlyshots.core.model.VideoItem
 import app.onlyshots.core.resources.Res
 import app.onlyshots.core.resources.UiText
+import app.onlyshots.core.resources.open_error_codec
 import app.onlyshots.core.resources.open_error_not_a_shot
 import app.onlyshots.core.resources.open_error_unreadable
 import app.onlyshots.core.resources.open_error_video
@@ -20,8 +21,10 @@ import app.onlyshots.core.resources.text
 import app.onlyshots.storage.Library
 import app.onlyshots.storage.LibraryStore
 import app.onlyshots.storage.VideoImport
+import app.onlyshots.video.UndecodableVideoException
 import app.onlyshots.video.VideoInfo
 import app.onlyshots.video.VideoProbe
+import app.onlyshots.video.codecName
 import app.onlyshots.visualizer.Visualizer
 import app.onlyshots.visualizer.VisualizerFetchState
 import app.onlyshots.visualizer.VisualizerFetcher
@@ -122,13 +125,7 @@ class OpenViewModel(
                     pickedThumb.value = null
                     thumbnail(video)
                 },
-                {
-                    status.value =
-                        Res.string.open_error_video.text(
-                            file.name,
-                            it.message?.raw() ?: Res.string.open_error_unreadable.text(),
-                        )
-                },
+                { status.value = Res.string.open_error_video.text(file.name, it.openProblem()) },
             )
         }
     }
@@ -212,6 +209,17 @@ class OpenViewModel(
         const val THUMB_WIDTH_PX = 180
     }
 }
+
+/**
+ * Why a video would not open, in the user's words. A codec the browser has no decoder for is named, since the way out
+ * depends on which one it is; anything unforeseen keeps the platform's own message.
+ */
+internal fun Throwable.openProblem(): UiText =
+    when {
+        this !is UndecodableVideoException -> message?.raw() ?: Res.string.open_error_unreadable.text()
+        codec.isEmpty() -> Res.string.open_error_unreadable.text()
+        else -> Res.string.open_error_codec.text(codecName(codec))
+    }
 
 /** "opening…": the status while a picked video is copied in, which the steps show in the video's place. */
 internal val Opening: UiText = Res.string.open_status_opening.text()

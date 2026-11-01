@@ -275,6 +275,39 @@ async function lumaAt(path, time, points) {
 const players = new Map();
 let nextPlayer = 0;
 
+/**
+ * Players that have not had their one gesture yet. iOS gives an element the right to sound only when play() runs
+ * inside a user gesture, and only for that element; the editor plays from a coroutine a moment after the tap, which
+ * is too late for that rule. So every pointer the page sees starts and stops the waiting elements, which is enough
+ * to bless them: the tap on the play button blesses the player just before the editor asks it to run.
+ */
+const unblessed = new Set();
+
+function bless(player) {
+  unblessed.delete(player);
+  const wanted = player.video.muted;
+  player.video.muted = false;
+  let started;
+  try {
+    started = player.video.play();
+  } catch {
+    player.video.muted = wanted;
+    unblessed.add(player);
+    return;
+  }
+  // Stopped in the same task, so the blessing itself is never heard; that aborts the play, which is not a refusal.
+  player.video.pause();
+  player.video.muted = wanted;
+  if (started) {
+    started.catch(e => {
+      if (e && e.name === 'NotAllowedError') unblessed.add(player);
+    });
+  }
+}
+
+// Capture, because Compose handles the canvas's own events: the editor's play button is a tap on that canvas.
+document.addEventListener('pointerdown', () => unblessed.forEach(bless), { capture: true });
+
 function playerOpen(path, maxSide) {
   const video = document.createElement('video');
   video.src = URL.createObjectURL(fileOf(path));
@@ -294,6 +327,7 @@ function playerOpen(path, maxSide) {
   document.body.appendChild(video);
   // `muted` is what the editor asked for; the element's own flag may differ while autoplay refuses the sound.
   const player = { video, maxSide, canvas: null, ctx: null, fresh: false, muted: false };
+  unblessed.add(player);
   const watch = () => {
     player.fresh = true;
     video.requestVideoFrameCallback?.(watch);
@@ -311,6 +345,7 @@ function playerOpen(path, maxSide) {
 function playerClose(id) {
   const p = players.get(id);
   if (!p) return;
+  unblessed.delete(p);
   p.video.pause();
   URL.revokeObjectURL(p.video.src);
   p.video.remove();
